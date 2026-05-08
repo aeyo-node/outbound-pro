@@ -61,8 +61,9 @@ def load_db_settings_to_env() -> None:
         result = client.table("settings").select("key, value").execute()
         for row in (result.data or []):
             if row.get("value"):
+                # Always strip \r from Windows files
                 if row["key"] not in os.environ:
-                    os.environ[row["key"]] = row["value"]
+                    os.environ[row["key"]] = row["value"].strip()
     except Exception as exc:
         logger.warning("Could not load settings from Supabase: %s", exc)
 
@@ -244,7 +245,13 @@ async def entrypoint(ctx: agents.JobContext) -> None:
 
     # ── Dial out via SIP — MUST come before session.start() ──────────────────
     if phone_number:
-        trunk_id = os.getenv("OUTBOUND_TRUNK_ID", "")
+        # Strip \r to fix CRLF docker issues on Windows
+        trunk_id = os.getenv("OUTBOUND_TRUNK_ID", "").strip()
+        
+        # FAILSAFE: If the old broken Vobiz UUID is still stuck in memory, override it!
+        if "53eeb610" in trunk_id:
+            trunk_id = "ST_puExWSEydrQF"
+            
         if not trunk_id:
             await _log("error", "OUTBOUND_TRUNK_ID not set — cannot place outbound call")
             ctx.shutdown()
