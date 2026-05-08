@@ -117,7 +117,7 @@ def _build_session(tools: list, system_prompt: str) -> AgentSession:
 
     ⚠️  EndSensitivity MUST use END_SENSITIVITY_LOW (full string — not .LOW)
     """
-    gemini_model = os.getenv("GEMINI_MODEL", "gemini-3.1-flash-live-preview")
+    gemini_model = os.getenv("GEMINI_MODEL", "models/gemini-2.0-flash-exp")
     gemini_voice = os.getenv("GEMINI_TTS_VOICE", "Aoede")
     use_realtime = os.getenv("USE_GEMINI_REALTIME", "true").lower() != "false"
 
@@ -272,9 +272,12 @@ async def entrypoint(ctx: agents.JobContext) -> None:
             ctx.shutdown()
             return
         await _log("info", f"Call ANSWERED — {phone_number} picked up")
+        
+        import time
+        _call_start_time = time.time()
 
     # ── Build and start Gemini Live session ───────────────────────────────────
-    gemini_model = os.getenv("GEMINI_MODEL", "gemini-3.1-flash-live-preview")
+    gemini_model = os.getenv("GEMINI_MODEL", "models/gemini-2.0-flash-exp")
     await _log("info", f"Building Gemini Live session — model={gemini_model}")
     active_tools = tool_ctx.build_tool_list(enabled_tools)
     await _log("info", f"Active tools: {[t.__name__ for t in active_tools]}")
@@ -335,10 +338,10 @@ async def entrypoint(ctx: agents.JobContext) -> None:
                 await _log("warning", f"Recording start failed (non-fatal): {_exc}")
 
     # ── Greeting ─────────────────────────────────────────────────────────────
-    # gemini-3.1 and gemini-2.5 native-audio speak autonomously from system prompt.
+    # gemini-2.0 native-audio speak autonomously from system prompt.
     # generate_reply() is blocked by the plugin for these models — skip entirely.
     _active_model = os.getenv("GEMINI_MODEL", "")
-    if "3.1" in _active_model or "2.5" in _active_model:
+    if "3.1" in _active_model or "2.5" in _active_model or "2.0" in _active_model:
         await _log("info", "Gemini native-audio model: will greet autonomously from system prompt")
     else:
         greeting = (
@@ -372,6 +375,24 @@ async def entrypoint(ctx: agents.JobContext) -> None:
             await _log("warning", "Call reached 1-hour safety timeout — shutting down")
 
         await _log("info", f"SIP participant disconnected — ending session for {phone_number}")
+        
+        # Log the call if the LLM didn't get a chance to call end_call()
+        if not getattr(tool_ctx, "_call_logged", False):
+            try:
+                import time
+                from db import log_call
+                duration = int(time.time() - _call_start_time)
+                await log_call(
+                    phone_number=phone_number,
+                    lead_name=lead_name,
+                    outcome="no_answer" if duration < 10 else "completed",
+                    reason="User hung up",
+                    duration_seconds=duration,
+                    recording_url=getattr(tool_ctx, "recording_url", None)
+                )
+            except Exception as e:
+                await _log("warning", f"Failed to log call on disconnect: {e}")
+
         try:
             await session.aclose()
         except Exception:
