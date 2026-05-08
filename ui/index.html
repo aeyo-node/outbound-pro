@@ -27,7 +27,7 @@
         .badge-info { background-color: rgba(59, 130, 246, 0.2); color: #60a5fa; }
         
         /* Layout */
-        .layout-container { display: flex; min-height: 100vh; }
+        .layout-container { display: flex; height: 100vh; overflow: hidden; }
         .sidebar { width: 240px; background-color: var(--bg-card); border-right: 1px solid #334155; padding: 1.5rem; flex-shrink: 0; }
         .main-content { flex-grow: 1; padding: 2rem; max-height: 100vh; overflow-y: auto; }
         .nav-item { display: flex; align-items: center; padding: 0.75rem 1rem; color: var(--text-muted); border-radius: 0.5rem; cursor: pointer; margin-bottom: 0.25rem; transition: all 0.2s; }
@@ -127,11 +127,15 @@
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div class="card p-6">
                     <h3 class="text-lg font-medium mb-4">Call Volume (14 Days)</h3>
-                    <canvas id="callsChart" height="250"></canvas>
+                    <div style="position: relative; height: 300px; width: 100%;">
+                        <canvas id="callsChart"></canvas>
+                    </div>
                 </div>
                 <div class="card p-6">
                     <h3 class="text-lg font-medium mb-4">Call Outcomes</h3>
-                    <canvas id="outcomesChart" height="250"></canvas>
+                    <div style="position: relative; height: 300px; width: 100%;">
+                        <canvas id="outcomesChart"></canvas>
+                    </div>
                 </div>
             </div>
         </div>

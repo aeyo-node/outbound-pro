@@ -4,6 +4,7 @@ services:
   outboundai:
     build: .
     restart: unless-stopped
+    shm_size: '512m'
     ports:
       - "8000:8000"
     env_file:
