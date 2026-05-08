@@ -1,0 +1,1159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OutboundAI Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root { --bg-dark: #0f172a; --bg-card: #1e293b; --accent: #3b82f6; --text-main: #f8fafc; --text-muted: #94a3b8; }
+        body { background-color: var(--bg-dark); color: var(--text-main); font-family: 'Inter', system-ui, sans-serif; }
+        .card { background-color: var(--bg-card); border-radius: 0.75rem; border: 1px solid #334155; }
+        .tab-btn.active { border-bottom: 2px solid var(--accent); color: var(--accent); }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        input, select, textarea { background-color: #0f172a; border: 1px solid #334155; color: white; border-radius: 0.375rem; padding: 0.5rem; width: 100%; margin-top: 0.25rem; }
+        input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); }
+        button.primary { background-color: var(--accent); color: white; padding: 0.5rem 1rem; border-radius: 0.375rem; font-weight: 500; transition: all 0.2s; }
+        button.primary:hover { background-color: #2563eb; }
+        button.secondary { background-color: #334155; color: white; padding: 0.5rem 1rem; border-radius: 0.375rem; font-weight: 500; transition: all 0.2s; }
+        button.secondary:hover { background-color: #475569; }
+        .badge { padding: 0.25rem 0.5rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; }
+        .badge-success { background-color: rgba(34, 197, 94, 0.2); color: #4ade80; }
+        .badge-warning { background-color: rgba(234, 179, 8, 0.2); color: #facc15; }
+        .badge-danger { background-color: rgba(239, 68, 68, 0.2); color: #f87171; }
+        .badge-info { background-color: rgba(59, 130, 246, 0.2); color: #60a5fa; }
+        
+        /* Layout */
+        .layout-container { display: flex; min-height: 100vh; }
+        .sidebar { width: 240px; background-color: var(--bg-card); border-right: 1px solid #334155; padding: 1.5rem; flex-shrink: 0; }
+        .main-content { flex-grow: 1; padding: 2rem; max-height: 100vh; overflow-y: auto; }
+        .nav-item { display: flex; align-items: center; padding: 0.75rem 1rem; color: var(--text-muted); border-radius: 0.5rem; cursor: pointer; margin-bottom: 0.25rem; transition: all 0.2s; }
+        .nav-item:hover, .nav-item.active { background-color: #334155; color: white; }
+        .nav-item i { margin-right: 0.75rem; width: 20px; text-align: center; }
+        
+        /* Toast */
+        #toast-container { position: fixed; bottom: 1rem; right: 1rem; z-index: 50; display: flex; flex-direction: column; gap: 0.5rem; }
+        .toast { background-color: var(--bg-card); border: 1px solid #334155; padding: 1rem; border-radius: 0.5rem; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5); display: flex; align-items: center; gap: 0.75rem; transform: translateX(120%); transition: transform 0.3s ease-out; }
+        .toast.show { transform: translateX(0); }
+        .toast.success i { color: #4ade80; }
+        .toast.error i { color: #f87171; }
+    </style>
+</head>
+<body>
+
+<div class="layout-container">
+    <!-- Sidebar -->
+    <div class="sidebar flex flex-col">
+        <div class="flex items-center gap-3 mb-8 px-2">
+            <div class="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center font-bold text-white shadow-lg shadow-blue-500/50">
+                <i class="fas fa-headset text-sm"></i>
+            </div>
+            <h1 class="font-bold text-xl tracking-tight">OutboundAI</h1>
+        </div>
+
+        <nav class="flex-grow space-y-1">
+            <div class="nav-item active" onclick="switchTab('dashboard', this)">
+                <i class="fas fa-chart-line"></i> Dashboard
+            </div>
+            <div class="nav-item" onclick="switchTab('single-call', this)">
+                <i class="fas fa-phone-alt"></i> Single Call
+            </div>
+            <div class="nav-item" onclick="switchTab('campaigns', this)">
+                <i class="fas fa-users"></i> Campaigns
+            </div>
+            <div class="nav-item" onclick="switchTab('crm', this)">
+                <i class="fas fa-address-book"></i> CRM / Leads
+            </div>
+            <div class="nav-item" onclick="switchTab('call-logs', this)">
+                <i class="fas fa-history"></i> Call Logs
+            </div>
+            <div class="nav-item" onclick="switchTab('appointments', this)">
+                <i class="fas fa-calendar-alt"></i> Appointments
+            </div>
+            <div class="nav-item" onclick="switchTab('agent-profiles', this)">
+                <i class="fas fa-robot"></i> Agent Profiles
+            </div>
+            <div class="nav-item" onclick="switchTab('system-prompt', this)">
+                <i class="fas fa-comment-dots"></i> System Prompt
+            </div>
+            <div class="nav-item" onclick="switchTab('settings', this)">
+                <i class="fas fa-cog"></i> Settings
+            </div>
+            <div class="nav-item" onclick="switchTab('error-logs', this)">
+                <i class="fas fa-exclamation-triangle"></i> Error Logs
+            </div>
+        </nav>
+
+        <div class="mt-auto pt-4 border-t border-slate-700 text-xs text-slate-500 text-center">
+            OutboundAI v1.0.0<br>Gemini Live Edition
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content relative">
+        <!-- Dashboard Tab -->
+        <div id="tab-dashboard" class="tab-content active">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold">Dashboard Overview</h2>
+                <button onclick="loadStats()" class="secondary text-sm"><i class="fas fa-sync-alt mr-2"></i>Refresh</button>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+                <div class="card p-6 flex flex-col justify-between relative overflow-hidden">
+                    <div class="absolute -right-4 -top-4 w-24 h-24 bg-blue-500/10 rounded-full blur-xl"></div>
+                    <div class="text-slate-400 text-sm font-medium mb-1">Total Calls</div>
+                    <div class="text-3xl font-bold" id="stat-total-calls">0</div>
+                </div>
+                <div class="card p-6 flex flex-col justify-between relative overflow-hidden">
+                    <div class="absolute -right-4 -top-4 w-24 h-24 bg-green-500/10 rounded-full blur-xl"></div>
+                    <div class="text-slate-400 text-sm font-medium mb-1">Appointments Booked</div>
+                    <div class="text-3xl font-bold text-green-400" id="stat-booked">0</div>
+                </div>
+                <div class="card p-6 flex flex-col justify-between relative overflow-hidden">
+                    <div class="absolute -right-4 -top-4 w-24 h-24 bg-blue-500/10 rounded-full blur-xl"></div>
+                    <div class="text-slate-400 text-sm font-medium mb-1">Booking Rate</div>
+                    <div class="text-3xl font-bold" id="stat-booking-rate">0%</div>
+                </div>
+                <div class="card p-6 flex flex-col justify-between relative overflow-hidden">
+                    <div class="absolute -right-4 -top-4 w-24 h-24 bg-purple-500/10 rounded-full blur-xl"></div>
+                    <div class="text-slate-400 text-sm font-medium mb-1">Avg Call Duration</div>
+                    <div class="text-3xl font-bold text-purple-400" id="stat-avg-duration">0s</div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="card p-6">
+                    <h3 class="text-lg font-medium mb-4">Call Volume (14 Days)</h3>
+                    <canvas id="callsChart" height="250"></canvas>
+                </div>
+                <div class="card p-6">
+                    <h3 class="text-lg font-medium mb-4">Call Outcomes</h3>
+                    <canvas id="outcomesChart" height="250"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Single Call Tab -->
+        <div id="tab-single-call" class="tab-content">
+            <h2 class="text-2xl font-bold mb-6">Dispatch Single Call</h2>
+            
+            <div class="card p-6 max-w-2xl">
+                <form id="single-call-form" onsubmit="dispatchSingleCall(event)">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label class="text-sm text-slate-400">Phone Number (E.164)</label>
+                            <input type="text" id="call-phone" placeholder="+1234567890" required>
+                        </div>
+                        <div>
+                            <label class="text-sm text-slate-400">Lead Name (Optional)</label>
+                            <input type="text" id="call-name" placeholder="John Doe">
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label class="text-sm text-slate-400">Business Name</label>
+                            <input type="text" id="call-biz" value="OutboundAI" required>
+                        </div>
+                        <div>
+                            <label class="text-sm text-slate-400">Service Type</label>
+                            <input type="text" id="call-service" value="consultation" required>
+                        </div>
+                    </div>
+
+                    <div class="mb-6">
+                        <label class="text-sm text-slate-400">Agent Profile (Optional)</label>
+                        <select id="call-profile-select">
+                            <option value="">-- Use Default System Prompt --</option>
+                        </select>
+                        <p class="text-xs text-slate-500 mt-1">Selecting a profile overrides the default voice, model, and prompt.</p>
+                    </div>
+                    
+                    <div class="flex items-center gap-4">
+                        <button type="submit" class="primary" id="btn-single-call">
+                            <i class="fas fa-phone-alt mr-2"></i>Initiate Call
+                        </button>
+                        <span id="single-call-status" class="text-sm text-slate-400"></span>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Campaigns Tab -->
+        <div id="tab-campaigns" class="tab-content">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold">Campaigns</h2>
+                <button onclick="showCreateCampaignModal()" class="primary"><i class="fas fa-plus mr-2"></i>New Campaign</button>
+            </div>
+            
+            <div class="card overflow-hidden">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-slate-800 border-b border-slate-700">
+                            <th class="p-4 text-slate-400 font-medium text-sm">Campaign Name</th>
+                            <th class="p-4 text-slate-400 font-medium text-sm">Status</th>
+                            <th class="p-4 text-slate-400 font-medium text-sm">Schedule</th>
+                            <th class="p-4 text-slate-400 font-medium text-sm">Progress</th>
+                            <th class="p-4 text-slate-400 font-medium text-sm">Last Run</th>
+                            <th class="p-4 text-slate-400 font-medium text-sm">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="campaigns-table" class="divide-y divide-slate-700">
+                        <!-- Populated by JS -->
+                    </tbody>
+                </table>
+                <div id="campaigns-empty" class="p-8 text-center text-slate-500 hidden">
+                    No campaigns created yet.
+                </div>
+            </div>
+        </div>
+
+        <!-- Create Campaign Modal -->
+        <div id="modal-campaign" class="fixed inset-0 bg-black/80 flex items-center justify-center z-50 hidden backdrop-blur-sm">
+            <div class="card p-6 max-w-3xl w-full max-h-[90vh] overflow-y-auto m-4">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-xl font-bold">Create New Campaign</h3>
+                    <button onclick="hideCreateCampaignModal()" class="text-slate-400 hover:text-white"><i class="fas fa-times"></i></button>
+                </div>
+                
+                <form id="campaign-form" onsubmit="createCampaign(event)">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label class="text-sm text-slate-400">Campaign Name</label>
+                            <input type="text" id="camp-name" placeholder="E.g., Q3 Follow-ups" required>
+                        </div>
+                        <div>
+                            <label class="text-sm text-slate-400">Agent Profile (Optional)</label>
+                            <select id="camp-profile-select">
+                                <option value="">-- Use Default Settings --</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                        <div>
+                            <label class="text-sm text-slate-400">Schedule Type</label>
+                            <select id="camp-schedule-type">
+                                <option value="once">Run Once (Now)</option>
+                                <option value="daily">Daily</option>
+                                <option value="weekdays">Weekdays (Mon-Fri)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-sm text-slate-400">Time (HH:MM 24h)</label>
+                            <input type="time" id="camp-schedule-time" value="09:00">
+                        </div>
+                        <div>
+                            <label class="text-sm text-slate-400">Delay between calls (sec)</label>
+                            <input type="number" id="camp-delay" value="3" min="1">
+                        </div>
+                    </div>
+                    
+                    <div class="mb-6">
+                        <label class="text-sm text-slate-400 mb-2 block">Contacts (CSV format)</label>
+                        <p class="text-xs text-slate-500 mb-2">Header required. Valid columns: phone, lead_name, business_name, service_type. Only 'phone' is strictly required.</p>
+                        <textarea id="camp-csv" rows="8" placeholder="phone,lead_name,business_name,service_type&#10;+1234567890,Alice,Acme Corp,consultation&#10;+0987654321,Bob,Beta Inc,support" class="font-mono text-sm"></textarea>
+                    </div>
+                    
+                    <div class="flex justify-end gap-3">
+                        <button type="button" class="secondary" onclick="hideCreateCampaignModal()">Cancel</button>
+                        <button type="submit" class="primary" id="btn-save-camp">Create & Start</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- CRM / Leads Tab -->
+        <div id="tab-crm" class="tab-content">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold">CRM / Leads</h2>
+                <button onclick="loadCRM()" class="secondary text-sm"><i class="fas fa-sync-alt mr-2"></i>Refresh</button>
+            </div>
+            
+            <div class="card overflow-hidden">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-slate-800 border-b border-slate-700">
+                            <th class="p-4 text-slate-400 font-medium text-sm">Phone</th>
+                            <th class="p-4 text-slate-400 font-medium text-sm">Name</th>
+                            <th class="p-4 text-slate-400 font-medium text-sm text-center">Total Calls</th>
+                            <th class="p-4 text-slate-400 font-medium text-sm text-center">Bookings</th>
+                            <th class="p-4 text-slate-400 font-medium text-sm">Last Contact</th>
+                            <th class="p-4 text-slate-400 font-medium text-sm">Last Outcome</th>
+                        </tr>
+                    </thead>
+                    <tbody id="crm-table" class="divide-y divide-slate-700">
+                        <!-- Populated by JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Call Logs Tab -->
+        <div id="tab-call-logs" class="tab-content">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold">Call Logs</h2>
+                <button onclick="loadCallLogs()" class="secondary text-sm"><i class="fas fa-sync-alt mr-2"></i>Refresh</button>
+            </div>
+            
+            <div class="card overflow-hidden">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-slate-800 border-b border-slate-700">
+                            <th class="p-4 text-slate-400 font-medium text-sm">Timestamp</th>
+                            <th class="p-4 text-slate-400 font-medium text-sm">Phone</th>
+                            <th class="p-4 text-slate-400 font-medium text-sm">Outcome</th>
+                            <th class="p-4 text-slate-400 font-medium text-sm">Duration</th>
+                            <th class="p-4 text-slate-400 font-medium text-sm">Recording</th>
+                            <th class="p-4 text-slate-400 font-medium text-sm">Notes (Click to edit)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="logs-table" class="divide-y divide-slate-700">
+                        <!-- Populated by JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Appointments Tab -->
+        <div id="tab-appointments" class="tab-content">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold">Appointments</h2>
+                <div class="flex items-center gap-3">
+                    <input type="date" id="apt-date-filter" class="w-auto py-1 text-sm mt-0" onchange="loadAppointments()">
+                    <button onclick="loadAppointments()" class="secondary text-sm"><i class="fas fa-sync-alt mr-2"></i>Refresh</button>
+                </div>
+            </div>
+            
+            <div class="card overflow-hidden">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-slate-800 border-b border-slate-700">
+                            <th class="p-4 text-slate-400 font-medium text-sm">Date & Time</th>
+                            <th class="p-4 text-slate-400 font-medium text-sm">Name</th>
+                            <th class="p-4 text-slate-400 font-medium text-sm">Phone</th>
+                            <th class="p-4 text-slate-400 font-medium text-sm">Service</th>
+                            <th class="p-4 text-slate-400 font-medium text-sm">Status</th>
+                            <th class="p-4 text-slate-400 font-medium text-sm">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="apt-table" class="divide-y divide-slate-700">
+                        <!-- Populated by JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Agent Profiles Tab -->
+        <div id="tab-agent-profiles" class="tab-content">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold">Agent Profiles</h2>
+                <button onclick="showProfileModal()" class="primary"><i class="fas fa-plus mr-2"></i>New Profile</button>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="profiles-grid">
+                <!-- Populated by JS -->
+            </div>
+        </div>
+
+        <!-- Agent Profile Modal -->
+        <div id="modal-profile" class="fixed inset-0 bg-black/80 flex items-center justify-center z-50 hidden backdrop-blur-sm">
+            <div class="card p-6 max-w-3xl w-full max-h-[90vh] overflow-y-auto m-4">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-xl font-bold" id="profile-modal-title">Create Agent Profile</h3>
+                    <button onclick="hideProfileModal()" class="text-slate-400 hover:text-white"><i class="fas fa-times"></i></button>
+                </div>
+                
+                <form id="profile-form" onsubmit="saveProfile(event)">
+                    <input type="hidden" id="prof-id">
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label class="text-sm text-slate-400">Profile Name</label>
+                            <input type="text" id="prof-name" placeholder="e.g. Sales Assistant" required>
+                        </div>
+                        <div>
+                            <label class="text-sm text-slate-400">Voice (Google TTS)</label>
+                            <select id="prof-voice">
+                                <option value="Aoede">Aoede (Female)</option>
+                                <option value="Charon">Charon (Male)</option>
+                                <option value="Fenrir">Fenrir (Male)</option>
+                                <option value="Kore">Kore (Female)</option>
+                                <option value="Puck">Puck (Male)</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="text-sm text-slate-400">LLM Model</label>
+                        <select id="prof-model">
+                            <option value="gemini-3.1-flash-live-preview">gemini-3.1-flash-live-preview (Gemini Live)</option>
+                            <option value="gemini-2.5-flash-live-preview">gemini-2.5-flash-live-preview</option>
+                            <option value="gemini-2.0-flash">gemini-2.0-flash (Pipeline fallback)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="text-sm text-slate-400">System Prompt</label>
+                        <textarea id="prof-prompt" rows="8" placeholder="Leave blank to use default..."></textarea>
+                    </div>
+                    
+                    <div class="mb-6">
+                        <label class="text-sm text-slate-400 mb-2 block">Enabled Tools</label>
+                        <div class="grid grid-cols-2 gap-2 text-sm" id="prof-tools-container">
+                            <!-- checkboxes injected here -->
+                        </div>
+                    </div>
+                    
+                    <div class="mb-6 flex items-center gap-2">
+                        <input type="checkbox" id="prof-default" class="w-auto mt-0">
+                        <label for="prof-default" class="text-sm text-slate-300">Set as default fallback profile</label>
+                    </div>
+                    
+                    <div class="flex justify-end gap-3">
+                        <button type="button" class="secondary" onclick="hideProfileModal()">Cancel</button>
+                        <button type="submit" class="primary" id="btn-save-profile">Save Profile</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- System Prompt Tab -->
+        <div id="tab-system-prompt" class="tab-content">
+            <h2 class="text-2xl font-bold mb-6">Default System Prompt</h2>
+            <div class="card p-6 max-w-4xl">
+                <p class="text-sm text-slate-400 mb-4">This prompt defines the agent's behavior for single calls and campaigns that don't specify a custom profile. Use <code>{lead_name}</code>, <code>{business_name}</code>, and <code>{service_type}</code> as placeholders.</p>
+                
+                <form onsubmit="savePrompt(event)">
+                    <textarea id="system-prompt" rows="20" class="font-mono text-sm leading-relaxed mb-4"></textarea>
+                    
+                    <div class="flex items-center gap-3">
+                        <button type="submit" class="primary" id="btn-save-prompt"><i class="fas fa-save mr-2"></i>Save Global Prompt</button>
+                        <button type="button" class="secondary" onclick="resetPrompt()"><i class="fas fa-undo mr-2"></i>Reset to Default</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Settings Tab -->
+        <div id="tab-settings" class="tab-content">
+            <h2 class="text-2xl font-bold mb-6">Platform Settings</h2>
+            
+            <form id="settings-form" onsubmit="saveSettings(event)" class="max-w-4xl space-y-6">
+                <!-- Group 1: LiveKit -->
+                <div class="card p-6">
+                    <h3 class="text-lg font-medium mb-4 flex items-center gap-2"><i class="fas fa-server text-blue-400"></i> LiveKit Cloud</h3>
+                    <div class="grid grid-cols-1 gap-4">
+                        <div><label class="text-sm text-slate-400">LIVEKIT_URL</label><input type="text" id="set-LIVEKIT_URL"></div>
+                        <div><label class="text-sm text-slate-400">LIVEKIT_API_KEY</label><input type="text" id="set-LIVEKIT_API_KEY"></div>
+                        <div><label class="text-sm text-slate-400">LIVEKIT_API_SECRET</label><input type="password" id="set-LIVEKIT_API_SECRET" placeholder="••••••••••••••••"></div>
+                    </div>
+                </div>
+
+                <!-- Group 2: Gemini -->
+                <div class="card p-6">
+                    <h3 class="text-lg font-medium mb-4 flex items-center gap-2"><i class="fas fa-brain text-purple-400"></i> Google Gemini Live</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="md:col-span-2"><label class="text-sm text-slate-400">GOOGLE_API_KEY</label><input type="password" id="set-GOOGLE_API_KEY" placeholder="••••••••••••••••"></div>
+                        <div><label class="text-sm text-slate-400">Default Model</label><input type="text" id="set-GEMINI_MODEL" placeholder="gemini-3.1-flash-live-preview"></div>
+                        <div><label class="text-sm text-slate-400">Default Voice</label><input type="text" id="set-GEMINI_TTS_VOICE" placeholder="Aoede"></div>
+                    </div>
+                </div>
+
+                <!-- Group 3: Telephony (Vobiz) -->
+                <div class="card p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-medium flex items-center gap-2"><i class="fas fa-phone text-green-400"></i> Vobiz SIP Telephony</h3>
+                        <button type="button" class="secondary text-sm" onclick="createSipTrunk()"><i class="fas fa-bolt mr-2"></i>Create SIP Trunk in LiveKit</button>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div><label class="text-sm text-slate-400">VOBIZ_SIP_DOMAIN</label><input type="text" id="set-VOBIZ_SIP_DOMAIN" placeholder="xxxx.sip.vobiz.ai"></div>
+                        <div><label class="text-sm text-slate-400">VOBIZ_OUTBOUND_NUMBER</label><input type="text" id="set-VOBIZ_OUTBOUND_NUMBER" placeholder="+91..."></div>
+                        <div><label class="text-sm text-slate-400">VOBIZ_USERNAME</label><input type="text" id="set-VOBIZ_USERNAME"></div>
+                        <div><label class="text-sm text-slate-400">VOBIZ_PASSWORD</label><input type="password" id="set-VOBIZ_PASSWORD" placeholder="••••••••••••••••"></div>
+                        <div><label class="text-sm text-slate-400">OUTBOUND_TRUNK_ID</label><input type="text" id="set-OUTBOUND_TRUNK_ID" readonly class="bg-slate-800 text-slate-400 cursor-not-allowed"></div>
+                        <div><label class="text-sm text-slate-400">DEFAULT_TRANSFER_NUMBER</label><input type="text" id="set-DEFAULT_TRANSFER_NUMBER" placeholder="For transfer_to_human tool"></div>
+                    </div>
+                </div>
+                
+                <div class="flex justify-end sticky bottom-4 p-4 bg-slate-900/80 backdrop-blur-md rounded-xl border border-slate-700">
+                    <button type="submit" class="primary w-48 text-lg" id="btn-save-settings"><i class="fas fa-save mr-2"></i>Save All Settings</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Error Logs Tab -->
+        <div id="tab-error-logs" class="tab-content">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold">System Error Logs</h2>
+                <div class="flex gap-3">
+                    <button onclick="loadErrorLogs()" class="secondary text-sm"><i class="fas fa-sync-alt mr-2"></i>Refresh</button>
+                    <button onclick="clearErrorLogs()" class="secondary text-sm !bg-red-900/30 !text-red-400 hover:!bg-red-900/50 border border-red-900/50"><i class="fas fa-trash-alt mr-2"></i>Clear All</button>
+                </div>
+            </div>
+            
+            <div class="card overflow-hidden">
+                <table class="w-full text-left border-collapse table-fixed">
+                    <thead>
+                        <tr class="bg-slate-800 border-b border-slate-700">
+                            <th class="p-4 text-slate-400 font-medium text-sm w-40">Time</th>
+                            <th class="p-4 text-slate-400 font-medium text-sm w-24">Level</th>
+                            <th class="p-4 text-slate-400 font-medium text-sm w-24">Source</th>
+                            <th class="p-4 text-slate-400 font-medium text-sm w-1/3">Message</th>
+                            <th class="p-4 text-slate-400 font-medium text-sm">Detail</th>
+                        </tr>
+                    </thead>
+                    <tbody id="error-logs-table" class="divide-y divide-slate-700">
+                        <!-- Populated by JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="toast-container"></div>
+
+<script>
+    // --- Global State ---
+    let callsChartInst = null;
+    let outcomesChartInst = null;
+    const availableTools = [
+        "check_availability", "book_appointment", "end_call", 
+        "transfer_to_human", "send_sms_confirmation", "lookup_contact", 
+        "remember_details", "book_calcom", "cancel_calcom"
+    ];
+
+    // --- UI Utils ---
+    function showToast(msg, type = 'success') {
+        const c = document.getElementById('toast-container');
+        const t = document.createElement('div');
+        const icon = type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle';
+        t.className = `toast ${type}`;
+        t.innerHTML = `<i class="fas ${icon} text-xl"></i><span>${msg}</span>`;
+        c.appendChild(t);
+        setTimeout(() => t.classList.add('show'), 10);
+        setTimeout(() => {
+            t.classList.remove('show');
+            setTimeout(() => t.remove(), 300);
+        }, 3000);
+    }
+
+    function switchTab(tabId, el) {
+        document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+        document.getElementById(`tab-${tabId}`).classList.add('active');
+        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+        if(el) el.classList.add('active');
+        
+        if(tabId === 'dashboard') loadStats();
+        if(tabId === 'call-logs') loadCallLogs();
+        if(tabId === 'appointments') loadAppointments();
+        if(tabId === 'system-prompt') loadPrompt();
+        if(tabId === 'settings') loadSettings();
+        if(tabId === 'campaigns') loadCampaigns();
+        if(tabId === 'crm') loadCRM();
+        if(tabId === 'error-logs') loadErrorLogs();
+        if(tabId === 'agent-profiles') loadProfiles();
+        if(tabId === 'single-call') loadProfilesForDropdowns();
+    }
+
+    function badgeColor(outcome) {
+        if(!outcome) return 'bg-slate-700 text-slate-300';
+        outcome = outcome.toLowerCase();
+        if(outcome === 'booked') return 'badge-success';
+        if(outcome === 'not_interested' || outcome === 'wrong_number') return 'badge-danger';
+        if(outcome === 'callback_requested') return 'badge-warning';
+        return 'badge-info';
+    }
+
+    function formatTime(s) {
+        if(!s) return '0s';
+        const m = Math.floor(s / 60);
+        const secs = s % 60;
+        return m > 0 ? `${m}m ${secs}s` : `${secs}s`;
+    }
+
+    function formatDate(isoStr) {
+        if(!isoStr) return '-';
+        return new Date(isoStr).toLocaleString();
+    }
+
+    // --- API Calls ---
+    
+    // 1. Dashboard Stats
+    async function loadStats() {
+        try {
+            const res = await fetch('/api/stats');
+            const data = await res.json();
+            
+            document.getElementById('stat-total-calls').innerText = data.total_calls;
+            document.getElementById('stat-booked').innerText = data.booked;
+            document.getElementById('stat-booking-rate').innerText = data.booking_rate_percent + '%';
+            document.getElementById('stat-avg-duration').innerText = formatTime(Math.round(data.avg_duration_seconds));
+
+            // Calls timeline chart
+            const dates = data.timeline.map(t => t.date.substring(5));
+            const counts = data.timeline.map(t => t.count);
+            
+            const ctxC = document.getElementById('callsChart').getContext('2d');
+            if(callsChartInst) callsChartInst.destroy();
+            callsChartInst = new Chart(ctxC, {
+                type: 'bar',
+                data: { labels: dates, datasets: [{ label: 'Calls', data: counts, backgroundColor: '#3b82f6', borderRadius: 4 }] },
+                options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, grid: { color: '#334155' } }, x: { grid: { display: false } } }, plugins: { legend: { display: false } } }
+            });
+
+            // Outcomes pie chart
+            const olabels = Object.keys(data.outcomes);
+            const odata = Object.values(data.outcomes);
+            const colors = olabels.map(o => o === 'booked' ? '#4ade80' : (o === 'not_interested' ? '#f87171' : '#60a5fa'));
+            
+            const ctxO = document.getElementById('outcomesChart').getContext('2d');
+            if(outcomesChartInst) outcomesChartInst.destroy();
+            outcomesChartInst = new Chart(ctxO, {
+                type: 'doughnut',
+                data: { labels: olabels, datasets: [{ data: odata, backgroundColor: colors, borderWidth: 0 }] },
+                options: { responsive: true, maintainAspectRatio: false, cutout: '70%', plugins: { legend: { position: 'right', labels: { color: '#cbd5e1' } } } }
+            });
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    // 2. Single Call
+    async function dispatchSingleCall(e) {
+        e.preventDefault();
+        const btn = document.getElementById('btn-single-call');
+        const stat = document.getElementById('single-call-status');
+        btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Dispatching...';
+        
+        try {
+            const payload = {
+                phone: document.getElementById('call-phone').value,
+                lead_name: document.getElementById('call-name').value || "there",
+                business_name: document.getElementById('call-biz').value,
+                service_type: document.getElementById('call-service').value,
+                agent_profile_id: document.getElementById('call-profile-select').value || null
+            };
+            const res = await fetch('/api/call', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) });
+            const data = await res.json();
+            
+            if(!res.ok) throw new Error(data.detail || data.error || 'Dispatch failed');
+            
+            stat.innerHTML = `<span class="text-green-400"><i class="fas fa-check mr-1"></i> Dispatched room: ${data.room}</span>`;
+            showToast('Call dispatched successfully');
+        } catch (err) {
+            stat.innerHTML = `<span class="text-red-400"><i class="fas fa-times mr-1"></i> ${err.message}</span>`;
+            showToast(err.message, 'error');
+        } finally {
+            btn.disabled = false; btn.innerHTML = '<i class="fas fa-phone-alt mr-2"></i>Initiate Call';
+        }
+    }
+
+    // 3. Call Logs
+    async function loadCallLogs() {
+        try {
+            const res = await fetch('/api/calls');
+            const data = await res.json();
+            const tbody = document.getElementById('logs-table');
+            tbody.innerHTML = '';
+            
+            data.forEach(log => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="p-4 text-sm whitespace-nowrap text-slate-300">${formatDate(log.timestamp)}</td>
+                    <td class="p-4 text-sm font-medium">${log.phone_number}</td>
+                    <td class="p-4 text-sm"><span class="badge ${badgeColor(log.outcome)}">${log.outcome || 'unknown'}</span></td>
+                    <td class="p-4 text-sm text-slate-300">${formatTime(log.duration_seconds)}</td>
+                    <td class="p-4 text-sm">
+                        ${log.recording_url ? `<a href="${log.recording_url}" target="_blank" class="text-blue-400 hover:text-blue-300"><i class="fas fa-play-circle text-lg"></i></a>` : '<span class="text-slate-600">-</span>'}
+                    </td>
+                    <td class="p-4 text-sm">
+                        <textarea class="w-full text-xs p-1 min-h-[40px] bg-slate-800 border-none focus:ring-1 focus:ring-blue-500 rounded" 
+                            onchange="updateNotes('${log.id}', this.value)" placeholder="Add notes...">${log.notes || ''}</textarea>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        } catch (e) { console.error(e); }
+    }
+    
+    async function updateNotes(id, text) {
+        try {
+            await fetch(`/api/calls/${id}/notes`, { method: 'PATCH', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({notes: text}) });
+            showToast('Notes saved');
+        } catch (e) { showToast('Failed to save notes', 'error'); }
+    }
+
+    // 4. Appointments
+    async function loadAppointments() {
+        try {
+            const d = document.getElementById('apt-date-filter').value;
+            const res = await fetch('/api/appointments' + (d ? `?date=${d}` : ''));
+            const data = await res.json();
+            const tbody = document.getElementById('apt-table');
+            tbody.innerHTML = '';
+            
+            data.forEach(apt => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="p-4 text-sm whitespace-nowrap"><div class="font-medium">${apt.date}</div><div class="text-slate-400 text-xs">${apt.time}</div></td>
+                    <td class="p-4 text-sm">${apt.name}</td>
+                    <td class="p-4 text-sm text-slate-300">${apt.phone}</td>
+                    <td class="p-4 text-sm text-slate-300">${apt.service}</td>
+                    <td class="p-4 text-sm"><span class="badge ${apt.status === 'booked' ? 'badge-info' : 'badge-danger'}">${apt.status}</span></td>
+                    <td class="p-4 text-sm">
+                        ${apt.status === 'booked' ? `<button onclick="cancelApt('${apt.id}')" class="text-red-400 hover:text-red-300 text-xs"><i class="fas fa-times-circle mr-1"></i>Cancel</button>` : ''}
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        } catch (e) { console.error(e); }
+    }
+
+    async function cancelApt(id) {
+        if(!confirm('Are you sure you want to cancel this appointment?')) return;
+        try {
+            await fetch(`/api/appointments/${id}`, { method: 'DELETE' });
+            showToast('Appointment cancelled');
+            loadAppointments();
+        } catch (e) { showToast('Error cancelling', 'error'); }
+    }
+
+    // 5. System Prompt
+    async function loadPrompt() {
+        try {
+            const res = await fetch('/api/prompt');
+            const data = await res.json();
+            document.getElementById('system-prompt').value = data.prompt;
+        } catch (e) { console.error(e); }
+    }
+
+    async function savePrompt(e) {
+        e.preventDefault();
+        try {
+            const prompt = document.getElementById('system-prompt').value;
+            await fetch('/api/prompt', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({prompt}) });
+            showToast('System prompt saved');
+        } catch (e) { showToast('Error saving prompt', 'error'); }
+    }
+
+    async function resetPrompt() {
+        if(!confirm('Reset to default system prompt?')) return;
+        try {
+            const res = await fetch('/api/prompt', { method: 'DELETE' });
+            const data = await res.json();
+            document.getElementById('system-prompt').value = data.prompt;
+            showToast('Reset to default');
+        } catch (e) { showToast('Error resetting', 'error'); }
+    }
+
+    // 6. Settings
+    async function loadSettings() {
+        try {
+            const res = await fetch('/api/settings');
+            const data = await res.json();
+            for (const [k, v] of Object.entries(data)) {
+                const el = document.getElementById(`set-${k}`);
+                if(el) {
+                    if(v.configured && el.type === 'password') el.placeholder = '•••••••• (Configured)';
+                    else if(v.value) el.value = v.value;
+                }
+            }
+        } catch (e) { console.error(e); }
+    }
+
+    async function saveSettings(e) {
+        e.preventDefault();
+        const btn = document.getElementById('btn-save-settings');
+        btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Saving...';
+        
+        try {
+            const settings = {};
+            document.querySelectorAll('[id^="set-"]').forEach(el => {
+                const k = el.id.replace('set-', '');
+                if(el.value) settings[k] = el.value;
+            });
+            await fetch('/api/settings', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({settings}) });
+            showToast('Settings saved successfully');
+            loadSettings();
+        } catch (e) {
+            showToast('Error saving settings', 'error');
+        } finally {
+            btn.disabled = false; btn.innerHTML = '<i class="fas fa-save mr-2"></i>Save All Settings';
+        }
+    }
+
+    async function createSipTrunk() {
+        try {
+            const res = await fetch('/api/setup/trunk', { method: 'POST' });
+            const data = await res.json();
+            if(!res.ok) throw new Error(data.detail);
+            showToast('SIP Trunk created successfully');
+            loadSettings();
+        } catch (e) { showToast(e.message, 'error'); }
+    }
+
+    // 7. Error Logs
+    async function loadErrorLogs() {
+        try {
+            const res = await fetch('/api/logs?limit=50');
+            const data = await res.json();
+            const tbody = document.getElementById('error-logs-table');
+            tbody.innerHTML = '';
+            
+            data.forEach(log => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="p-4 text-xs whitespace-nowrap text-slate-400">${formatDate(log.timestamp)}</td>
+                    <td class="p-4 text-xs"><span class="badge ${log.level === 'error' ? 'badge-danger' : (log.level === 'warning' ? 'badge-warning' : 'badge-info')} uppercase">${log.level}</span></td>
+                    <td class="p-4 text-xs font-mono text-slate-300">${log.source}</td>
+                    <td class="p-4 text-sm text-slate-200">${log.message}</td>
+                    <td class="p-4 text-xs text-slate-500 font-mono break-all max-h-24 overflow-y-auto block">${log.detail || '-'}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        } catch (e) { console.error(e); }
+    }
+
+    async function clearErrorLogs() {
+        if(!confirm('Clear all logs?')) return;
+        try {
+            await fetch('/api/logs', { method: 'DELETE' });
+            loadErrorLogs();
+            showToast('Logs cleared');
+        } catch (e) { showToast('Error clearing logs', 'error'); }
+    }
+
+    // 8. Campaigns
+    function showCreateCampaignModal() {
+        document.getElementById('modal-campaign').classList.remove('hidden');
+        loadProfilesForDropdowns();
+    }
+    function hideCreateCampaignModal() { document.getElementById('modal-campaign').classList.add('hidden'); }
+
+    async function loadCampaigns() {
+        try {
+            const res = await fetch('/api/campaigns');
+            const data = await res.json();
+            const tbody = document.getElementById('campaigns-table');
+            const empty = document.getElementById('campaigns-empty');
+            tbody.innerHTML = '';
+            
+            if (data.length === 0) {
+                empty.classList.remove('hidden');
+                return;
+            }
+            empty.classList.add('hidden');
+            
+            data.forEach(camp => {
+                const tr = document.createElement('tr');
+                const contactsCount = JSON.parse(camp.contacts_json || "[]").length;
+                let statBadge = 'badge-info';
+                if(camp.status === 'completed') statBadge = 'badge-success';
+                if(camp.status === 'paused') statBadge = 'badge-warning';
+                
+                tr.innerHTML = `
+                    <td class="p-4 text-sm font-medium">${camp.name}</td>
+                    <td class="p-4 text-sm"><span class="badge ${statBadge}">${camp.status}</span></td>
+                    <td class="p-4 text-sm text-slate-300">
+                        ${camp.schedule_type === 'once' ? 'Run Once' : `<i class="fas fa-clock mr-1"></i> ${camp.schedule_type} at ${camp.schedule_time}`}
+                    </td>
+                    <td class="p-4 text-sm">
+                        <div class="flex items-center gap-2">
+                            <div class="w-full bg-slate-700 rounded-full h-1.5"><div class="bg-blue-500 h-1.5 rounded-full" style="width: ${contactsCount ? Math.min(100, (camp.total_dispatched/contactsCount)*100) : 0}%"></div></div>
+                            <span class="text-xs text-slate-400 whitespace-nowrap">${camp.total_dispatched} / ${contactsCount}</span>
+                        </div>
+                        ${camp.total_failed > 0 ? `<div class="text-xs text-red-400 mt-1">${camp.total_failed} failed</div>` : ''}
+                    </td>
+                    <td class="p-4 text-xs text-slate-400">${formatDate(camp.last_run_at)}</td>
+                    <td class="p-4 text-sm">
+                        <div class="flex gap-2">
+                            ${camp.status !== 'completed' ? `<button onclick="runCampaign('${camp.id}')" class="text-blue-400 hover:text-blue-300" title="Run Now"><i class="fas fa-play"></i></button>` : ''}
+                            ${camp.status === 'active' ? `<button onclick="updateCampaignStatus('${camp.id}', 'paused')" class="text-yellow-400 hover:text-yellow-300" title="Pause"><i class="fas fa-pause"></i></button>` : ''}
+                            ${camp.status === 'paused' ? `<button onclick="updateCampaignStatus('${camp.id}', 'active')" class="text-green-400 hover:text-green-300" title="Resume"><i class="fas fa-play-circle"></i></button>` : ''}
+                            <button onclick="deleteCampaign('${camp.id}')" class="text-red-400 hover:text-red-300" title="Delete"><i class="fas fa-trash"></i></button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        } catch (e) { console.error(e); }
+    }
+
+    async function createCampaign(e) {
+        e.preventDefault();
+        const btn = document.getElementById('btn-save-camp');
+        btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Creating...';
+        
+        try {
+            const csvText = document.getElementById('camp-csv').value.trim();
+            const lines = csvText.split('\n');
+            if(lines.length < 2) throw new Error("CSV requires a header and at least one contact row.");
+            
+            const headers = lines[0].split(',').map(h => h.trim());
+            const phoneIdx = headers.indexOf('phone');
+            if(phoneIdx === -1) throw new Error("CSV header must contain 'phone'");
+            
+            const contacts = [];
+            for(let i=1; i<lines.length; i++) {
+                if(!lines[i].trim()) continue;
+                const vals = lines[i].split(',').map(v => v.trim());
+                const c = {};
+                headers.forEach((h, j) => { if(vals[j]) c[h] = vals[j]; });
+                if(c.phone) contacts.push(c);
+            }
+            
+            const payload = {
+                name: document.getElementById('camp-name').value,
+                schedule_type: document.getElementById('camp-schedule-type').value,
+                schedule_time: document.getElementById('camp-schedule-time').value,
+                call_delay_seconds: parseInt(document.getElementById('camp-delay').value),
+                contacts: contacts,
+                agent_profile_id: document.getElementById('camp-profile-select').value || null
+            };
+            
+            const res = await fetch('/api/campaigns', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) });
+            const data = await res.json();
+            if(!res.ok) throw new Error(data.detail);
+            
+            showToast('Campaign created successfully');
+            hideCreateCampaignModal();
+            document.getElementById('campaign-form').reset();
+            loadCampaigns();
+        } catch (e) {
+            showToast(e.message, 'error');
+        } finally {
+            btn.disabled = false; btn.innerHTML = 'Create & Start';
+        }
+    }
+
+    async function runCampaign(id) {
+        try {
+            await fetch(`/api/campaigns/${id}/run`, { method: 'POST' });
+            showToast('Campaign dispatching started');
+            setTimeout(loadCampaigns, 2000);
+        } catch (e) { showToast('Error starting campaign', 'error'); }
+    }
+
+    async function updateCampaignStatus(id, status) {
+        try {
+            await fetch(`/api/campaigns/${id}/status`, { method: 'PATCH', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({status}) });
+            loadCampaigns();
+        } catch (e) { showToast('Error updating status', 'error'); }
+    }
+
+    async function deleteCampaign(id) {
+        if(!confirm('Delete this campaign?')) return;
+        try {
+            await fetch(`/api/campaigns/${id}`, { method: 'DELETE' });
+            showToast('Campaign deleted');
+            loadCampaigns();
+        } catch (e) { showToast('Error deleting campaign', 'error'); }
+    }
+
+    // 9. CRM
+    async function loadCRM() {
+        try {
+            const res = await fetch('/api/crm');
+            const data = await (await res).json();
+            const tbody = document.getElementById('crm-table');
+            tbody.innerHTML = '';
+            
+            data.data.forEach(c => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="p-4 text-sm font-medium">${c.phone_number}</td>
+                    <td class="p-4 text-sm text-slate-300">${c.lead_name || '-'}</td>
+                    <td class="p-4 text-sm text-center">${c.total_calls}</td>
+                    <td class="p-4 text-sm text-center"><span class="${c.booked > 0 ? 'text-green-400 font-bold' : 'text-slate-500'}">${c.booked}</span></td>
+                    <td class="p-4 text-sm text-slate-400">${formatDate(c.last_call)}</td>
+                    <td class="p-4 text-sm"><span class="badge ${badgeColor(c.last_outcome)}">${c.last_outcome || '-'}</span></td>
+                `;
+                tbody.appendChild(tr);
+            });
+        } catch (e) { console.error(e); }
+    }
+
+    // 10. Agent Profiles
+    function renderToolsCheckboxes() {
+        const c = document.getElementById('prof-tools-container');
+        c.innerHTML = availableTools.map(t => `
+            <label class="flex items-center gap-2 bg-slate-800 p-2 rounded border border-slate-700 cursor-pointer hover:border-blue-500 transition-colors">
+                <input type="checkbox" value="${t}" class="prof-tool-cb w-4 h-4 text-blue-500 bg-slate-900 border-slate-600 rounded mt-0">
+                <span class="text-slate-300 font-mono text-xs">${t}</span>
+            </label>
+        `).join('');
+    }
+
+    function showProfileModal(profile = null) {
+        document.getElementById('modal-profile').classList.remove('hidden');
+        document.getElementById('profile-form').reset();
+        renderToolsCheckboxes();
+        
+        if (profile) {
+            document.getElementById('profile-modal-title').innerText = "Edit Agent Profile";
+            document.getElementById('prof-id').value = profile.id;
+            document.getElementById('prof-name').value = profile.name;
+            document.getElementById('prof-voice').value = profile.voice;
+            document.getElementById('prof-model').value = profile.model;
+            document.getElementById('prof-prompt').value = profile.system_prompt || "";
+            document.getElementById('prof-default').checked = profile.is_default === 1;
+            
+            try {
+                const enabled = JSON.parse(profile.enabled_tools || "[]");
+                document.querySelectorAll('.prof-tool-cb').forEach(cb => {
+                    if (enabled.includes(cb.value)) cb.checked = true;
+                });
+            } catch(e){}
+        } else {
+            document.getElementById('profile-modal-title').innerText = "Create Agent Profile";
+            document.getElementById('prof-id').value = "";
+            document.querySelectorAll('.prof-tool-cb').forEach(cb => cb.checked = true); // check all by default for new
+        }
+    }
+    
+    function hideProfileModal() { document.getElementById('modal-profile').classList.add('hidden'); }
+
+    async function loadProfiles() {
+        try {
+            const res = await fetch('/api/agent-profiles');
+            const data = await res.json();
+            const grid = document.getElementById('profiles-grid');
+            grid.innerHTML = '';
+            
+            window._profilesCache = data; // store for editing
+            
+            if (data.length === 0) {
+                grid.innerHTML = '<div class="col-span-full text-center p-8 text-slate-500">No agent profiles created yet.</div>';
+                return;
+            }
+            
+            data.forEach(p => {
+                let toolsCount = 0;
+                try { toolsCount = JSON.parse(p.enabled_tools || "[]").length; } catch(e){}
+                
+                grid.innerHTML += `
+                    <div class="card p-5 relative border ${p.is_default ? 'border-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.1)]' : 'border-slate-700'}">
+                        ${p.is_default ? '<div class="absolute top-0 right-0 bg-blue-500 text-xs font-bold px-2 py-1 rounded-bl-lg rounded-tr-lg">DEFAULT</div>' : ''}
+                        <h3 class="text-lg font-bold mb-1">${p.name}</h3>
+                        <div class="text-xs text-slate-400 mb-4 flex items-center gap-2">
+                            <i class="fas fa-robot text-purple-400"></i> ${p.model.split('-')[0]} 
+                            <span class="text-slate-600">|</span> 
+                            <i class="fas fa-microphone text-blue-400"></i> ${p.voice}
+                        </div>
+                        
+                        <div class="bg-slate-800 rounded p-3 mb-4 text-xs">
+                            <div class="flex justify-between mb-1"><span class="text-slate-500">Tools Enabled:</span> <span class="text-slate-300 font-bold">${toolsCount}</span></div>
+                            <div class="flex justify-between"><span class="text-slate-500">Custom Prompt:</span> <span class="${p.system_prompt ? 'text-green-400' : 'text-slate-500'}">${p.system_prompt ? 'Yes' : 'No'}</span></div>
+                        </div>
+                        
+                        <div class="flex gap-2 border-t border-slate-700 pt-3 mt-auto">
+                            <button onclick="editProfile('${p.id}')" class="flex-1 py-1.5 px-3 bg-slate-700 hover:bg-slate-600 text-white rounded text-xs transition-colors"><i class="fas fa-edit mr-1"></i> Edit</button>
+                            ${!p.is_default ? `<button onclick="setDefaultProfile('${p.id}')" class="flex-1 py-1.5 px-3 bg-slate-700 hover:bg-slate-600 text-white rounded text-xs transition-colors"><i class="fas fa-star mr-1"></i> Set Default</button>` : ''}
+                            <button onclick="deleteProfile('${p.id}')" class="py-1.5 px-3 bg-red-900/30 text-red-400 hover:bg-red-900/50 rounded text-xs transition-colors"><i class="fas fa-trash"></i></button>
+                        </div>
+                    </div>
+                `;
+            });
+        } catch (e) { console.error(e); }
+    }
+
+    function editProfile(id) {
+        const p = window._profilesCache.find(x => x.id === id);
+        if(p) showProfileModal(p);
+    }
+
+    async function saveProfile(e) {
+        e.preventDefault();
+        const btn = document.getElementById('btn-save-profile');
+        btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Saving...';
+        
+        try {
+            const id = document.getElementById('prof-id').value;
+            const enabledTools = Array.from(document.querySelectorAll('.prof-tool-cb:checked')).map(cb => cb.value);
+            
+            const payload = {
+                name: document.getElementById('prof-name').value,
+                voice: document.getElementById('prof-voice').value,
+                model: document.getElementById('prof-model').value,
+                system_prompt: document.getElementById('prof-prompt').value || null,
+                enabled_tools: JSON.stringify(enabledTools),
+                is_default: document.getElementById('prof-default').checked
+            };
+            
+            const method = id ? 'PUT' : 'POST';
+            const url = id ? `/api/agent-profiles/${id}` : '/api/agent-profiles';
+            
+            const res = await fetch(url, { method, headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) });
+            if(!res.ok) throw new Error(await res.text());
+            
+            showToast('Profile saved successfully');
+            hideProfileModal();
+            loadProfiles();
+            loadProfilesForDropdowns();
+        } catch (e) {
+            showToast(e.message, 'error');
+        } finally {
+            btn.disabled = false; btn.innerHTML = 'Save Profile';
+        }
+    }
+
+    async function deleteProfile(id) {
+        if(!confirm('Delete this agent profile? Campaigns using it will revert to defaults.')) return;
+        try {
+            await fetch(`/api/agent-profiles/${id}`, { method: 'DELETE' });
+            showToast('Profile deleted');
+            loadProfiles();
+            loadProfilesForDropdowns();
+        } catch (e) { showToast('Error deleting profile', 'error'); }
+    }
+
+    async function setDefaultProfile(id) {
+        try {
+            await fetch(`/api/agent-profiles/${id}/set-default`, { method: 'POST' });
+            showToast('Default profile updated');
+            loadProfiles();
+        } catch (e) { showToast('Error updating default profile', 'error'); }
+    }
+
+    async function loadProfilesForDropdowns() {
+        try {
+            const res = await fetch('/api/agent-profiles');
+            const data = await res.json();
+            const options = '<option value="">-- Use Default Platform Settings --</option>' + 
+                            data.map(p => `<option value="${p.id}">${p.name} ${p.is_default ? '(Default)' : ''}</option>`).join('');
+            
+            const selSingle = document.getElementById('call-profile-select');
+            const selCamp = document.getElementById('camp-profile-select');
+            if(selSingle) selSingle.innerHTML = options;
+            if(selCamp) selCamp.innerHTML = options;
+            
+            // Auto-select default if exists
+            const def = data.find(p => p.is_default);
+            if(def) {
+                if(selSingle) selSingle.value = def.id;
+                if(selCamp) selCamp.value = def.id;
+            }
+        } catch (e) { console.error("Could not load profiles for dropdowns", e); }
+    }
+
+    // Initialize
+    window.onload = () => {
+        loadStats();
+        loadProfilesForDropdowns();
+        
+        // Setup chart polling
+        setInterval(() => {
+            if(document.getElementById('tab-dashboard').classList.contains('active')) loadStats();
+            if(document.getElementById('tab-campaigns').classList.contains('active')) loadCampaigns();
+            if(document.getElementById('tab-call-logs').classList.contains('active')) loadCallLogs();
+        }, 15000);
+    };
+</script>
+
+</body>
+</html>
