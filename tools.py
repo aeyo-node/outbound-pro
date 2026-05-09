@@ -69,7 +69,9 @@ class AppointmentTools(llm.ToolContext):
         """
         Book an appointment after the lead has verbally confirmed date, time, and service.
         Call ONLY after the lead confirms all details.
-        name: lead's full name | phone: with country code | date: YYYY-MM-DD | time: HH:MM | service: type
+        name: lead's exact full name (Ask them for it if you don't know it!)
+        phone: lead's exact phone number with country code (Ask them for it if you don't know it!)
+        date: YYYY-MM-DD | time: HH:MM | service: type
         """
         try:
             booking_id = await insert_appointment(name, phone, date, time, service)
@@ -78,18 +80,22 @@ class AppointmentTools(llm.ToolContext):
             return "Technical issue saving the booking. Our team will confirm shortly."
 
     @llm.function_tool
-    async def end_call(self, outcome: str, reason: str = "") -> str:
+    async def end_call(self, outcome: str, lead_temperature: str, summary: str, reason: str = "") -> str:
         """
         End the call and log the outcome. ALWAYS call this before the call ends.
         outcome: 'booked' | 'not_interested' | 'wrong_number' | 'voicemail' | 'no_answer' | 'callback_requested'
+        lead_temperature: 'HOT' (very interested/booked) | 'WARM' (interested, callback later) | 'COLD' (not interested)
+        summary: highly detailed summary of the conversation, objections, and next steps for human agents.
         reason: brief description
         """
         duration = int(time.time() - self._call_start_time)
+        notes = f"[{lead_temperature.upper()}] {summary}"
         try:
             await log_call(
                 phone_number=self.phone_number or "unknown",
                 lead_name=self.lead_name, outcome=outcome, reason=reason,
                 duration_seconds=duration, recording_url=self.recording_url,
+                notes=notes
             )
             self._call_logged = True
         except Exception as exc:
