@@ -347,6 +347,17 @@
             </div>
         </div>
 
+        <!-- System Logs Tab -->
+        <div id="tab-system-logs" class="tab-content">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold"><i class="fas fa-terminal mr-2 text-green-400"></i>System Logs</h2>
+                <button onclick="loadSystemLogs()" class="secondary text-sm"><i class="fas fa-sync-alt mr-2"></i>Refresh</button>
+            </div>
+            <div class="card bg-black border border-slate-700 p-4 rounded-lg overflow-x-auto h-[600px] overflow-y-auto font-mono text-sm">
+                <pre id="syslogs-container" class="whitespace-pre-wrap break-words text-slate-300">Loading logs...</pre>
+            </div>
+        </div>
+
         <!-- Appointments Tab -->
         <div id="tab-appointments" class="tab-content">
             <div class="flex justify-between items-center mb-6">
