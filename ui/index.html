@@ -257,9 +257,20 @@
                     </div>
                     
                     <div class="mb-6">
-                        <label class="text-sm text-slate-400 mb-2 block">Contacts (CSV format)</label>
-                        <p class="text-xs text-slate-500 mb-2">Header required. Valid columns: phone, lead_name, business_name, service_type. Only 'phone' is strictly required.</p>
-                        <textarea id="camp-csv" rows="8" placeholder="phone,lead_name,business_name,service_type&#10;+1234567890,Alice,Acme Corp,consultation&#10;+0987654321,Bob,Beta Inc,support" class="font-mono text-sm"></textarea>
+                        <div class="flex justify-between items-end mb-2">
+                            <div>
+                                <label class="text-sm text-slate-400 block">Contacts (CSV format)</label>
+                                <p class="text-xs text-slate-500">Headers: phone, lead_name, business_name, service_type.</p>
+                            </div>
+                            <div class="flex gap-2">
+                                <button type="button" class="text-xs bg-slate-700 hover:bg-slate-600 px-2 py-1 rounded transition-colors" onclick="downloadSampleCSV()"><i class="fas fa-download mr-1"></i> Sample CSV</button>
+                                <label class="cursor-pointer text-xs bg-blue-600 hover:bg-blue-500 text-white px-2 py-1 rounded transition-colors">
+                                    <i class="fas fa-upload mr-1"></i> Upload CSV
+                                    <input type="file" id="camp-csv-file" accept=".csv" class="hidden" onchange="handleCSVUpload(event)">
+                                </label>
+                            </div>
+                        </div>
+                        <textarea id="camp-csv" rows="8" placeholder="phone,lead_name,business_name,service_type&#10;+1234567890,Alice,Acme Corp,consultation&#10;+0987654321,Bob,Beta Inc,support" class="font-mono text-sm w-full bg-slate-900 border border-slate-700 rounded p-3 text-white placeholder-slate-600"></textarea>
                     </div>
                     
                     <div class="flex justify-end gap-3">
@@ -895,21 +906,35 @@
         
         try {
             const csvText = document.getElementById('camp-csv').value.trim();
-            const lines = csvText.split('\n');
-            if(lines.length < 2) throw new Error("CSV requires a header and at least one contact row.");
+            let lines = csvText.split('\n').filter(l => l.trim() !== '');
+            if(lines.length === 0) throw new Error("Contacts list is empty");
             
-            const headers = lines[0].split(',').map(h => h.trim());
+            let headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+            
+            // Auto-detect if the user forgot headers and just pasted phone numbers
+            let isFirstRowData = false;
+            // Clean phone number from first column and check if it's mostly digits
+            const potentialPhone = headers[0].replace(/[\s-()+]/g, '');
+            if (potentialPhone.length >= 7 && /^\d+$/.test(potentialPhone)) {
+                isFirstRowData = true;
+                headers = ['phone', 'lead_name', 'business_name', 'service_type'];
+            } else {
+                lines.shift(); // Remove header row from data
+            }
+            
             const phoneIdx = headers.indexOf('phone');
-            if(phoneIdx === -1) throw new Error("CSV header must contain 'phone'");
+            if(phoneIdx === -1 && !isFirstRowData) throw new Error("CSV header must contain 'phone'");
             
             const contacts = [];
-            for(let i=1; i<lines.length; i++) {
+            for(let i=0; i<lines.length; i++) {
                 if(!lines[i].trim()) continue;
                 const vals = lines[i].split(',').map(v => v.trim());
                 const c = {};
                 headers.forEach((h, j) => { if(vals[j]) c[h] = vals[j]; });
                 if(c.phone) contacts.push(c);
             }
+            
+            if (contacts.length === 0) throw new Error("No valid contacts found with phone numbers");
             
             const payload = {
                 name: document.getElementById('camp-name').value,
@@ -957,6 +982,31 @@
             showToast('Campaign deleted');
             loadCampaigns();
         } catch (e) { showToast('Error deleting campaign', 'error'); }
+    }
+
+    function downloadSampleCSV() {
+        const csvContent = "phone,lead_name,business_name,service_type\n+1234567890,Alice,Acme Corp,consultation\n+0987654321,Bob,Beta Inc,support";
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        const url = URL.createObjectURL(blob);
+        link.setAttribute("href", url);
+        link.setAttribute("download", "sample_contacts.csv");
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
+    function handleCSVUpload(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('camp-csv').value = e.target.result;
+        };
+        reader.readAsText(file);
+        // Reset the file input so the same file can be uploaded again if needed
+        event.target.value = '';
     }
 
     // 9. CRM
