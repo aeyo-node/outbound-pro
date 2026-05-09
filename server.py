@@ -36,7 +36,12 @@ from db import (
 from prompts import DEFAULT_SYSTEM_PROMPT
 
 load_dotenv(".env", override=True)
-logging.basicConfig(level=logging.INFO)
+log_path = "/data/app.log" if os.path.exists("/data") else "app.log"
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    handlers=[logging.StreamHandler(), logging.FileHandler(log_path, mode='a', encoding='utf-8')]
+)
 logger = logging.getLogger("server")
 
 init_db()
@@ -257,6 +262,22 @@ async def api_save_prompt(req: PromptRequest):
 async def api_reset_prompt():
     await set_setting("system_prompt", "")
     return {"status": "reset", "prompt": DEFAULT_SYSTEM_PROMPT}
+
+
+# ── Logs ──────────────────────────────────────────────────────────────────────
+
+@app.get("/api/logs")
+async def api_get_logs():
+    try:
+        log_path = "/data/app.log" if os.path.exists("/data") else "app.log"
+        if not os.path.exists(log_path):
+            return {"logs": "No logs generated yet."}
+        # Read the last 50 lines
+        with open(log_path, "r", encoding="utf-8") as f:
+            lines = f.readlines()
+        return {"logs": "".join(lines[-50:])}
+    except Exception as e:
+        return {"logs": f"Error fetching logs: {e}"}
 
 
 # ── Settings ──────────────────────────────────────────────────────────────────

@@ -85,6 +85,9 @@
             <div class="nav-item" onclick="switchTab('error-logs', this)">
                 <i class="fas fa-exclamation-triangle"></i> Error Logs
             </div>
+            <div class="nav-item" onclick="switchTab('system-logs', this)">
+                <i class="fas fa-terminal"></i> System Logs
+            </div>
         </nav>
 
         <div class="mt-auto pt-4 border-t border-slate-700 text-xs text-slate-500 text-center">
@@ -333,6 +336,17 @@
             </div>
         </div>
 
+        <!-- System Logs Tab -->
+        <div id="tab-system-logs" class="tab-content">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold"><i class="fas fa-terminal mr-2 text-green-400"></i>System Logs</h2>
+                <button onclick="loadSystemLogs()" class="secondary text-sm"><i class="fas fa-sync-alt mr-2"></i>Refresh</button>
+            </div>
+            <div class="card bg-black border border-slate-700 p-4 rounded-lg overflow-x-auto h-[600px] overflow-y-auto font-mono text-sm">
+                <pre id="syslogs-container" class="whitespace-pre-wrap break-words text-slate-300">Loading logs...</pre>
+            </div>
+        </div>
+
         <!-- Appointments Tab -->
         <div id="tab-appointments" class="tab-content">
             <div class="flex justify-between items-center mb-6">
@@ -571,6 +585,7 @@
         if(tabId === 'campaigns') loadCampaigns();
         if(tabId === 'crm') loadCRM();
         if(tabId === 'error-logs') loadErrorLogs();
+        if(tabId === 'system-logs') loadSystemLogs();
         if(tabId === 'agent-profiles') loadProfiles();
         if(tabId === 'single-call') loadProfilesForDropdowns();
     }
@@ -1032,7 +1047,28 @@
         } catch (e) { console.error(e); }
     }
 
-    // 10. Agent Profiles
+    // 10. System Logs
+    async function loadSystemLogs() {
+        try {
+            const res = await fetch('/api/logs');
+            const data = await res.json();
+            const container = document.getElementById('syslogs-container');
+            
+            let logs = data.logs || "No logs available.";
+            // Colorize log levels
+            logs = logs.replace(/\[INFO\]/g, '<span class="text-blue-400 font-bold">[INFO]</span>')
+                       .replace(/\[WARNING\]/g, '<span class="text-yellow-400 font-bold">[WARNING]</span>')
+                       .replace(/\[ERROR\]/g, '<span class="text-red-500 font-bold">[ERROR]</span>')
+                       .replace(/\[DEBUG\]/g, '<span class="text-slate-500 font-bold">[DEBUG]</span>');
+                       
+            container.innerHTML = logs;
+            container.scrollTop = container.scrollHeight; // Auto-scroll to bottom
+        } catch (e) {
+            document.getElementById('syslogs-container').innerHTML = `<span class="text-red-500">Failed to load logs: ${e.message}</span>`;
+        }
+    }
+
+    // 11. Agent Profiles
     function renderToolsCheckboxes() {
         const c = document.getElementById('prof-tools-container');
         c.innerHTML = availableTools.map(t => `
@@ -1205,7 +1241,8 @@
             if(document.getElementById('tab-dashboard').classList.contains('active')) loadStats();
             if(document.getElementById('tab-campaigns').classList.contains('active')) loadCampaigns();
             if(document.getElementById('tab-call-logs').classList.contains('active')) loadCallLogs();
-        }, 15000);
+            if(document.getElementById('tab-system-logs').classList.contains('active')) loadSystemLogs();
+        }, 5000);
     };
 </script>
 

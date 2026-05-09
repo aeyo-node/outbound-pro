@@ -29,8 +29,13 @@ from db import init_db, log_error, get_enabled_tools
 from prompts import build_prompt
 from tools import AppointmentTools
 
-load_dotenv(".env")
-logging.basicConfig(level=logging.INFO)
+load_dotenv(".env", override=True)
+log_path = "/data/app.log" if os.path.exists("/data") else "app.log"
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    handlers=[logging.StreamHandler(), logging.FileHandler(log_path, mode='a', encoding='utf-8')]
+)
 logger = logging.getLogger("outbound-agent")
 
 SIP_DOMAIN = os.getenv("VOBIZ_SIP_DOMAIN", "")
