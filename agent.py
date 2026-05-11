@@ -205,6 +205,8 @@ async def entrypoint(ctx: agents.JobContext) -> None:
     Use participant_disconnected event for the specific SIP identity instead.
     """
     await _log("info", f"Job started — room: {ctx.room.name}")
+    # Refresh settings from Supabase at the start of every call
+    load_db_settings_to_env()
 
     phone_number: Optional[str] = None
     lead_name = "there"
