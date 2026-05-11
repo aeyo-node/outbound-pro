@@ -4,11 +4,18 @@ import logging
 import os
 import ssl
 import certifi
+import socket
 from typing import Optional
-
 from dotenv import load_dotenv
 
-# ── Patch SSL with certifi before any network import ─────────────────────────
+# ── Force IPv4 to avoid 20s timeout on AWS ──────────────────────────────────
+_orig_getaddrinfo = socket.getaddrinfo
+def _ipv4_only_getaddrinfo(*args, **kwargs):
+    responses = _orig_getaddrinfo(*args, **kwargs)
+    return [r for r in responses if r[0] == socket.AF_INET]
+socket.getaddrinfo = _ipv4_only_getaddrinfo
+
+# ── Patch SSL with certifi ──────────────────────────────────────────────────
 _orig_ssl = ssl.create_default_context
 def _certifi_ssl(purpose=ssl.Purpose.SERVER_AUTH, **kwargs):
     if not kwargs.get("cafile") and not kwargs.get("capath") and not kwargs.get("cadata"):

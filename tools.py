@@ -101,6 +101,21 @@ class AppointmentTools(llm.ToolContext):
         except Exception as exc:
             logger.error("Failed to log call: %s", exc)
         try:
+            # Explicitly find and remove the SIP participant to force the phone to hang up
+            for p in self.ctx.room.remote_participants.values():
+                if "sip" in p.identity.lower() or p.identity.startswith("sip_"):
+                    try:
+                        from livekit import api
+                        await self.ctx.api.room.remove_participant(
+                            api.RoomParticipantIdentity(
+                                room=self.ctx.room.name,
+                                identity=p.identity
+                            )
+                        )
+                        logger.info(f"Forcibly hung up SIP participant: {p.identity}")
+                    except Exception as _re:
+                        logger.warning(f"Failed to remove participant via API: {_re}")
+
             await self.ctx.room.disconnect()
         except Exception:
             pass
