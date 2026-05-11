@@ -232,8 +232,10 @@ async def entrypoint(ctx: agents.JobContext) -> None:
             await _log("warning", "Invalid JSON in job metadata")
 
     # If no custom prompt from metadata, use the Global Prompt from DB/Env
+    # Checking both lowercase (DB) and uppercase (Env) for safety
     if not custom_prompt:
-        custom_prompt = os.environ.get("SYSTEM_PROMPT")
+        custom_prompt = os.environ.get("system_prompt") or os.environ.get("SYSTEM_PROMPT")
+    
 
     # For inbound calls, try to identify the caller from participant identity
     if not phone_number:
