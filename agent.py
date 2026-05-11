@@ -66,9 +66,8 @@ def load_db_settings_to_env() -> None:
         result = client.table("settings").select("key, value").execute()
         for row in (result.data or []):
             if row.get("value"):
-                # Always strip \r from Windows files
-                if row["key"] not in os.environ:
-                    os.environ[row["key"]] = row["value"].strip()
+                # Always override so UI changes take effect immediately
+                os.environ[row["key"]] = row["value"].strip()
     except Exception as exc:
         logger.warning("Could not load settings from Supabase: %s", exc)
 
@@ -223,12 +222,35 @@ async def entrypoint(ctx: agents.JobContext) -> None:
         except (json.JSONDecodeError, AttributeError):
             await _log("warning", "Invalid JSON in job metadata")
 
-    await _log("info", f"Call job — phone={phone_number} lead={lead_name} biz={business_name}")
+    # If no custom prompt from metadata, use the Global Prompt from DB/Env
+    if not custom_prompt:
+        custom_prompt = os.environ.get("SYSTEM_PROMPT")
+
+    # For inbound calls, try to identify the caller from participant identity
+    if not phone_number:
+        for p in ctx.room.remote_participants.values():
+            if p.identity.startswith("sip_"):
+                phone_number = p.identity.replace("sip_", "")
+                break
+        
+        if phone_number:
+            from db import get_contacts
+            try:
+                contacts = await get_contacts(phone_number)
+                if contacts:
+                    lead_name = contacts[0].get("lead_name", lead_name)
+                    await _log("info", f"Inbound caller identified: {lead_name} ({phone_number})")
+            except Exception:
+                pass
 
     system_prompt = build_prompt(
         lead_name=lead_name, business_name=business_name,
         service_type=service_type, custom_prompt=custom_prompt,
     )
+    # Add inbound awareness to the prompt
+    if not phone_number:
+        system_prompt += "\n\nNOTE: This is an INBOUND call. The user called YOU. Do not ask 'Am I speaking with...'. Instead, greet them warmly and ask how you can help."
+    
     tool_ctx = AppointmentTools(ctx, phone_number, lead_name)
 
     if voice_override:
