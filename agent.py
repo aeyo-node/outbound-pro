@@ -441,6 +441,6 @@ if __name__ == "__main__":
         agents.WorkerOptions(
             entrypoint_fnc=entrypoint,
             agent_name="outbound-caller",
-            num_idle_processes=0,
+            num_idle_processes=1,
         )
     )
