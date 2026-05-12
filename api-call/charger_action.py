@@ -46,7 +46,7 @@ def charger_action(action, charger_identity, customer_mobile=None, connector_id=
                 if str(resolved_identity) != str(charger_identity):
                     executed_apis.append(f"tools/charger_resolver.py ('{charger_identity}' -> '{resolved_identity}')")
                 charger_identity = resolved_identity
-            elif res.get("status") in ["need_selection", "needs_confirmation"]:
+            elif res.get("status") in ["multiple", "need_selection", "needs_confirmation"]:
                 buttons = []
                 for opt in res.get("options", []):
                     buttons.append({

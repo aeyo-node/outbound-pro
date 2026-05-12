@@ -14,14 +14,40 @@ logger = logging.getLogger("diagnostic")
 env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env")
 load_dotenv(dotenv_path=env_path)
 
-# Add api-call directory to path
-api_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "api-call")
+# Add project root and api-call directory to path
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+api_path = os.path.join(project_root, "api-call")
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
 if api_path not in sys.path:
     sys.path.insert(0, api_path)
+
+def load_db_settings_to_env():
+    """Manually load settings from Supabase to match agent.py behavior"""
+    try:
+        from supabase import create_client
+        url = os.getenv("SUPABASE_URL")
+        key = os.getenv("SUPABASE_SERVICE_KEY")
+        if not url or not key:
+            logger.warning("Supabase URL or Key missing in .env")
+            return
+        
+        db = create_client(url, key)
+        res = db.table("settings").select("key, value").execute()
+        count = 0
+        for row in res.data:
+            os.environ[row["key"]] = str(row["value"])
+            count += 1
+        logger.info(f"Loaded {count} settings from Supabase.")
+    except Exception as e:
+        logger.warning(f"Failed to load settings from Supabase: {e}")
 
 def test_api_connectivity():
     logger.info("Starting ChargeMOD API Diagnostic Test")
     logger.info("=" * 50)
+    
+    # First, load settings from DB
+    load_db_settings_to_env()
     
     # Check credentials
     email = os.getenv("USER_EMAIL")
