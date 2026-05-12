@@ -381,8 +381,13 @@ async def entrypoint(ctx: agents.JobContext) -> None:
         if phone_number else "Greet the caller warmly and ask how you can help. Use Malayalam."
     )
     try:
-        # Push a system instruction to trigger the first word
-        session.chat_ctx.add_message(role="user", text=f"[SYSTEM: {greeting}]")
+        # Access the agent's chat context. RealtimeSession (session.llm) context is separate
+        # but AgentSession manages the high-level chat context.
+        if hasattr(session, "agent") and hasattr(session.agent, "chat_ctx"):
+            session.agent.chat_ctx.add_message(role="user", text=f"[SYSTEM: {greeting}]")
+        else:
+            # Fallback for Gemini Live specific session
+            await _log("info", "No chat_ctx on agent - greeting skipped")
     except Exception as _gr_exc:
         await _log("warning", f"Greeting trigger failed: {_gr_exc}")
         # Final fallback: just push a message to context if possible

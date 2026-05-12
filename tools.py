@@ -205,35 +205,31 @@ class AppointmentTools(llm.ToolContext):
             return "I encountered a technical error while checking the charger status."
 
     @llm.function_tool
-    async def check_wallet_balance(self) -> str:
-        """Check user's wallet balance using their phone number."""
-        print(f"[*] TOOL CALL: check_wallet_balance() for {self.phone_number}")
-        if not _EV_TOOLS_AVAILABLE:
-            return "Wallet features are currently offline."
+    async def check_wallet_balance(self, customer_mobile: Optional[str] = None) -> str:
+        """Check user's wallet balance. customer_mobile: 10-digit number."""
+        phone = customer_mobile or self.phone_number
+        print(f"[*] TOOL CALL: check_wallet_balance(phone={phone})")
         
-        if not self.phone_number:
-            return "I don't have your phone number to check your wallet balance. Could you please provide it?"
+        if not _EV_TOOLS_AVAILABLE:
+            return "Wallet features are offline."
+        
+        if not phone:
+            return "I need your phone number to check your balance."
         
         try:
             loop = asyncio.get_event_loop()
-            # First find customer ID
-            customer, err = await loop.run_in_executor(None, get_customer_info, self.phone_number)
+            customer, err = await loop.run_in_executor(None, get_customer_info, phone)
             if err or not customer:
-                print(f"[*] Customer not found for {self.phone_number}. Error: {err}")
-                return f"I couldn't find a chargeMOD account linked to {self.phone_number}."
+                return f"I couldn't find a chargeMOD account for {phone}."
             
             balance, err = await loop.run_in_executor(None, _get_wallet_balance, customer["userId"])
             if err:
-                print(f"[*] Balance fetch failed for {customer['userId']}. Error: {err}")
-                return "I couldn't retrieve your balance right now. Please try again later."
+                return "I couldn't retrieve your balance right now."
             
-            result = f"Your current wallet balance is Rs. {balance}."
-            print(f"[*] Tool result: {result}")
-            return result
-            
+            return f"Your current wallet balance is Rs. {balance}."
         except Exception as e:
             logger.error(f"Error in check_wallet_balance: {e}")
-            return "I encountered an error while checking your balance."
+            return "Error checking balance."
 
     @llm.function_tool
     async def start_charging(self, charger_identifier: str) -> str:
