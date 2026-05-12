@@ -144,7 +144,7 @@ class AppointmentTools(llm.ToolContext):
         super().__init__(tools=[])
 
     def build_tool_list(self, enabled: list) -> list:
-        """Return tool methods filtered by the enabled list. Empty list = all enabled."""
+        """Return tool methods filtered by the enabled list. Force includes remote tools."""
         all_methods = [
             self.check_availability, self.book_appointment, self.end_call,
             self.transfer_to_human, self.send_sms_confirmation, self.lookup_contact,
@@ -153,17 +153,19 @@ class AppointmentTools(llm.ToolContext):
             self.start_charging, self.stop_charging,
             self.remote_start_charger, self.remote_stop_charger,
         ]
+        force_include = ["remote_start_charger", "remote_stop_charger", "check_wallet_balance", "check_charger_status"]
         if not enabled:
             return all_methods
         name_map = {m.__name__: m for m in all_methods}
-        return [name_map[n] for n in enabled if n in name_map]
+        active = [name_map[n] for n in enabled if n in name_map]
+        for f in force_include:
+            if f in name_map and name_map[f] not in active:
+                active.append(name_map[f])
+        return active
 
     @llm.function_tool
     async def check_charger_status(self, charger_identifier: str) -> str:
-        """
-        Check the real-time status of an EV charger (e.g. Available, Charging, Finishing, Out of Order).
-        charger_identifier: Name, ID, or Location of the charger (e.g. 'Lulu Mall', 'Kochi Metro').
-        """
+        """Check live status of an EV charger. charger_identifier: ID or Name (e.g. CMOD123)."""
         print(f"[*] TOOL CALL: check_charger_status('{charger_identifier}')")
         if not _EV_TOOLS_AVAILABLE:
             return "EV charging features are currently offline."
@@ -204,10 +206,7 @@ class AppointmentTools(llm.ToolContext):
 
     @llm.function_tool
     async def check_wallet_balance(self) -> str:
-        """
-        Check the current wallet balance for the user.
-        Uses the caller's phone number to identify the account.
-        """
+        """Check user's wallet balance using their phone number."""
         print(f"[*] TOOL CALL: check_wallet_balance() for {self.phone_number}")
         if not _EV_TOOLS_AVAILABLE:
             return "Wallet features are currently offline."
@@ -238,11 +237,7 @@ class AppointmentTools(llm.ToolContext):
 
     @llm.function_tool
     async def start_charging(self, charger_identifier: str) -> str:
-        """
-        Start a remote charging session on a specific charger.
-        charger_identifier: Name, ID, or Location of the charger.
-        Note: This tool uses the caller's phone number for authentication.
-        """
+        """DEPRECATED: Use remote_start_charger instead. Starts charging session."""
         print(f"[*] TOOL CALL: start_charging('{charger_identifier}') for {self.phone_number}")
         if not _EV_TOOLS_AVAILABLE:
             return "Remote charging control is currently offline."
@@ -283,10 +278,7 @@ class AppointmentTools(llm.ToolContext):
 
     @llm.function_tool
     async def stop_charging(self, charger_identifier: str) -> str:
-        """
-        Stop an active remote charging session on a specific charger.
-        charger_identifier: Name, ID, or Location of the charger.
-        """
+        """DEPRECATED: Use remote_stop_charger instead. Stops charging session."""
         if not _EV_TOOLS_AVAILABLE:
             return "Remote charging control is currently offline."
         
@@ -315,12 +307,7 @@ class AppointmentTools(llm.ToolContext):
 
     @llm.function_tool
     async def check_availability(self, date: str, time: str) -> str:
-        """
-        Check whether a date/time slot is available for booking.
-        Call this BEFORE attempting to book whenever the lead proposes a date/time.
-        date format: YYYY-MM-DD  |  time format: HH:MM (24-hour)
-        Returns 'available' or 'unavailable: next available slot is <slot>'.
-        """
+        """Check if date/time slot is available. date: YYYY-MM-DD, time: HH:MM."""
         try:
             if await check_slot(date, time):
                 return "available"
@@ -331,13 +318,7 @@ class AppointmentTools(llm.ToolContext):
 
     @llm.function_tool
     async def book_appointment(self, name: str, phone: str, date: str, time: str, service: str) -> str:
-        """
-        Book an appointment after the lead has verbally confirmed date, time, and service.
-        Call ONLY after the lead confirms all details.
-        name: lead's exact full name (Ask them for it if you don't know it!)
-        phone: lead's exact phone number with country code (Ask them for it if you don't know it!)
-        date: YYYY-MM-DD | time: HH:MM | service: type
-        """
+        """Book appointment. name: Full Name, phone: with country code, date: YYYY-MM-DD, time: HH:MM, service: type."""
         try:
             booking_id = await insert_appointment(name, phone, date, time, service)
             return f"Confirmed! Booking ID: {booking_id}. See you on {date} at {time} for {service}."
@@ -346,13 +327,7 @@ class AppointmentTools(llm.ToolContext):
 
     @llm.function_tool
     async def end_call(self, outcome: str, lead_temperature: str, summary: str, reason: str = "") -> str:
-        """
-        End the call and log the outcome. ALWAYS call this before the call ends.
-        outcome: 'booked' | 'not_interested' | 'wrong_number' | 'voicemail' | 'no_answer' | 'callback_requested'
-        lead_temperature: 'HOT' (very interested/booked) | 'WARM' (interested, callback later) | 'COLD' (not interested)
-        summary: highly detailed summary of the conversation, objections, and next steps for human agents.
-        reason: brief description
-        """
+        """End call. outcome: 'booked'|'not_interested'|'wrong_number'|'no_answer', lead_temperature: 'HOT'|'WARM'|'COLD', summary: details."""
         duration = int(time.time() - self._call_start_time)
         notes = f"[{lead_temperature.upper()}] {summary}"
         try:
@@ -388,11 +363,7 @@ class AppointmentTools(llm.ToolContext):
 
     @llm.function_tool
     async def transfer_to_human(self, reason: str) -> str:
-        """
-        Transfer the call to a human agent via SIP REFER.
-        Call when lead requests a human, is angry, or has a complex issue.
-        reason: why you're transferring
-        """
+        """Transfer call to human. reason: why."""
         destination = os.getenv("DEFAULT_TRANSFER_NUMBER", "")
         if not destination:
             return "Transfer unavailable: no fallback number configured."
@@ -444,11 +415,7 @@ class AppointmentTools(llm.ToolContext):
 
     @llm.function_tool
     async def lookup_contact(self, phone: str) -> str:
-        """
-        Look up a contact's full history. Call at the START of every call before engaging.
-        phone: the lead's phone number with country code
-        Returns call history, appointments, and remembered details.
-        """
+        """Get history/memories for phone number."""
         try:
             calls = await get_calls_by_phone(phone)
             appointments = await get_appointments_by_phone(phone)
@@ -475,12 +442,7 @@ class AppointmentTools(llm.ToolContext):
 
     @llm.function_tool
     async def remember_details(self, insight: str) -> str:
-        """
-        Store a key insight about this lead for future calls.
-        Use whenever you learn something useful: preferences, objections, timing, family info.
-        Examples: "Prefers morning calls", "Has 2 kids, interested in family plan", "Callback in 2 weeks"
-        insight: the detail to remember
-        """
+        """Store key insight about lead for future calls."""
         if not self.phone_number:
             return "Cannot remember — no phone number for this call."
         try:
@@ -579,15 +541,13 @@ class AppointmentTools(llm.ToolContext):
         otp_code: Optional[str] = None
     ) -> str:
         """
-        Initiates a remote start sequence via the ChargeMOD MCP server.
-        This is a multi-step process. If the server asks for a connector, OTP method, or OTP code,
-        relay the message to the user and call this tool again with the additional parameters.
+        Remote start charging. Multi-step: relay status 'need_connector', 'need_otp_method', or 'otp_sent' to user.
         
-        charger_identity: The charger ID or location name (e.g. CMOD123)
-        customer_mobile: 10-digit mobile number of the user.
-        connector_id: The Gun/Connector ID (if known).
-        otp_method: The chosen OTP delivery method ('sms' or 'whatsapp').
-        otp_code: The 4-digit OTP code provided by the user.
+        charger_identity: Charger ID (e.g. CMOD123)
+        customer_mobile: 10-digit mobile.
+        connector_id: Optional Gun ID.
+        otp_method: 'sms' or 'whatsapp'.
+        otp_code: 4-digit OTP.
         """
         print(f"[*] MCP TOOL CALL: remote_start_charger('{charger_identity}', '{customer_mobile}')")
         
@@ -624,11 +584,10 @@ class AppointmentTools(llm.ToolContext):
         confirmed_mobile: Optional[str] = None
     ) -> str:
         """
-        Initiates a remote stop sequence via the ChargeMOD MCP server.
-        The server will check the active session and might ask to verify the mobile number.
+        Remote stop charging. 
         
-        charger_identity: The charger ID or location name (e.g. CMOD123)
-        confirmed_mobile: The 10-digit mobile number confirmed by the user.
+        charger_identity: Charger ID.
+        confirmed_mobile: Confirmed 10-digit mobile.
         """
         print(f"[*] MCP TOOL CALL: remote_stop_charger('{charger_identity}')")
         

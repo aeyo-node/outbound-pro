@@ -377,24 +377,14 @@ async def entrypoint(ctx: agents.JobContext) -> None:
 
     # ── Greeting ─────────────────────────────────────────────────────────────
     greeting = (
-        f"The call just connected. Greet the lead and ask if you're speaking with {lead_name}."
-        if phone_number else "Greet the caller warmly and ask how you can help."
+        f"The call just connected. Greet the lead warmly and ask if you're speaking with {lead_name}. Use Malayalam."
+        if phone_number else "Greet the caller warmly and ask how you can help. Use Malayalam."
     )
     try:
-        # Check if the model is Gemini Live (3.1, 2.5, 2.0)
-        _active_model = os.getenv("GEMINI_MODEL", "")
-        is_gemini_live = any(v in _active_model for v in ["3.1", "2.5", "2.0"])
-
-        if is_gemini_live:
-            # For Gemini Live, we often need to "push" a text prompt into the context to get a reply
-            if hasattr(session, "say"):
-                await session.say(greeting)
-            else:
-                session.chat_ctx.add_message(role="user", text=f"[SYSTEM: {greeting}]")
-        else:
-            await session.generate_reply(instructions=greeting)
+        # Push a system instruction to trigger the first word
+        session.chat_ctx.add_message(role="user", text=f"[SYSTEM: {greeting}]")
     except Exception as _gr_exc:
-        await _log("warning", f"Greeting failed: {_gr_exc}")
+        await _log("warning", f"Greeting trigger failed: {_gr_exc}")
         # Final fallback: just push a message to context if possible
         try:
             if hasattr(session, "chat_ctx"):
