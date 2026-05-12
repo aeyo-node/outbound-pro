@@ -70,12 +70,14 @@ class AppointmentTools(llm.ToolContext):
         Check the real-time status of an EV charger (e.g. Available, Charging, Finishing, Out of Order).
         charger_identifier: Name, ID, or Location of the charger (e.g. 'Lulu Mall', 'Kochi Metro').
         """
+        print(f"[*] TOOL CALL: check_charger_status('{charger_identifier}')")
         if not _EV_TOOLS_AVAILABLE:
             return "EV charging features are currently offline."
         
         try:
             loop = asyncio.get_event_loop()
             resolved = await loop.run_in_executor(None, resolve_charger, charger_identifier)
+            print(f"[*] Resolved charger: {resolved}")
             
             if resolved["status"] == "not_found":
                 return f"I couldn't find a charger matching '{charger_identifier}'. Could you please double check the name?"
@@ -98,7 +100,9 @@ class AppointmentTools(llm.ToolContext):
                 status_summary.append(f"Connector {conn_id} is {status}")
             
             name = details.get("chargerName", charger_identifier)
-            return f"Status for {name}: " + ". ".join(status_summary)
+            result = f"Status for {name}: " + ". ".join(status_summary)
+            print(f"[*] Tool result: {result}")
+            return result
             
         except Exception as e:
             logger.error(f"Error in check_charger_status: {e}")
@@ -110,6 +114,7 @@ class AppointmentTools(llm.ToolContext):
         Check the current wallet balance for the user.
         Uses the caller's phone number to identify the account.
         """
+        print(f"[*] TOOL CALL: check_wallet_balance() for {self.phone_number}")
         if not _EV_TOOLS_AVAILABLE:
             return "Wallet features are currently offline."
         
@@ -121,13 +126,17 @@ class AppointmentTools(llm.ToolContext):
             # First find customer ID
             customer, err = await loop.run_in_executor(None, get_customer_info, self.phone_number)
             if err or not customer:
+                print(f"[*] Customer not found for {self.phone_number}. Error: {err}")
                 return f"I couldn't find a chargeMOD account linked to {self.phone_number}."
             
             balance, err = await loop.run_in_executor(None, _get_wallet_balance, customer["userId"])
             if err:
+                print(f"[*] Balance fetch failed for {customer['userId']}. Error: {err}")
                 return "I couldn't retrieve your balance right now. Please try again later."
             
-            return f"Your current wallet balance is Rs. {balance}."
+            result = f"Your current wallet balance is Rs. {balance}."
+            print(f"[*] Tool result: {result}")
+            return result
             
         except Exception as e:
             logger.error(f"Error in check_wallet_balance: {e}")
@@ -140,6 +149,7 @@ class AppointmentTools(llm.ToolContext):
         charger_identifier: Name, ID, or Location of the charger.
         Note: This tool uses the caller's phone number for authentication.
         """
+        print(f"[*] TOOL CALL: start_charging('{charger_identifier}') for {self.phone_number}")
         if not _EV_TOOLS_AVAILABLE:
             return "Remote charging control is currently offline."
         
@@ -151,10 +161,13 @@ class AppointmentTools(llm.ToolContext):
             # Identify customer
             customer, err = await loop.run_in_executor(None, get_customer_info, self.phone_number)
             if err or not customer:
+                print(f"[*] Customer not found for {self.phone_number}. Error: {err}")
                 return f"I couldn't find a chargeMOD account linked to {self.phone_number}."
             
             # Start charging (using BYPASS for OTP as per production plan for voice agents)
+            print(f"[*] Attempting remote start for {charger_identifier} (User: {customer['userId']})")
             result = await loop.run_in_executor(None, remote_start_with_otp, charger_identifier, customer, "BYPASS")
+            print(f"[*] API result: {result}")
             
             if result.get("status") == "success":
                 return f"Done! Charging session has been started successfully. Your remaining balance is Rs. {result.get('balance')}."
