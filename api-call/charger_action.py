@@ -11,10 +11,13 @@ from RemoteStart import (
     send_otp, 
     verify_otp,
     make_request,
+    get_customer_info, 
+    get_wallet_balance, 
+    send_otp, 
+    verify_otp,
+    make_request,
     ORG_ID,
-    PROJECT_ID,
-    BASE_TTS,
-    BASE_LS
+    PROJECT_ID
 )
 from RemoteStop import remote_stop
 from chargepoints import fetch_chargepoint_details
@@ -349,7 +352,7 @@ def charger_action(action, charger_identity, customer_mobile=None, connector_id=
 
         # 4b. Skip OTP — start directly
         if otp_method == "skip":
-            url = f"{BASE_TTS}/{charger_identity}/Socket-RemoteStartTransaction"
+            url = f"{os.getenv('BASE_TTS', 'https://tts.console.chargemod.com')}/{charger_identity}/Socket-RemoteStartTransaction"
             connection_type = details.get("chargePointConnectionProtocol", "GRIDSCAPE")
             payload = {
                 "connectorId": int(connector_id),
@@ -403,7 +406,7 @@ def charger_action(action, charger_identity, customer_mobile=None, connector_id=
             }
 
         # 6. Execute Remote Start
-        url = f"{BASE_TTS}/{charger_identity}/Socket-RemoteStartTransaction"
+        url = f"{os.getenv('BASE_TTS', 'https://tts.console.chargemod.com')}/{charger_identity}/Socket-RemoteStartTransaction"
         connection_type = details.get("chargePointConnectionProtocol", "GRIDSCAPE")
 
         payload = {
