@@ -42,13 +42,14 @@ def load_db_settings_to_env():
         logger.warning(f"Failed to load settings from Supabase: {e}")
 
 def run_full_diagnostic():
-    logger.info("Starting FULL ChargeMOD Tool Suite Diagnostic")
+    logger.info("=" * 60)
+    logger.info("Starting ULTIMATE ChargeMOD Tool Suite Diagnostic")
     logger.info("=" * 60)
     
     load_db_settings_to_env()
     
     # 1. AUTH TEST
-    logger.info("\n[1/5] Testing Authentication...")
+    logger.info("\n[1/6] Testing Authentication...")
     try:
         from auth_key import get_auth_token, invalidate_token
         invalidate_token()
@@ -64,7 +65,7 @@ def run_full_diagnostic():
 
     # 2. WALLET TEST
     target_phone = "8086477654" # User's requested number
-    logger.info(f"\n[2/5] Testing Wallet Balance for +91{target_phone}...")
+    logger.info(f"\n[2/6] Testing Wallet Balance for +91{target_phone}...")
     try:
         from RemoteStart import get_customer_info, get_wallet_balance
         user, err = get_customer_info(target_phone)
@@ -80,75 +81,94 @@ def run_full_diagnostic():
     except Exception as e:
         logger.error(f"EXCEPTION in Wallet: {e}")
 
-    # 3. CHARGER RESOLUTION & AVAILABILITY
-    test_id = "chargemod"
-    logger.info(f"\n[3/5] Testing Charger Discovery & Availability for '{test_id}'...")
+    # 3. DISCOVERY (FUZZY SEARCH)
+    search_term = "chargemod"
+    logger.info(f"\n[3/6] Testing Charger Discovery for '{search_term}'...")
     selected_identity = None
     try:
-        from charger_action import charger_action
-        res = charger_action("availability", test_id)
+        from chargepoints import resolve_charger
+        res = resolve_charger(search_term)
+        logger.info(f"Resolution Status: {res.get('status')}")
         if res.get("status") == "multiple":
-            logger.info("SUCCESS: Fuzzy resolution correctly identified multiple options.")
             options = res.get("options", [])
+            logger.info(f"SUCCESS: Found {len(options)} matching chargers.")
             for opt in options:
                 logger.info(f"  - {opt['identity']}: {opt['label']}")
-            # Pick the first one for further testing
             selected_identity = options[0]["identity"]
-            logger.info(f"Proceeding with specific identity: {selected_identity}")
-            
-            # Re-test availability with specific identity
-            res_v2 = charger_action("availability", selected_identity)
-            if "error" in res_v2:
-                logger.error(f"FAILED: Availability check for {selected_identity}: {res_v2['error']}")
-            else:
-                logger.info(f"SUCCESS: Availability fetched for {selected_identity}")
-                logger.info(f"Message: {res_v2.get('message')}")
+            logger.info(f"Auto-selecting first result for further tests: {selected_identity}")
+        elif res.get("status") == "resolved":
+            selected_identity = res["charger"]["identity"]
+            logger.info(f"SUCCESS: Resolved to {selected_identity}")
         else:
-            logger.info(f"Result: {res.get('status')} - {res.get('message')}")
-            if "error" in res: logger.error(f"Error detail: {res['error']}")
+            logger.error(f"FAILED: Unexpected status: {res.get('status')}")
     except Exception as e:
-        logger.error(f"EXCEPTION in Availability: {e}")
+        logger.error(f"EXCEPTION in Discovery: {e}")
 
-    # 4. TARIFF TEST
-    if selected_identity:
-        logger.info(f"\n[4/5] Testing Tariff Fetch for {selected_identity}...")
-        try:
-            res_t = charger_action("tariff", selected_identity)
-            if "error" in res_t:
-                logger.error(f"FAILED: Tariff check: {res_t['error']}")
-            else:
-                logger.info(f"SUCCESS: Tariff Message: {res_t.get('message')}")
-        except Exception as e:
-            logger.error(f"EXCEPTION in Tariff: {e}")
+    # 4. AVAILABILITY & TARIFF (using resolved identity)
+    if not selected_identity:
+        selected_identity = "CMOD0127" # Fallback for testing if discovery fails
+        logger.warning(f"Discovery failed to pick an identity. Using fallback: {selected_identity}")
 
-    # 5. START CHARGING FLOW (UP TO OTP)
-    if selected_identity:
-        logger.info(f"\n[5/5] Testing Start Charging Flow (Sequence) for {selected_identity}...")
-        try:
-            # We test the first step of the start flow which should trigger "need_connector" or "need_otp_method"
-            res_s = charger_action("start", selected_identity, customer_mobile=target_phone)
-            logger.info(f"Step 1 (Initial Request) Status: {res_s.get('status')}")
-            logger.info(f"Message: {res_s.get('message')}")
-            
-            if res_s.get("status") == "need_connector":
-                # Simulate selecting Gun 1
-                logger.info("Simulating Gun 1 selection...")
-                res_s2 = charger_action("start", selected_identity, customer_mobile=target_phone, connector_id=1)
-                logger.info(f"Step 2 (Connector Selected) Status: {res_s2.get('status')}")
-                logger.info(f"Message: {res_s2.get('message')}")
-                
-                if res_s2.get("status") == "need_otp_method":
-                    logger.info("SUCCESS: Start sequence correctly reached OTP Method stage.")
-            elif res_s.get("status") == "need_otp_method":
-                logger.info("SUCCESS: Start sequence correctly reached OTP Method stage.")
-            else:
-                logger.warning(f"Flow stopped at unexpected status: {res_s.get('status')}")
-                
-        except Exception as e:
-            logger.error(f"EXCEPTION in Start Flow: {e}")
+    logger.info(f"\n[4/6] Testing Availability & Tariff for {selected_identity}...")
+    try:
+        from charger_action import charger_action
+        # Test Availability
+        avail = charger_action("availability", selected_identity)
+        if "error" in avail:
+            logger.error(f"FAILED: Availability check: {avail['error']}")
+        else:
+            logger.info(f"SUCCESS: Availability: {avail.get('message')}")
+        
+        # Test Tariff
+        tariff = charger_action("tariff", selected_identity)
+        if "error" in tariff:
+            logger.error(f"FAILED: Tariff check: {tariff['error']}")
+        else:
+            logger.info(f"SUCCESS: Tariff: {tariff.get('message')}")
+    except Exception as e:
+        logger.error(f"EXCEPTION in Avail/Tariff: {e}")
+
+    # 5. START CHARGING FLOW
+    logger.info(f"\n[5/6] Testing Start Charging Flow for {selected_identity}...")
+    try:
+        # Step 1: Initial start request
+        logger.info("Triggering initial start command...")
+        res_s = charger_action("start", selected_identity, customer_mobile=target_phone)
+        logger.info(f"Start Step 1 Result: {res_s.get('status')} - {res_s.get('message')}")
+        
+        # Step 2: Simulate connector selection if needed
+        if res_s.get("status") == "need_connector":
+            logger.info("Simulating connector selection (Gun 1)...")
+            res_s2 = charger_action("start", selected_identity, customer_mobile=target_phone, connector_id=1)
+            logger.info(f"Start Step 2 Result: {res_s2.get('status')} - {res_s2.get('message')}")
+            if res_s2.get("status") == "need_otp_method":
+                logger.info("SUCCESS: Start sequence reached OTP stage.")
+        elif res_s.get("status") == "need_otp_method":
+            logger.info("SUCCESS: Start sequence reached OTP stage.")
+        else:
+            logger.warning(f"Start flow stopped at status: {res_s.get('status')}")
+    except Exception as e:
+        logger.error(f"EXCEPTION in Start Flow: {e}")
+
+    # 6. STOP CHARGING TEST
+    logger.info(f"\n[6/6] Testing Stop Charging for {selected_identity}...")
+    try:
+        # Attempt a stop. This might return 'verify_mobile' or 'success' or an error if no session exists.
+        # We just want to see if the API handles the request.
+        res_p = charger_action("stop", selected_identity)
+        logger.info(f"Stop Result: {res_p.get('status')} - {res_p.get('message')}")
+        if res_p.get("status") in ["success", "verify_mobile"]:
+            logger.info("SUCCESS: Stop API responded correctly.")
+        elif "No active transaction" in res_p.get("message", ""):
+            logger.info("SUCCESS: Stop API correctly reported no active session.")
+        else:
+            logger.warning(f"Stop API returned status: {res_p.get('status')}")
+    except Exception as e:
+        logger.error(f"EXCEPTION in Stop Flow: {e}")
 
     logger.info("\n" + "=" * 60)
-    logger.info("FULL DIAGNOSTIC COMPLETE")
+    logger.info("ULTIMATE DIAGNOSTIC COMPLETE")
+    logger.info("=" * 60)
 
 if __name__ == "__main__":
     run_full_diagnostic()
