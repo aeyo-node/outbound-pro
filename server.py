@@ -659,7 +659,7 @@ async def api_chat_test(req: ChatRequest):
         
         # 3. Initialize model with tools
         try:
-            model_name = "gemini-1.5-flash"
+            model_name = "gemini-2.0-flash"
             model = genai.GenerativeModel(
                 model_name=model_name,
                 system_instruction=system_prompt,
