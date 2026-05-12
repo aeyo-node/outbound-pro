@@ -381,15 +381,25 @@ async def entrypoint(ctx: agents.JobContext) -> None:
         if phone_number else "Greet the caller warmly and ask how you can help."
     )
     try:
-        await session.generate_reply(instructions=greeting)
+        # Check if the model is Gemini Live (3.1, 2.5, 2.0)
+        _active_model = os.getenv("GEMINI_MODEL", "")
+        is_gemini_live = any(v in _active_model for v in ["3.1", "2.5", "2.0"])
+
+        if is_gemini_live:
+            # For Gemini Live, we often need to "push" a text prompt into the context to get a reply
+            if hasattr(session, "say"):
+                await session.say(greeting)
+            else:
+                session.chat_ctx.add_message(role="user", text=f"[SYSTEM: {greeting}]")
+        else:
+            await session.generate_reply(instructions=greeting)
     except Exception as _gr_exc:
-        await _log("warning", f"generate_reply not supported: {_gr_exc}")
-        # Fallback for models that don't support generate_reply: push a user message
+        await _log("warning", f"Greeting failed: {_gr_exc}")
+        # Final fallback: just push a message to context if possible
         try:
             if hasattr(session, "chat_ctx"):
-                session.chat_ctx.add_message(role="user", text="[The call just connected. Please greet the caller.]")
-        except Exception:
-            pass
+                session.chat_ctx.add_message(role="user", text="Hello")
+        except: pass
 
     # ── Keep session alive until SIP participant leaves ───────────────────────
     # Without this the entrypoint returns and the worker spins down.
