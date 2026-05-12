@@ -4,6 +4,7 @@ import sys
 import json
 import logging
 import asyncio
+import random
 from dotenv import load_dotenv
 
 # Configure logging
@@ -34,81 +35,120 @@ def load_db_settings_to_env():
         
         db = create_client(url, key)
         res = db.table("settings").select("key, value").execute()
-        count = 0
         for row in res.data:
             os.environ[row["key"]] = str(row["value"])
-            count += 1
-        logger.info(f"Loaded {count} settings from Supabase.")
+        logger.info(f"Loaded settings from Supabase.")
     except Exception as e:
         logger.warning(f"Failed to load settings from Supabase: {e}")
 
-def test_api_connectivity():
-    logger.info("Starting ChargeMOD API Diagnostic Test")
-    logger.info("=" * 50)
+def run_full_diagnostic():
+    logger.info("Starting FULL ChargeMOD Tool Suite Diagnostic")
+    logger.info("=" * 60)
     
-    # First, load settings from DB
     load_db_settings_to_env()
     
-    # Check credentials
-    email = os.getenv("USER_EMAIL")
-    password = os.getenv("USER_PASSWORD")
-    logger.info(f"USER_EMAIL: {email}")
-    logger.info(f"USER_PASSWORD: {'SET' if password else 'MISSING'}")
-    
-    if not email or not password:
-        logger.error("Credentials missing in .env! Cannot proceed with auth test.")
-        return
-
+    # 1. AUTH TEST
+    logger.info("\n[1/5] Testing Authentication...")
     try:
         from auth_key import get_auth_token, invalidate_token
-        logger.info("1. Testing Authentication API...")
         invalidate_token()
         token = get_auth_token(force_refresh=True)
         if token:
-            logger.info(f"SUCCESS: Auth token obtained: {token[:20]}...")
+            logger.info(f"SUCCESS: Auth token obtained.")
         else:
-            logger.error("FAILED: Could not obtain auth token.")
+            logger.error("FAILED: Authentication failed.")
             return
     except Exception as e:
-        logger.error(f"EXCEPTION during auth: {e}", exc_info=True)
+        logger.error(f"EXCEPTION in Auth: {e}")
         return
 
+    # 2. WALLET TEST
+    target_phone = "8086477654" # User's requested number
+    logger.info(f"\n[2/5] Testing Wallet Balance for +91{target_phone}...")
     try:
-        from chargepoints import resolve_charger, fetch_chargepoint_details
-        logger.info("\n2. Testing Charger Resolution API...")
-        test_id = "chargemod"
-        logger.info(f"Resolving charger identifier: '{test_id}'")
-        res = resolve_charger(test_id)
-        logger.info(f"Resolution Result: {json.dumps(res, indent=2)}")
-        
-        if res.get("status") == "resolved":
-            identity = res["charger"]["identity"]
-            logger.info(f"Fetching details for identity: {identity}")
-            details = fetch_chargepoint_details(identity)
-            if details:
-                logger.info("SUCCESS: Charger details fetched.")
-                logger.info(f"Charger Name: {details.get('chargerName')}")
-                logger.info(f"Protocol: {details.get('chargePointConnectionProtocol')}")
+        from RemoteStart import get_customer_info, get_wallet_balance
+        user, err = get_customer_info(target_phone)
+        if err:
+            logger.error(f"FAILED: Customer lookup: {err}")
+        else:
+            logger.info(f"Customer Found: {user['userName']} (ID: {user['userId']})")
+            balance, b_err = get_wallet_balance(user["userId"])
+            if b_err:
+                logger.error(f"FAILED: Wallet lookup: {b_err}")
             else:
-                logger.error("FAILED: Charger details returned empty.")
+                logger.info(f"SUCCESS: Wallet Balance: Rs. {balance}")
     except Exception as e:
-        logger.error(f"EXCEPTION during charger resolution: {e}", exc_info=True)
+        logger.error(f"EXCEPTION in Wallet: {e}")
 
+    # 3. CHARGER RESOLUTION & AVAILABILITY
+    test_id = "chargemod"
+    logger.info(f"\n[3/5] Testing Charger Discovery & Availability for '{test_id}'...")
+    selected_identity = None
     try:
         from charger_action import charger_action
-        logger.info("\n3. Testing charger_action('availability')...")
         res = charger_action("availability", test_id)
-        logger.info(f"Availability Result: {json.dumps(res, indent=2)}")
-        
-        if "error" in res:
-            logger.error(f"FAILED: charger_action returned error: {res['error']}")
+        if res.get("status") == "multiple":
+            logger.info("SUCCESS: Fuzzy resolution correctly identified multiple options.")
+            options = res.get("options", [])
+            for opt in options:
+                logger.info(f"  - {opt['identity']}: {opt['label']}")
+            # Pick the first one for further testing
+            selected_identity = options[0]["identity"]
+            logger.info(f"Proceeding with specific identity: {selected_identity}")
+            
+            # Re-test availability with specific identity
+            res_v2 = charger_action("availability", selected_identity)
+            if "error" in res_v2:
+                logger.error(f"FAILED: Availability check for {selected_identity}: {res_v2['error']}")
+            else:
+                logger.info(f"SUCCESS: Availability fetched for {selected_identity}")
+                logger.info(f"Message: {res_v2.get('message')}")
         else:
-            logger.info("SUCCESS: charger_action('availability') executed correctly.")
+            logger.info(f"Result: {res.get('status')} - {res.get('message')}")
+            if "error" in res: logger.error(f"Error detail: {res['error']}")
     except Exception as e:
-        logger.error(f"EXCEPTION during charger_action: {e}", exc_info=True)
+        logger.error(f"EXCEPTION in Availability: {e}")
 
-    logger.info("\n" + "=" * 50)
-    logger.info("DIAGNOSTIC COMPLETE")
+    # 4. TARIFF TEST
+    if selected_identity:
+        logger.info(f"\n[4/5] Testing Tariff Fetch for {selected_identity}...")
+        try:
+            res_t = charger_action("tariff", selected_identity)
+            if "error" in res_t:
+                logger.error(f"FAILED: Tariff check: {res_t['error']}")
+            else:
+                logger.info(f"SUCCESS: Tariff Message: {res_t.get('message')}")
+        except Exception as e:
+            logger.error(f"EXCEPTION in Tariff: {e}")
+
+    # 5. START CHARGING FLOW (UP TO OTP)
+    if selected_identity:
+        logger.info(f"\n[5/5] Testing Start Charging Flow (Sequence) for {selected_identity}...")
+        try:
+            # We test the first step of the start flow which should trigger "need_connector" or "need_otp_method"
+            res_s = charger_action("start", selected_identity, customer_mobile=target_phone)
+            logger.info(f"Step 1 (Initial Request) Status: {res_s.get('status')}")
+            logger.info(f"Message: {res_s.get('message')}")
+            
+            if res_s.get("status") == "need_connector":
+                # Simulate selecting Gun 1
+                logger.info("Simulating Gun 1 selection...")
+                res_s2 = charger_action("start", selected_identity, customer_mobile=target_phone, connector_id=1)
+                logger.info(f"Step 2 (Connector Selected) Status: {res_s2.get('status')}")
+                logger.info(f"Message: {res_s2.get('message')}")
+                
+                if res_s2.get("status") == "need_otp_method":
+                    logger.info("SUCCESS: Start sequence correctly reached OTP Method stage.")
+            elif res_s.get("status") == "need_otp_method":
+                logger.info("SUCCESS: Start sequence correctly reached OTP Method stage.")
+            else:
+                logger.warning(f"Flow stopped at unexpected status: {res_s.get('status')}")
+                
+        except Exception as e:
+            logger.error(f"EXCEPTION in Start Flow: {e}")
+
+    logger.info("\n" + "=" * 60)
+    logger.info("FULL DIAGNOSTIC COMPLETE")
 
 if __name__ == "__main__":
-    test_api_connectivity()
+    run_full_diagnostic()
