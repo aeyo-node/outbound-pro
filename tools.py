@@ -151,10 +151,9 @@ class AppointmentTools(llm.ToolContext):
             self.transfer_to_human, self.send_sms_confirmation, self.lookup_contact,
             self.remember_details, self.book_calcom, self.cancel_calcom,
             self.check_charger_status, self.check_wallet_balance,
-            self.start_charging, self.stop_charging,
-            self.remote_start_charger, self.remote_stop_charger,
+            self.start_charging_session, self.stop_charging_session,
         ]
-        force_include = ["remote_start_charger", "remote_stop_charger", "check_wallet_balance", "check_charger_status"]
+        force_include = ["start_charging_session", "stop_charging_session", "check_wallet_balance", "check_charger_status"]
         if not enabled:
             return all_methods
         name_map = {m.__name__: m for m in all_methods}
@@ -232,75 +231,7 @@ class AppointmentTools(llm.ToolContext):
             logger.error(f"Error in check_wallet_balance: {e}")
             return "Error checking balance."
 
-    @llm.function_tool
-    async def start_charging(self, charger_identifier: str) -> str:
-        """DEPRECATED: Use remote_start_charger instead. Starts charging session."""
-        print(f"[*] TOOL CALL: start_charging('{charger_identifier}') for {self.phone_number}")
-        if not _EV_TOOLS_AVAILABLE:
-            return "Remote charging control is currently offline."
-        
-        if not self.phone_number:
-            return "I need your phone number to start the charging session. Could you please provide it?"
-        
-        try:
-            loop = asyncio.get_event_loop()
-            # Identify customer
-            customer, err = await loop.run_in_executor(None, get_customer_info, self.phone_number)
-            if err or not customer:
-                print(f"[*] Customer not found for {self.phone_number}. Error: {err}")
-                return f"I couldn't find a chargeMOD account linked to {self.phone_number}."
-            
-            # Start charging (using BYPASS for OTP as per production plan for voice agents)
-            print(f"[*] Attempting remote start for {charger_identifier} (User: {customer['userId']})")
-            result = await loop.run_in_executor(None, remote_start_with_otp, charger_identifier, customer, "BYPASS")
-            print(f"[*] API result: {result}")
-            
-            if result.get("status") == "success":
-                return f"Done! Charging session has been started successfully. Your remaining balance is Rs. {result.get('balance')}."
-            
-            if result.get("status") == "failed":
-                reason = result.get("reason", "")
-                if reason == "insufficient_balance":
-                    return result.get("message")
-                return f"I couldn't start the charging session. Reason: {result.get('message', 'Unknown error')}"
-            
-            if result.get("status") == "not_found":
-                return f"I couldn't find the charger '{charger_identifier}'."
-                
-            return "I couldn't complete the request. Please ensure your vehicle is plugged in and try again."
-            
-        except Exception as e:
-            logger.error(f"Error in start_charging: {e}")
-            return "I encountered an error while attempting to start the charging session."
-
-    @llm.function_tool
-    async def stop_charging(self, charger_identifier: str) -> str:
-        """DEPRECATED: Use remote_stop_charger instead. Stops charging session."""
-        if not _EV_TOOLS_AVAILABLE:
-            return "Remote charging control is currently offline."
-        
-        if not self.phone_number:
-            return "I need your phone number to verify the active session. Could you please provide it?"
-            
-        try:
-            loop = asyncio.get_event_loop()
-            # Stop charging (using the caller's phone number for confirmation)
-            result = await loop.run_in_executor(None, remote_stop, charger_identifier, self.phone_number)
-            
-            if result.get("status") == "success":
-                return result.get("message", "Charging stopped successfully.")
-            
-            if result.get("status") == "no_active_session":
-                return result.get("message")
-                
-            if result.get("status") == "mobile_mismatch":
-                return "I found an active session, but the mobile number doesn't match your account. Only the person who started the session can stop it."
-            
-            return f"I couldn't stop the charging session. {result.get('message', '')}"
-            
-        except Exception as e:
-            logger.error(f"Error in stop_charging: {e}")
-            return "I encountered an error while attempting to stop the charging session."
+    # Deprecated start_charging and stop_charging removed.
 
     @llm.function_tool
     async def check_availability(self, date: str, time: str) -> str:
@@ -529,27 +460,31 @@ class AppointmentTools(llm.ToolContext):
             return f"Cancellation failed: {exc}"
 
     @llm.function_tool
-    async def remote_start_charger(
+    async def start_charging_session(
         self, 
-        charger_identity: str, 
-        customer_mobile: str,
+        charger_identifier: str, 
+        customer_mobile: Optional[str] = None,
         connector_id: Optional[str] = None,
         otp_method: Optional[str] = None,
         otp_code: Optional[str] = None
     ) -> str:
         """
-        Remote start charging. Multi-step: relay status 'need_connector', 'need_otp_method', or 'otp_sent' to user.
+        Interactive tool to start a charging session. Handles wallet check, connector selection, and OTP.
         
-        charger_identity: Charger ID (e.g. CMOD123)
-        customer_mobile: 10-digit mobile.
-        connector_id: Optional Gun ID.
-        otp_method: 'sms' or 'whatsapp'.
-        otp_code: 4-digit OTP.
+        charger_identifier: Name or ID of the charger (e.g. 'PTC Arcade' or 'CMOD123')
+        customer_mobile: 10-digit mobile. Defaults to caller's number.
+        connector_id: Connector (Gun) ID if known.
+        otp_method: 'sms' or 'whatsapp' for receiving the code.
+        otp_code: 4-digit code provided by the user.
         """
-        print(f"[*] DIRECT TOOL CALL: remote_start_charger('{charger_identity}', '{customer_mobile}')")
+        phone = customer_mobile or self.phone_number
+        print(f"[*] TOOL CALL: start_charging_session('{charger_identifier}', '{phone}')")
         
         if not _EV_TOOLS_AVAILABLE:
             return "EV charging features are currently offline."
+
+        if not phone:
+            return "I need a phone number to start the charging session. Could you please provide yours?"
 
         try:
             loop = asyncio.get_event_loop()
@@ -557,8 +492,8 @@ class AppointmentTools(llm.ToolContext):
                 None, 
                 charger_action, 
                 "start", 
-                charger_identity, 
-                customer_mobile, 
+                charger_identifier, 
+                phone, 
                 connector_id, 
                 None, 
                 otp_method, 
@@ -570,6 +505,9 @@ class AppointmentTools(llm.ToolContext):
             
             if status == "success":
                 return f"Success! {message}"
+            elif status == "multiple":
+                options = ", ".join([o["label"] for o in result.get("options", [])])
+                return f"I found multiple chargers. Did you mean: {options}?"
             elif status == "need_connector":
                 buttons = result.get("buttons", [])
                 opts = ", ".join([f"{b.get('label')} (ID: {b.get('params', {}).get('connector_id')})" for b in buttons])
@@ -581,22 +519,23 @@ class AppointmentTools(llm.ToolContext):
             else:
                 return f"Error: {message}"
         except Exception as e:
-            logger.error(f"Error in remote_start_charger: {e}")
+            logger.error(f"Error in start_charging_session: {e}")
             return f"I encountered an error: {str(e)}"
 
     @llm.function_tool
-    async def remote_stop_charger(
+    async def stop_charging_session(
         self, 
-        charger_identity: str,
+        charger_identifier: str,
         confirmed_mobile: Optional[str] = None
     ) -> str:
         """
-        Remote stop charging. 
+        Interactive tool to stop an active charging session.
         
-        charger_identity: Charger ID.
-        confirmed_mobile: Confirmed 10-digit mobile.
+        charger_identifier: Name or ID of the charger.
+        confirmed_mobile: 10-digit mobile of the person who started the session. Defaults to caller's number.
         """
-        print(f"[*] DIRECT TOOL CALL: remote_stop_charger('{charger_identity}')")
+        phone = confirmed_mobile or self.phone_number
+        print(f"[*] TOOL CALL: stop_charging_session('{charger_identifier}', '{phone}')")
         
         if not _EV_TOOLS_AVAILABLE:
             return "EV charging features are currently offline."
@@ -607,14 +546,14 @@ class AppointmentTools(llm.ToolContext):
                 None, 
                 charger_action, 
                 "stop", 
-                charger_identity, 
+                charger_identifier, 
                 None, 
                 None, 
                 None, 
                 None, 
                 None, 
                 None, 
-                confirmed_mobile
+                phone
             )
             
             status = result.get("status")
@@ -624,8 +563,10 @@ class AppointmentTools(llm.ToolContext):
                 return f"Success! {message}"
             elif status == "verify_mobile":
                 return f"STATUS: verify_mobile. MESSAGE: {message}. Please ask the user to confirm their mobile number before proceeding."
+            elif status == "no_active_session":
+                return f"I couldn't find an active session on that charger. {message}"
             else:
                 return f"Error: {message}"
         except Exception as e:
-            logger.error(f"Error in remote_stop_charger: {e}")
+            logger.error(f"Error in stop_charging_session: {e}")
             return f"I encountered an error: {str(e)}"
