@@ -48,6 +48,7 @@ Context:
 Lead Name: {lead_name}
 Business: {business_name}
 Service: {service_type}
+"""
 
 def build_prompt(lead_name: str, business_name: str, service_type: str, custom_prompt: str = None) -> str:
     """Combines lead info with the system prompt."""
