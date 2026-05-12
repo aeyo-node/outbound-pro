@@ -491,10 +491,18 @@
                 <p class="text-sm text-slate-400 mb-4">This prompt defines the agent's behavior for single calls and campaigns that don't specify a custom profile. Use <code>{lead_name}</code>, <code>{business_name}</code>, and <code>{service_type}</code> as placeholders.</p>
                 
                 <form onsubmit="savePrompt(event)">
-                    <textarea id="system-prompt" rows="20" class="font-mono text-sm leading-relaxed mb-4"></textarea>
+                    <textarea id="system-prompt" rows="20" class="font-mono text-sm leading-relaxed mb-6"></textarea>
                     
+                    <div class="mb-6">
+                        <label class="text-sm text-slate-400 mb-2 block">Global Enabled Tools</label>
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm" id="global-tools-container">
+                            <!-- checkboxes injected here -->
+                        </div>
+                        <p class="text-xs text-slate-500 mt-2">These tools will be available for all calls unless overridden by an Agent Profile.</p>
+                    </div>
+
                     <div class="flex items-center gap-3">
-                        <button type="submit" class="primary" id="btn-save-prompt"><i class="fas fa-save mr-2"></i>Save Global Prompt</button>
+                        <button type="submit" class="primary" id="btn-save-prompt"><i class="fas fa-save mr-2"></i>Save Global Settings</button>
                         <button type="button" class="secondary" onclick="resetPrompt()"><i class="fas fa-undo mr-2"></i>Reset to Default</button>
                     </div>
                 </form>
@@ -794,6 +802,24 @@
             const res = await fetch('/api/prompt');
             const data = await res.json();
             document.getElementById('system-prompt').value = data.prompt;
+            
+            // Render global tools checkboxes
+            const container = document.getElementById('global-tools-container');
+            if (container) {
+                container.innerHTML = availableTools.map(t => `
+                    <label class="flex items-center gap-2 bg-slate-800 p-2 rounded border border-slate-700 cursor-pointer hover:border-blue-500 transition-colors">
+                        <input type="checkbox" value="${t}" class="global-tool-cb w-4 h-4 text-blue-500 bg-slate-900 border-slate-600 rounded mt-0">
+                        <span class="text-slate-300 font-mono text-xs">${t}</span>
+                    </label>
+                `).join('');
+                
+                try {
+                    const enabled = JSON.parse(data.enabled_tools || "[]");
+                    document.querySelectorAll('.global-tool-cb').forEach(cb => {
+                        if (enabled.includes(cb.value)) cb.checked = true;
+                    });
+                } catch(e){}
+            }
         } catch (e) { console.error(e); }
     }
 
@@ -801,8 +827,17 @@
         e.preventDefault();
         try {
             const prompt = document.getElementById('system-prompt').value;
-            await fetch('/api/prompt', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({prompt}) });
-            showToast('System prompt saved');
+            const enabledTools = Array.from(document.querySelectorAll('.global-tool-cb:checked')).map(cb => cb.value);
+            
+            await fetch('/api/prompt', { 
+                method: 'POST', 
+                headers: {'Content-Type': 'application/json'}, 
+                body: JSON.stringify({
+                    prompt,
+                    enabled_tools: JSON.stringify(enabledTools)
+                }) 
+            });
+            showToast('Global prompt and tools saved');
         } catch (e) { showToast('Error saving prompt', 'error'); }
     }
 
@@ -1270,6 +1305,7 @@
     window.onload = () => {
         loadStats();
         loadProfilesForDropdowns();
+        loadPrompt();
         
         // Setup chart polling
         setInterval(() => {
@@ -1287,6 +1323,13 @@
     const originalSwitchTab = switchTab;
     switchTab = (tabId, el) => {
         originalSwitchTab(tabId, el);
+        if (tabId === 'tab-system-prompt') loadPrompt();
+        if (tabId === 'tab-agent-profiles') loadProfiles();
+        if (tabId === 'tab-settings') loadSettings();
+        if (tabId === 'tab-error-logs') loadErrorLogs();
+        if (tabId === 'tab-crm') loadCRM();
+        if (tabId === 'tab-campaigns') loadCampaigns();
+        
         if (window.innerWidth <= 1024) {
             document.getElementById('sidebar').classList.remove('show');
         }

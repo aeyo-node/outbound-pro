@@ -100,6 +100,7 @@ class AgentProfileRequest(BaseModel):
 
 class PromptRequest(BaseModel):
     prompt: str
+    enabled_tools: Optional[str] = None
 
 
 class SettingsRequest(BaseModel):
@@ -249,12 +250,19 @@ async def api_cancel_appointment(appointment_id: str):
 @app.get("/api/prompt")
 async def api_get_prompt():
     saved = await get_setting("system_prompt", "")
-    return {"prompt": saved or DEFAULT_SYSTEM_PROMPT, "is_custom": bool(saved)}
+    tools = await get_setting("ENABLED_TOOLS", "[]")
+    return {
+        "prompt": saved or DEFAULT_SYSTEM_PROMPT, 
+        "is_custom": bool(saved),
+        "enabled_tools": tools
+    }
 
 
 @app.post("/api/prompt")
 async def api_save_prompt(req: PromptRequest):
     await set_setting("system_prompt", req.prompt)
+    if req.enabled_tools is not None:
+        await set_setting("ENABLED_TOOLS", req.enabled_tools)
     return {"status": "saved"}
 
 
