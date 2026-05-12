@@ -1,9 +1,7 @@
-import logging
-import asyncio
-import time
-import os
 import sys
-from typing import Optional
+import json
+import httpx
+from typing import Optional, Dict, Any, List
 from livekit import agents
 from livekit.agents import llm
 from db import (
@@ -37,6 +35,92 @@ async def _log(msg: str, detail: str = "", level: str = "info") -> None:
         pass
 
 
+# ANSI Colors for logging
+C_BLUE = "\033[94m"
+C_CYAN = "\033[96m"
+C_GREEN = "\033[92m"
+C_YELLOW = "\033[93m"
+C_RED = "\033[91m"
+C_BOLD = "\033[1m"
+C_RESET = "\033[0m"
+
+class MCPClient:
+    """A minimal MCP client for SSE transport."""
+    def __init__(self, endpoint: str, username: Optional[str] = None, password: Optional[str] = None):
+        self.endpoint = endpoint
+        self.auth = httpx.BasicAuth(username, password) if username else None
+        self.session_url: Optional[str] = None
+        self.client = httpx.AsyncClient(timeout=30.0)
+
+    async def connect(self):
+        """Initial SSE handshake to get the session URL."""
+        if self.session_url:
+            return
+        
+        print(f"{C_BLUE}[MCP] Connecting to {self.endpoint}...{C_RESET}")
+        # Note: In a real SSE client we would listen for the 'endpoint' event.
+        # For simplicity, we assume the first response or a well-known path.
+        # Most MCP servers provide the session URL in the first event.
+        try:
+            async with self.client.stream("GET", self.endpoint, auth=self.auth) as response:
+                async for line in response.aiter_lines():
+                    if line.startswith("event: endpoint"):
+                        continue
+                    if line.startswith("data: "):
+                        url = line[6:].strip()
+                        if url.startswith("/"):
+                            # Handle relative URLs
+                            base = str(response.url).rstrip("/")
+                            self.session_url = base + url
+                        else:
+                            self.session_url = url
+                        print(f"{C_GREEN}[MCP] Session established: {self.session_url}{C_RESET}")
+                        break
+        except Exception as e:
+            print(f"{C_RED}[MCP] Connection failed: {e}{C_RESET}")
+            # Fallback to standard messages endpoint if handshake fails but we want to try
+            self.session_url = self.endpoint.replace("/sse", "/messages")
+
+    async def call_tool(self, name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
+        """Call a tool via the session URL."""
+        if not self.session_url:
+            await self.connect()
+        
+        payload = {
+            "jsonrpc": "2.0",
+            "method": "tools/call",
+            "params": {
+                "name": name,
+                "arguments": arguments
+            },
+            "id": int(time.time())
+        }
+        
+        print(f"\n{C_CYAN}{C_BOLD}>>> MCP REQUEST [{name}]{C_RESET}")
+        print(f"{C_CYAN}{json.dumps(arguments, indent=2)}{C_RESET}")
+        
+        try:
+            resp = await self.client.post(self.session_url, json=payload, auth=self.auth)
+            result = resp.json()
+            
+            print(f"{C_GREEN}{C_BOLD}<<< MCP RESPONSE [{name}] - {resp.status_code}{C_RESET}")
+            print(f"{C_GREEN}{json.dumps(result, indent=2)}{C_RESET}")
+            
+            if "result" in result:
+                content = result["result"].get("content", [])
+                if content and content[0].get("type") == "text":
+                    # The ChargeMOD server returns JSON inside the text content
+                    try:
+                        return json.loads(content[0]["text"])
+                    except:
+                        return {"status": "error", "message": content[0]["text"]}
+            
+            return result.get("error", {"status": "error", "message": "Unknown error"})
+            
+        except Exception as e:
+            print(f"{C_RED}!!! MCP ERROR: {e}{C_RESET}")
+            return {"status": "error", "message": str(e)}
+
 class AppointmentTools(llm.ToolContext):
     """All function tools available to the appointment-booking agent."""
 
@@ -48,6 +132,11 @@ class AppointmentTools(llm.ToolContext):
         self._sip_domain = os.getenv("VOBIZ_SIP_DOMAIN", "")
         self.recording_url: Optional[str] = None
         self._call_logged = False
+        self.mcp = MCPClient(
+            endpoint="https://mcpserver.cs-api.chargemod.com/sse",
+            username="myuser",
+            password="cmod2019"
+        )
         super().__init__(tools=[])
 
     def build_tool_list(self, enabled: list) -> list:
@@ -58,6 +147,7 @@ class AppointmentTools(llm.ToolContext):
             self.remember_details, self.book_calcom, self.cancel_calcom,
             self.check_charger_status, self.check_wallet_balance,
             self.start_charging, self.stop_charging,
+            self.remote_start_charger, self.remote_stop_charger,
         ]
         if not enabled:
             return all_methods
@@ -474,3 +564,81 @@ class AppointmentTools(llm.ToolContext):
             return f"Cancelled Cal.com booking {booking_uid}."
         except Exception as exc:
             return f"Cancellation failed: {exc}"
+
+    @llm.function_tool
+    async def remote_start_charger(
+        self, 
+        charger_identity: str, 
+        customer_mobile: str,
+        connector_id: Optional[str] = None,
+        otp_method: Optional[str] = None,
+        otp_code: Optional[str] = None
+    ) -> str:
+        """
+        Initiates a remote start sequence via the ChargeMOD MCP server.
+        This is a multi-step process. If the server asks for a connector, OTP method, or OTP code,
+        relay the message to the user and call this tool again with the additional parameters.
+        
+        charger_identity: The charger ID or location name (e.g. CMOD123)
+        customer_mobile: 10-digit mobile number of the user.
+        connector_id: The Gun/Connector ID (if known).
+        otp_method: The chosen OTP delivery method ('sms' or 'whatsapp').
+        otp_code: The 4-digit OTP code provided by the user.
+        """
+        print(f"[*] MCP TOOL CALL: remote_start_charger('{charger_identity}', '{customer_mobile}')")
+        
+        args = {
+            "charger_identity": charger_identity,
+            "customer_mobile": customer_mobile
+        }
+        if connector_id: args["connector_id"] = connector_id
+        if otp_method: args["otp_method"] = otp_method
+        if otp_code: args["otp_code"] = otp_code
+        
+        result = await self.mcp.call_tool("remote_start_charger", args)
+        
+        status = result.get("status")
+        message = result.get("message", "")
+        
+        if status == "success":
+            return f"Success! {message}"
+        elif status == "need_connector":
+            buttons = result.get("buttons", [])
+            opts = ", ".join([f"{b.get('label')} (ID: {b.get('value')})" for b in buttons])
+            return f"STATUS: need_connector. MESSAGE: {message}. OPTIONS: {opts}. Please ask the user which connector they want to use."
+        elif status == "need_otp_method":
+            return f"STATUS: need_otp_method. MESSAGE: {message}. Please ask the user if they prefer SMS or WhatsApp."
+        elif status == "otp_sent":
+            return f"STATUS: otp_sent. MESSAGE: {message}. Please ask the user for the 4-digit OTP code."
+        else:
+            return f"Error: {message}"
+
+    @llm.function_tool
+    async def remote_stop_charger(
+        self, 
+        charger_identity: str,
+        confirmed_mobile: Optional[str] = None
+    ) -> str:
+        """
+        Initiates a remote stop sequence via the ChargeMOD MCP server.
+        The server will check the active session and might ask to verify the mobile number.
+        
+        charger_identity: The charger ID or location name (e.g. CMOD123)
+        confirmed_mobile: The 10-digit mobile number confirmed by the user.
+        """
+        print(f"[*] MCP TOOL CALL: remote_stop_charger('{charger_identity}')")
+        
+        args = {"charger_identity": charger_identity}
+        if confirmed_mobile: args["confirmed_mobile"] = confirmed_mobile
+        
+        result = await self.mcp.call_tool("remote_stop_charger", args)
+        
+        status = result.get("status")
+        message = result.get("message", "")
+        
+        if status == "success":
+            return f"Success! {message}"
+        elif status == "verify_mobile":
+            return f"STATUS: verify_mobile. MESSAGE: {message}. Please ask the user to confirm their mobile number before proceeding."
+        else:
+            return f"Error: {message}"

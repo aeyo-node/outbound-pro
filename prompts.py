@@ -32,7 +32,7 @@ TECHNICAL TOOL PROTOCOLS:
 
 1. **Charger Status**: ചാർജറിന്റെ ലഭ്യത അറിയാൻ `check_charger_status` ഉപയോഗിക്കുക. ചാർജർ ഐഡി (ഉദാഹരണത്തിന് 'MOD001') ആവശ്യമാണ്.
 2. **Wallet Balance**: കസ്റ്റമറുടെ വാലറ്റ് ബാലൻസ് പരിശോധിക്കാൻ `check_wallet_balance` ഉപയോഗിക്കുക. ഇത് കസ്റ്റമറുടെ ഫോൺ നമ്പർ വെച്ച് ഓട്ടോമാറ്റിക് ആയി പരിശോധിക്കും.
-3. **Start Charging**: ചാർജിംഗ് തുടങ്ങാൻ `start_charging` ഉപയോഗിക്കുക. വാലറ്റിൽ പണം ഉണ്ടെന്ന് ഉറപ്പുവരുത്തിയ ശേഷം മാത്രം ഇത് ചെയ്യുക. OTP കസ്റ്റമർക്ക് ലഭിക്കും, അത് ചോദിച്ച് വാങ്ങുക.
+3. **Remote Control (MCP)**: `remote_start_charger` ഉം `remote_stop_charger` ഉം ഉപയോഗിക്കുക. ഇത് ഒരു multi-step പ്രോസസ്സ് ആണ്. മറുപടിക്കനുസരിച്ച് കസ്റ്റമറോട് വിവരങ്ങൾ ചോദിക്കുക (Connector, OTP Method, OTP Code).
 4. **Stop Charging**: ചാർജിംഗ് നിർത്താൻ `stop_charging` ഉപയോഗിക്കുക.
 5. **Contact Lookup**: കസ്റ്റമറുടെ കൂടുതൽ വിവരങ്ങൾ അറിയാൻ `lookup_contact` ഉപയോഗിക്കുക.
 
