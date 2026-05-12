@@ -658,20 +658,33 @@ async def api_chat_test(req: ChatRequest):
         system_prompt = req.system_prompt or await get_setting("system_prompt", DEFAULT_SYSTEM_PROMPT)
         
         # 3. Initialize model with tools
-        # We MUST use a standard SDK model name for the chat tester (1.5-flash is most reliable)
-        model_name = "gemini-1.5-flash"
+        try:
+            model_name = "gemini-1.5-flash"
+            model = genai.GenerativeModel(
+                model_name=model_name,
+                system_instruction=system_prompt,
+                tools=active_tools if active_tools else None
+            )
+            # 4. Convert history to Google format
+            chat = model.start_chat(history=req.history, enable_automatic_function_calling=True)
             
-        model = genai.GenerativeModel(
-            model_name=model_name,
-            system_instruction=system_prompt,
-            tools=active_tools if active_tools else None
-        )
-        
-        # 4. Convert history to Google format
-        chat = model.start_chat(history=req.history, enable_automatic_function_calling=True)
-        
-        # 5. Send message
-        response = chat.send_message(req.message)
+            # 5. Send message
+            response = chat.send_message(req.message)
+        except Exception as e:
+            if "404" in str(e) or "not found" in str(e).lower():
+                # Try to list models to help the user debug
+                available = []
+                try:
+                    for m in genai.list_models():
+                        if "generateContent" in m.supported_generation_methods:
+                            available.append(m.name.replace("models/", ""))
+                except: pass
+                model_list = ", ".join(available[:10])
+                return {
+                    "response": f"Model Error: {str(e)}\n\nAvailable models on your key: {model_list}",
+                    "history": req.history
+                }
+            raise e
         
         new_history = []
         for content in chat.history:
