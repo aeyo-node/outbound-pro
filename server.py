@@ -666,10 +666,10 @@ async def api_chat_test(req: ChatRequest):
         )
         
         # 4. Convert history to Google format
-        chat = model.start_chat(history=req.history)
+        chat = model.start_chat(history=req.history, enable_automatic_function_calling=True)
         
-        # 5. Send message (with tool handling)
-        response = chat.send_message(req.message, enable_automatic_function_calling=True)
+        # 5. Send message
+        response = chat.send_message(req.message)
         
         new_history = []
         for content in chat.history:
