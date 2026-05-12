@@ -48,4 +48,12 @@ Context:
 Lead Name: {lead_name}
 Business: {business_name}
 Service: {service_type}
-"""
+
+def build_prompt(lead_name: str, business_name: str, service_type: str, custom_prompt: str = None) -> str:
+    """Combines lead info with the system prompt."""
+    base = custom_prompt if (custom_prompt and custom_prompt.strip()) else DEFAULT_SYSTEM_PROMPT
+    return base.format(
+        lead_name=lead_name or "there",
+        business_name=business_name or "chargeMOD",
+        service_type=service_type or "EV charging solutions"
+    )
