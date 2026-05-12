@@ -5,7 +5,7 @@ import random
 # Append parent directory to path to import api functions
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from api.RemoteStart import (
+from RemoteStart import (
     get_customer_info, 
     get_wallet_balance, 
     send_otp, 
@@ -16,9 +16,9 @@ from api.RemoteStart import (
     BASE_TTS,
     BASE_LS
 )
-from api.RemoteStop import remote_stop
-from api.chargepoints import fetch_chargepoint_details
-from tools.charger_resolver import resolve_charger as fuzzy_resolve_charger
+from RemoteStop import remote_stop
+from chargepoints import fetch_chargepoint_details
+from chargepoints import resolve_charger as fuzzy_resolve_charger
 
 def charger_action(action, charger_identity, customer_mobile=None, connector_id=None, target_time=None, otp_method=None, otp_code=None, confirm_start=None, confirmed_mobile=None):
     """

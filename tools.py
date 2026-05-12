@@ -24,6 +24,7 @@ if _api_call_path not in sys.path:
 try:
     from chargepoints import resolve_charger, fetch_chargepoint_details
     from RemoteStart import get_wallet_balance as _get_wallet_balance, remote_start_with_otp, remote_stop, get_customer_info
+    from charger_action import charger_action
     _EV_TOOLS_AVAILABLE = True
 except ImportError as e:
     logger.warning(f"EV tools logic not found or incomplete: {e}")
@@ -545,33 +546,43 @@ class AppointmentTools(llm.ToolContext):
         otp_method: 'sms' or 'whatsapp'.
         otp_code: 4-digit OTP.
         """
-        print(f"[*] MCP TOOL CALL: remote_start_charger('{charger_identity}', '{customer_mobile}')")
+        print(f"[*] DIRECT TOOL CALL: remote_start_charger('{charger_identity}', '{customer_mobile}')")
         
-        args = {
-            "charger_identity": charger_identity,
-            "customer_mobile": customer_mobile
-        }
-        if connector_id: args["connector_id"] = connector_id
-        if otp_method: args["otp_method"] = otp_method
-        if otp_code: args["otp_code"] = otp_code
-        
-        result = await self.mcp.call_tool("remote_start_charger", args)
-        
-        status = result.get("status")
-        message = result.get("message", "")
-        
-        if status == "success":
-            return f"Success! {message}"
-        elif status == "need_connector":
-            buttons = result.get("buttons", [])
-            opts = ", ".join([f"{b.get('label')} (ID: {b.get('value')})" for b in buttons])
-            return f"STATUS: need_connector. MESSAGE: {message}. OPTIONS: {opts}. Please ask the user which connector they want to use."
-        elif status == "need_otp_method":
-            return f"STATUS: need_otp_method. MESSAGE: {message}. Please ask the user if they prefer SMS or WhatsApp."
-        elif status == "otp_sent":
-            return f"STATUS: otp_sent. MESSAGE: {message}. Please ask the user for the 4-digit OTP code."
-        else:
-            return f"Error: {message}"
+        if not _EV_TOOLS_AVAILABLE:
+            return "EV charging features are currently offline."
+
+        try:
+            loop = asyncio.get_event_loop()
+            result = await loop.run_in_executor(
+                None, 
+                charger_action, 
+                "start", 
+                charger_identity, 
+                customer_mobile, 
+                connector_id, 
+                None, 
+                otp_method, 
+                otp_code
+            )
+            
+            status = result.get("status")
+            message = result.get("message", "")
+            
+            if status == "success":
+                return f"Success! {message}"
+            elif status == "need_connector":
+                buttons = result.get("buttons", [])
+                opts = ", ".join([f"{b.get('label')} (ID: {b.get('params', {}).get('connector_id')})" for b in buttons])
+                return f"STATUS: need_connector. MESSAGE: {message}. OPTIONS: {opts}. Please ask the user which connector they want to use."
+            elif status == "need_otp_method":
+                return f"STATUS: need_otp_method. MESSAGE: {message}. Please ask the user if they prefer SMS or WhatsApp."
+            elif status == "otp_sent":
+                return f"STATUS: otp_sent. MESSAGE: {message}. Please ask the user for the 4-digit OTP code."
+            else:
+                return f"Error: {message}"
+        except Exception as e:
+            logger.error(f"Error in remote_start_charger: {e}")
+            return f"I encountered an error: {str(e)}"
 
     @llm.function_tool
     async def remote_stop_charger(
@@ -585,19 +596,36 @@ class AppointmentTools(llm.ToolContext):
         charger_identity: Charger ID.
         confirmed_mobile: Confirmed 10-digit mobile.
         """
-        print(f"[*] MCP TOOL CALL: remote_stop_charger('{charger_identity}')")
+        print(f"[*] DIRECT TOOL CALL: remote_stop_charger('{charger_identity}')")
         
-        args = {"charger_identity": charger_identity}
-        if confirmed_mobile: args["confirmed_mobile"] = confirmed_mobile
-        
-        result = await self.mcp.call_tool("remote_stop_charger", args)
-        
-        status = result.get("status")
-        message = result.get("message", "")
-        
-        if status == "success":
-            return f"Success! {message}"
-        elif status == "verify_mobile":
-            return f"STATUS: verify_mobile. MESSAGE: {message}. Please ask the user to confirm their mobile number before proceeding."
-        else:
-            return f"Error: {message}"
+        if not _EV_TOOLS_AVAILABLE:
+            return "EV charging features are currently offline."
+
+        try:
+            loop = asyncio.get_event_loop()
+            result = await loop.run_in_executor(
+                None, 
+                charger_action, 
+                "stop", 
+                charger_identity, 
+                None, 
+                None, 
+                None, 
+                None, 
+                None, 
+                None, 
+                confirmed_mobile
+            )
+            
+            status = result.get("status")
+            message = result.get("message", "")
+            
+            if status == "success":
+                return f"Success! {message}"
+            elif status == "verify_mobile":
+                return f"STATUS: verify_mobile. MESSAGE: {message}. Please ask the user to confirm their mobile number before proceeding."
+            else:
+                return f"Error: {message}"
+        except Exception as e:
+            logger.error(f"Error in remote_stop_charger: {e}")
+            return f"I encountered an error: {str(e)}"
