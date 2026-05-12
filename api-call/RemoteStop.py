@@ -10,10 +10,7 @@ from auth_key import get_auth_token
 env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env")
 load_dotenv(dotenv_path=env_path)
 
-BASE_LS = os.getenv("BASE_LS")
-BASE_TTS = os.getenv("BASE_TTS")
-ORG_ID = os.getenv("ORG_ID", "64b793030dd6bb39c1c3e270")
-PROJECT_ID = os.getenv("PROJECT_ID", "6494141957d29409895704d2")
+# BASE_URL settings are now fetched dynamically inside functions.
 
 def make_request(method, url, **kwargs):
     token = get_auth_token()
@@ -96,7 +93,7 @@ def remote_stop(identifier, confirmed_mobile=None):
     connector_id = charging_connector["id"]
 
     # 2. Fetch active transaction for this charger
-    base_url = os.getenv("BASE_URL", BASE_LS)
+    base_url = os.getenv("BASE_LS", "https://ls.console.chargemod.com")
     if not base_url:
         return {"error": "BASE_URL not configured"}
 
@@ -194,7 +191,7 @@ def remote_stop(identifier, confirmed_mobile=None):
     connection_type = charger_details.get("chargePointConnectionProtocol", "GRIDSCAPE") if charger_details else "GRIDSCAPE"
 
     # 5. Execute Remote Stop
-    stop_url = f"{BASE_TTS}/{identity}/Socket-RemoteStopTransaction"
+    stop_url = f"{os.getenv('BASE_TTS', 'https://tts.console.chargemod.com')}/{identity}/Socket-RemoteStopTransaction"
     stop_payload = {
         "transactionId": tx_id,
         "connectionType": connection_type,

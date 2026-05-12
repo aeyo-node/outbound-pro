@@ -22,7 +22,7 @@ from auth_key import get_auth_token, invalidate_token
 
 # ===== LOAD ENV =====
 load_dotenv()
-BASE_LS = os.getenv("BASE_LS")
+# BASE_LS is now fetched dynamically inside functions.
 
 # Guard check to avoid crashing the agent on import if env isn't fully loaded yet
 def _check_config():
@@ -71,7 +71,7 @@ def fetch_chargepoint_list(identifier, charger_type=None):
     type_param = (charger_type or "").upper()
 
     url = (
-        f"{BASE_LS}/charger/get-chargers/"
+        f"{os.getenv('BASE_LS', 'https://ls.console.chargemod.com')}/charger/get-chargers/"
         f"?organizationId=64b793030dd6bb39c1c3e270"
         f"&projectId=6494141957d29409895704d2"
         f"&skip=0&limit=10"
@@ -258,7 +258,7 @@ def resolve_charger(identifier, charger_type=None):
 # ============================
 def fetch_chargepoint_details(identity):
     url = (
-        f"{BASE_LS}/charger/get-charger-v2/{identity}/"
+        f"{os.getenv('BASE_LS', 'https://ls.console.chargemod.com')}/charger/get-charger-v2/{identity}/"
         f"?organizationId=64b793030dd6bb39c1c3e270"
         f"&projectId=6494141957d29409895704d2"
     )

@@ -7,8 +7,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # ===== CONFIG =====
-USER_EMAIL = os.getenv("USER_EMAIL")
-USER_PASSWORD = os.getenv("USER_PASSWORD")
+# USER_EMAIL and USER_PASSWORD will be read from environment at runtime to support dynamic updates.
 
 import time
 import os
@@ -29,7 +28,13 @@ def invalidate_token():
         os.remove(TOKEN_FILE)
         print("[auth] Token cache invalidated.")
 
-def get_auth_token(email=USER_EMAIL, password=USER_PASSWORD, force_refresh=False):
+def get_auth_token(email=None, password=None, force_refresh=False):
+    # Fetch from environment if not provided explicitly
+    email = email or os.getenv("USER_EMAIL")
+    password = password or os.getenv("USER_PASSWORD")
+    
+    if not email or not password:
+        print("[auth] WARNING: USER_EMAIL or USER_PASSWORD not set in environment.")
     
     if not force_refresh and os.path.exists(TOKEN_FILE):
         try:

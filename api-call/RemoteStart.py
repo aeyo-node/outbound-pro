@@ -11,9 +11,7 @@ from auth_key import get_auth_token, invalidate_token
 env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env")
 load_dotenv(dotenv_path=env_path)
 
-BASE_LS = os.getenv("BASE_LS", "https://ls.console.chargemod.com")
-BASE_TTS = os.getenv("BASE_TTS", "https://tts.console.chargemod.com")
-BASE_AS = os.getenv("BASE_AS", "https://as.console.chargemod.com")  # OTP API
+# BASE_URL settings are now fetched dynamically inside functions to support Supabase-driven updates.
 
 ORG_ID     = "64b793030dd6bb39c1c3e270"
 PROJECT_ID = "6494141957d29409895704d2"
@@ -73,7 +71,7 @@ def get_customer_info(keyword):
     Finds customer details using keyword (name/mobile).
     """
     # Using the 'new' endpoint which is often more stable
-    url = f"{BASE_LS}/customers/get-all-customers-new/"
+    url = f"{os.getenv('BASE_LS', 'https://ls.console.chargemod.com')}/customers/get-all-customers-new/"
     params = {
         "organizationId": ORG_ID,
         "projectId": PROJECT_ID,
@@ -109,7 +107,7 @@ def get_customer_info(keyword):
 # WALLET CHECK
 # ============================
 def get_wallet_balance(user_id):
-    base_url = os.getenv("BASE_URL", BASE_LS)
+    base_url = os.getenv("BASE_LS", "https://ls.console.chargemod.com")
     url = f"{base_url}/wallet/get-wallets"
 
     payload = {
@@ -149,7 +147,7 @@ def get_wallet_balance(user_id):
 # SEND OTP
 # ============================
 def _send_otp_via(mobile, method, otp):
-    url = f"{BASE_AS}/dashboard/customer/otp"
+    url = f"{os.getenv('BASE_AS', 'https://as.console.chargemod.com')}/dashboard/customer/otp"
     payload = {"mobileNumber": mobile, "otpMethod": method}
     if otp is not None:
         payload["otp"] = int(otp)
@@ -168,7 +166,7 @@ def send_otp(mobile, method="sms", otp=None):
 # VERIFY OTP
 # ============================
 def verify_otp(mobile, otp, method="sms"):
-    url = f"{BASE_AS}/dashboard/customer/otp"
+    url = f"{os.getenv('BASE_AS', 'https://as.console.chargemod.com')}/dashboard/customer/otp"
 
     payload = {
         "mobileNumber": mobile,
@@ -256,7 +254,7 @@ def remote_start_with_otp(identifier, user, otp=None, connector_id=None):
                 break
 
     # STEP 5: Start Charging
-    url = f"{BASE_TTS}/{identity}/Socket-RemoteStartTransaction"
+    url = f"{os.getenv('BASE_TTS', 'https://tts.console.chargemod.com')}/{identity}/Socket-RemoteStartTransaction"
 
     payload = {
         "connectorId": connector_id,
@@ -328,7 +326,7 @@ def remote_stop(identifier, confirmed_mobile=None):
     connector_id = charging_connector["id"]
 
     # 2. Fetch active transaction for this charger
-    base_url = os.getenv("BASE_URL")
+    base_url = os.getenv("BASE_LS", "https://ls.console.chargemod.com")
     if not base_url:
         return {"error": "BASE_URL not configured"}
 
@@ -395,7 +393,7 @@ def remote_stop(identifier, confirmed_mobile=None):
     connection_type = charger_details.get("chargePointConnectionProtocol", "GRIDSCAPE") if charger_details else "GRIDSCAPE"
 
     # 5. Execute Remote Stop
-    stop_url = f"{BASE_TTS}/{identity}/Socket-RemoteStopTransaction"
+    stop_url = f"{os.getenv('BASE_TTS', 'https://tts.console.chargemod.com')}/{identity}/Socket-RemoteStopTransaction"
     stop_payload = {
         "transactionId": tx_id,
         "connectionType": connection_type,
