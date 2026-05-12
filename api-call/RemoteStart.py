@@ -3,7 +3,7 @@ import requests
 from datetime import datetime, timedelta, timezone
 from dotenv import load_dotenv
 
-from api.chargepoints import resolve_charger, fetch_chargepoint_details
+from chargepoints import resolve_charger, fetch_chargepoint_details
 from auth_key import get_auth_token, invalidate_token
 
 # ===== ENV =====

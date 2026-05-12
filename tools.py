@@ -1,4 +1,19 @@
+import logging
+import asyncio
+import time
+import os
 import sys
+from typing import Optional
+from livekit import agents
+from livekit.agents import llm
+from db import (
+    log_error, log_call, insert_appointment, check_slot, 
+    get_next_available, get_calls_by_phone, get_appointments_by_phone,
+    add_contact_memory, get_contact_memory, compress_contact_memory
+)
+
+logger = logging.getLogger("appointment-tools")
+
 # Add api-call directory to path for EV tool imports
 _api_call_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "api-call")
 if _api_call_path not in sys.path:
@@ -12,7 +27,7 @@ except ImportError as e:
     logger.warning(f"EV tools logic not found or incomplete: {e}")
     _EV_TOOLS_AVAILABLE = False
 
-logger = logging.getLogger("appointment-tools")
+
 
 
 async def _log(msg: str, detail: str = "", level: str = "info") -> None:
