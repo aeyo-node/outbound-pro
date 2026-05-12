@@ -43,14 +43,14 @@ def load_db_settings_to_env():
 
 def run_targeted_diagnostic():
     logger.info("=" * 60)
-    logger.info("Starting TARGETED ChargeMOD Office Test")
+    logger.info("Starting TARGETED ChargeMOD Office Test (CB1671)")
     logger.info("=" * 60)
     
     load_db_settings_to_env()
     
     # Target Values
     target_phone = "8086477654"
-    search_term = "chargemod corporate office"
+    search_term = "CB1671"
     
     # 1. AUTH TEST
     logger.info("\n[1/4] Testing Authentication...")
@@ -66,7 +66,7 @@ def run_targeted_diagnostic():
         logger.error(f"EXCEPTION in Auth: {e}")
         return
 
-    # 2. DISCOVERY (Targeted)
+    # 2. DISCOVERY
     logger.info(f"\n[2/4] Testing Discovery for '{search_term}'...")
     selected_identity = None
     try:
@@ -76,18 +76,14 @@ def run_targeted_diagnostic():
         if res.get("status") in ["resolved", "multiple"]:
             if res.get("status") == "multiple":
                 options = res.get("options", [])
-                logger.info(f"Found {len(options)} options. Picking the best match...")
-                # Try to find 'HQ' or 'Office' in label
                 best = options[0]
-                for o in options:
-                    if "HQ" in o["label"] or "Office" in o["label"]:
-                        best = o
-                        break
                 selected_identity = best["identity"]
-                logger.info(f"Selected: {best['label']} ({selected_identity})")
+                logger.info(f"Selected from multiple: {best.get('label')} ({selected_identity})")
             else:
-                selected_identity = res["charger"]["identity"]
-                logger.info(f"Resolved to: {res['charger']['label']} ({selected_identity})")
+                charger = res["charger"]
+                selected_identity = charger["identity"]
+                label = charger.get("chargerName") or charger.get("identity")
+                logger.info(f"Resolved to: {label} ({selected_identity})")
         else:
             logger.error(f"FAILED: Could not find charger matching '{search_term}'")
             return
@@ -110,21 +106,27 @@ def run_targeted_diagnostic():
     # 4. START SEQUENCE (To OTP Stage)
     logger.info(f"\n[4/4] Testing Start Sequence for +91{target_phone}...")
     try:
-        # Step 1
+        # Step 1: Initialize Start
+        logger.info(f"Triggering start for {selected_identity}...")
         res_s1 = charger_action("start", selected_identity, customer_mobile=target_phone)
         logger.info(f"Step 1 Status: {res_s1.get('status')} - {res_s1.get('message')}")
         
         if res_s1.get("status") == "need_connector":
-            # Auto-pick Gun 1
-            logger.info("Simulating selection of Gun 1...")
-            res_s2 = charger_action("start", selected_identity, customer_mobile=target_phone, connector_id=1)
-            logger.info(f"Step 2 Status: {res_s2.get('status')} - {res_s2.get('message')}")
-            
-            if res_s2.get("status") == "need_otp_method":
-                logger.info("SUCCESS: Reached OTP Stage!")
-                logger.info("You would now ask: 'Should I send the OTP via SMS or WhatsApp?'")
+            buttons = res_s1.get("buttons", [])
+            if buttons:
+                conn_id = buttons[0].get("params", {}).get("connector_id")
+                logger.info(f"Simulating selection of Connector ID: {conn_id}...")
+                res_s2 = charger_action("start", selected_identity, customer_mobile=target_phone, connector_id=conn_id)
+                logger.info(f"Step 2 Status: {res_s2.get('status')} - {res_s2.get('message')}")
+                
+                if res_s2.get("status") == "need_otp_method":
+                    logger.info("SUCCESS: Reached OTP Selection Stage!")
+            else:
+                logger.error("No connectors available to select.")
         elif res_s1.get("status") == "need_otp_method":
-            logger.info("SUCCESS: Reached OTP Stage!")
+            logger.info("SUCCESS: Reached OTP Selection Stage!")
+        elif res_s1.get("status") == "error":
+            logger.error(f"Start failed: {res_s1.get('message')}")
     except Exception as e:
         logger.error(f"EXCEPTION in Start Sequence: {e}")
 
