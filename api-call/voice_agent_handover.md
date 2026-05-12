@@ -97,4 +97,33 @@ If your platform (e.g. Vapi, Retell, OpenAI Custom Tools) does not natively inge
     "required": ["charger_identity"]
   }
 }
-```
+
+---
+
+## 4. Technical Implementation & Recent Fixes (May 2026)
+
+The following updates have been applied to the production Voice Agent (`agent.py` and `tools.py`) to ensure stability and compatibility with the **Gemini 3.1 Flash Live Preview** model.
+
+### **4.1. Token Optimization (Error 1007 Fix)**
+Gemini Realtime has a strict context window of **8,192 tokens**. To prevent session crashes:
+- **System Prompt:** Condensed from a large multi-paragraph block to a concise directive focusing on core personality and MCP tool usage.
+- **Tool Descriptions:** All 15+ tool descriptions in `tools.py` have been aggressively shortened to 1-2 sentence summaries. This reduced the "context overhead" during session initialization by ~40%.
+- **Greeting Logic:** Replaced the `session.say()` startup method with a manual context injection (`session.agent.chat_ctx.add_message`). This prevents a known TTS startup race condition that was causing "Greeting Trigger Failed" errors.
+
+### **4.2. MCP Client & Tool Forcing**
+- **Transport Layer:** A custom `MCPClient` in `tools.py` handles the SSE/JSON-RPC bridge. It includes built-in retry logic and ANSI-colored logging for request/response tracking.
+- **Forced Tools:** The `build_tool_list` method has been modified to **force-enable** the following tools, bypassing any dynamic database restrictions:
+  - `remote_start_charger`
+  - `remote_stop_charger`
+  - `check_charger_status`
+  - `check_wallet_balance`
+
+### **4.3. Multi-Step State Management**
+The `remote_start_charger` and `check_wallet_balance` tools now accept an optional `customer_mobile` argument. This allows the LLM to pass a phone number gathered verbally mid-conversation, overcoming the limitation where initial call metadata might be missing.
+
+### **4.4. Troubleshooting & Logging**
+- **Console Logs:** Look for `[*] MCP TOOL CALL` and `[*] MCP RESPONSE` in the server logs to track JSON-RPC traffic.
+- **Susanna Greeting:** If the agent remains silent upon pick-up, ensure the `GEMINI_MODEL` env var is correctly set to a Realtime-compatible model. The agent now uses a system message injection as a heartbeat to trigger the first response.
+
+---
+*Document updated: May 12, 2026*
