@@ -1,17 +1,16 @@
-import asyncio
-import logging
-import os
-import time
-from typing import Optional
+import sys
+# Add api-call directory to path for EV tool imports
+_api_call_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "api-call")
+if _api_call_path not in sys.path:
+    sys.path.append(_api_call_path)
 
-from livekit import agents, api
-from livekit.agents import llm
-
-from db import (
-    check_slot, get_next_available, insert_appointment, log_call, log_error,
-    get_calls_by_phone, get_appointments_by_phone,
-    add_contact_memory, get_contact_memory, compress_contact_memory,
-)
+try:
+    from chargepoints import resolve_charger, fetch_chargepoint_details
+    from RemoteStart import get_wallet_balance as _get_wallet_balance, remote_start_with_otp, remote_stop, get_customer_info
+    _EV_TOOLS_AVAILABLE = True
+except ImportError as e:
+    logger.warning(f"EV tools logic not found or incomplete: {e}")
+    _EV_TOOLS_AVAILABLE = False
 
 logger = logging.getLogger("appointment-tools")
 
@@ -42,11 +41,155 @@ class AppointmentTools(llm.ToolContext):
             self.check_availability, self.book_appointment, self.end_call,
             self.transfer_to_human, self.send_sms_confirmation, self.lookup_contact,
             self.remember_details, self.book_calcom, self.cancel_calcom,
+            self.check_charger_status, self.check_wallet_balance,
+            self.start_charging, self.stop_charging,
         ]
         if not enabled:
             return all_methods
         name_map = {m.__name__: m for m in all_methods}
         return [name_map[n] for n in enabled if n in name_map]
+
+    @llm.function_tool
+    async def check_charger_status(self, charger_identifier: str) -> str:
+        """
+        Check the real-time status of an EV charger (e.g. Available, Charging, Finishing, Out of Order).
+        charger_identifier: Name, ID, or Location of the charger (e.g. 'Lulu Mall', 'Kochi Metro').
+        """
+        if not _EV_TOOLS_AVAILABLE:
+            return "EV charging features are currently offline."
+        
+        try:
+            loop = asyncio.get_event_loop()
+            resolved = await loop.run_in_executor(None, resolve_charger, charger_identifier)
+            
+            if resolved["status"] == "not_found":
+                return f"I couldn't find a charger matching '{charger_identifier}'. Could you please double check the name?"
+            
+            if resolved["status"] == "multiple":
+                options = ", ".join([o["label"] for o in resolved["options"]])
+                return f"I found multiple chargers. Did you mean: {options}?"
+            
+            identity = resolved["charger"]["identity"]
+            details = await loop.run_in_executor(None, fetch_chargepoint_details, identity)
+            
+            if not details:
+                return "I found the charger but couldn't retrieve its live status. Please try again in a moment."
+            
+            evses = details.get("evses", [])
+            status_summary = []
+            for evse in evses:
+                status = evse.get("connectorStatus", evse.get("status", "Unknown"))
+                conn_id = evse.get("connectorId", "?")
+                status_summary.append(f"Connector {conn_id} is {status}")
+            
+            name = details.get("chargerName", charger_identifier)
+            return f"Status for {name}: " + ". ".join(status_summary)
+            
+        except Exception as e:
+            logger.error(f"Error in check_charger_status: {e}")
+            return "I encountered a technical error while checking the charger status."
+
+    @llm.function_tool
+    async def check_wallet_balance(self) -> str:
+        """
+        Check the current wallet balance for the user.
+        Uses the caller's phone number to identify the account.
+        """
+        if not _EV_TOOLS_AVAILABLE:
+            return "Wallet features are currently offline."
+        
+        if not self.phone_number:
+            return "I don't have your phone number to check your wallet balance. Could you please provide it?"
+        
+        try:
+            loop = asyncio.get_event_loop()
+            # First find customer ID
+            customer, err = await loop.run_in_executor(None, get_customer_info, self.phone_number)
+            if err or not customer:
+                return f"I couldn't find a chargeMOD account linked to {self.phone_number}."
+            
+            balance, err = await loop.run_in_executor(None, _get_wallet_balance, customer["userId"])
+            if err:
+                return "I couldn't retrieve your balance right now. Please try again later."
+            
+            return f"Your current wallet balance is Rs. {balance}."
+            
+        except Exception as e:
+            logger.error(f"Error in check_wallet_balance: {e}")
+            return "I encountered an error while checking your balance."
+
+    @llm.function_tool
+    async def start_charging(self, charger_identifier: str) -> str:
+        """
+        Start a remote charging session on a specific charger.
+        charger_identifier: Name, ID, or Location of the charger.
+        Note: This tool uses the caller's phone number for authentication.
+        """
+        if not _EV_TOOLS_AVAILABLE:
+            return "Remote charging control is currently offline."
+        
+        if not self.phone_number:
+            return "I need your phone number to start the charging session. Could you please provide it?"
+        
+        try:
+            loop = asyncio.get_event_loop()
+            # Identify customer
+            customer, err = await loop.run_in_executor(None, get_customer_info, self.phone_number)
+            if err or not customer:
+                return f"I couldn't find a chargeMOD account linked to {self.phone_number}."
+            
+            # Start charging (using BYPASS for OTP as per production plan for voice agents)
+            result = await loop.run_in_executor(None, remote_start_with_otp, charger_identifier, customer, "BYPASS")
+            
+            if result.get("status") == "success":
+                return f"Done! Charging session has been started successfully. Your remaining balance is Rs. {result.get('balance')}."
+            
+            if result.get("status") == "failed":
+                reason = result.get("reason", "")
+                if reason == "insufficient_balance":
+                    return result.get("message")
+                return f"I couldn't start the charging session. Reason: {result.get('message', 'Unknown error')}"
+            
+            if result.get("status") == "not_found":
+                return f"I couldn't find the charger '{charger_identifier}'."
+                
+            return "I couldn't complete the request. Please ensure your vehicle is plugged in and try again."
+            
+        except Exception as e:
+            logger.error(f"Error in start_charging: {e}")
+            return "I encountered an error while attempting to start the charging session."
+
+    @llm.function_tool
+    async def stop_charging(self, charger_identifier: str) -> str:
+        """
+        Stop an active remote charging session on a specific charger.
+        charger_identifier: Name, ID, or Location of the charger.
+        """
+        if not _EV_TOOLS_AVAILABLE:
+            return "Remote charging control is currently offline."
+        
+        if not self.phone_number:
+            return "I need your phone number to verify the active session. Could you please provide it?"
+            
+        try:
+            loop = asyncio.get_event_loop()
+            # Stop charging (using the caller's phone number for confirmation)
+            result = await loop.run_in_executor(None, remote_stop, charger_identifier, self.phone_number)
+            
+            if result.get("status") == "success":
+                return result.get("message", "Charging stopped successfully.")
+            
+            if result.get("status") == "no_active_session":
+                return result.get("message")
+                
+            if result.get("status") == "mobile_mismatch":
+                return "I found an active session, but the mobile number doesn't match your account. Only the person who started the session can stop it."
+            
+            return f"I couldn't stop the charging session. {result.get('message', '')}"
+            
+        except Exception as e:
+            logger.error(f"Error in stop_charging: {e}")
+            return "I encountered an error while attempting to stop the charging session."
 
     @llm.function_tool
     async def check_availability(self, date: str, time: str) -> str:

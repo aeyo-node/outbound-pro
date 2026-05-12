@@ -27,15 +27,27 @@
         .badge-info { background-color: rgba(59, 130, 246, 0.2); color: #60a5fa; }
         
         /* Layout */
-        .layout-container { display: flex; height: 100vh; overflow: hidden; }
-        .sidebar { width: 240px; background-color: var(--bg-card); border-right: 1px solid #334155; padding: 1.5rem; flex-shrink: 0; }
-        .main-content { flex-grow: 1; padding: 2rem; max-height: 100vh; overflow-y: auto; }
+        .layout-container { display: flex; height: 100vh; overflow: hidden; position: relative; }
+        .sidebar { width: 240px; background-color: var(--bg-card); border-right: 1px solid #334155; padding: 1.5rem; flex-shrink: 0; transition: transform 0.3s ease; z-index: 40; }
+        .main-content { flex-grow: 1; padding: 2rem; max-height: 100vh; overflow-y: auto; width: 100%; }
+        
+        /* Mobile Specific */
+        .mobile-header { display: none; background-color: var(--bg-card); padding: 1rem; border-bottom: 1px solid #334155; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 30; }
+        
+        @media (max-width: 1024px) {
+            .sidebar { position: absolute; left: 0; top: 0; bottom: 0; transform: translateX(-100%); }
+            .sidebar.show { transform: translateX(0); }
+            .main-content { padding: 1rem; }
+            .mobile-header { display: flex; }
+            .layout-container { flex-direction: column; }
+        }
+
         .nav-item { display: flex; align-items: center; padding: 0.75rem 1rem; color: var(--text-muted); border-radius: 0.5rem; cursor: pointer; margin-bottom: 0.25rem; transition: all 0.2s; }
         .nav-item:hover, .nav-item.active { background-color: #334155; color: white; }
         .nav-item i { margin-right: 0.75rem; width: 20px; text-align: center; }
         
         /* Toast */
-        #toast-container { position: fixed; bottom: 1rem; right: 1rem; z-index: 50; display: flex; flex-direction: column; gap: 0.5rem; }
+        #toast-container { position: fixed; bottom: 1rem; right: 1rem; z-index: 100; display: flex; flex-direction: column; gap: 0.5rem; width: auto; max-width: 90vw; }
         .toast { background-color: var(--bg-card); border: 1px solid #334155; padding: 1rem; border-radius: 0.5rem; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5); display: flex; align-items: center; gap: 0.75rem; transform: translateX(120%); transition: transform 0.3s ease-out; }
         .toast.show { transform: translateX(0); }
         .toast.success i { color: #4ade80; }
@@ -44,14 +56,25 @@
 </head>
 <body>
 
+<div class="mobile-header">
+    <div class="flex items-center gap-3">
+        <div class="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center font-bold text-white"><i class="fas fa-headset text-sm"></i></div>
+        <span class="font-bold">OutboundAI</span>
+    </div>
+    <button onclick="toggleSidebar()" class="p-2 text-slate-400 hover:text-white"><i class="fas fa-bars text-xl"></i></button>
+</div>
+
 <div class="layout-container">
     <!-- Sidebar -->
-    <div class="sidebar flex flex-col">
-        <div class="flex items-center gap-3 mb-8 px-2">
-            <div class="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center font-bold text-white shadow-lg shadow-blue-500/50">
-                <i class="fas fa-headset text-sm"></i>
+    <div class="sidebar flex flex-col" id="sidebar">
+        <div class="flex justify-between items-center mb-8 px-2">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center font-bold text-white shadow-lg shadow-blue-500/50">
+                    <i class="fas fa-headset text-sm"></i>
+                </div>
+                <h1 class="font-bold text-xl tracking-tight">OutboundAI</h1>
             </div>
-            <h1 class="font-bold text-xl tracking-tight">OutboundAI</h1>
+            <button onclick="toggleSidebar()" class="lg:hidden text-slate-400"><i class="fas fa-times"></i></button>
         </div>
 
         <nav class="flex-grow space-y-1">
@@ -564,7 +587,8 @@
     const availableTools = [
         "check_availability", "book_appointment", "end_call", 
         "transfer_to_human", "send_sms_confirmation", "lookup_contact", 
-        "remember_details", "book_calcom", "cancel_calcom"
+        "remember_details", "book_calcom", "cancel_calcom",
+        "check_charger_status", "check_wallet_balance", "start_charging", "stop_charging"
     ];
 
     // --- UI Utils ---
@@ -1254,6 +1278,18 @@
             if(document.getElementById('tab-call-logs').classList.contains('active')) loadCallLogs();
             if(document.getElementById('tab-system-logs').classList.contains('active')) loadSystemLogs();
         }, 5000);
+    };
+    function toggleSidebar() {
+        document.getElementById('sidebar').classList.toggle('show');
+    }
+
+    // Wrap navigation switch to close sidebar on mobile
+    const originalSwitchTab = switchTab;
+    switchTab = (tabId, el) => {
+        originalSwitchTab(tabId, el);
+        if (window.innerWidth <= 1024) {
+            document.getElementById('sidebar').classList.remove('show');
+        }
     };
 </script>
 
