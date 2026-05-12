@@ -658,9 +658,8 @@ async def api_chat_test(req: ChatRequest):
         system_prompt = req.system_prompt or await get_setting("system_prompt", DEFAULT_SYSTEM_PROMPT)
         
         # 3. Initialize model with tools
-        # Note: We use a standard Gemini model here, not the Realtime one, for easier sync chat
         model = genai.GenerativeModel(
-            model_name="gemini-2.0-flash",
+            model_name="gemini-2.0-flash-exp",
             system_instruction=system_prompt,
             tools=active_tools if active_tools else None
         )
