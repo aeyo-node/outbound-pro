@@ -484,28 +484,70 @@
             </div>
         </div>
 
-        <!-- System Prompt Tab -->
         <div id="tab-system-prompt" class="tab-content">
-            <h2 class="text-2xl font-bold mb-6">Default System Prompt</h2>
-            <div class="card p-6 max-w-4xl">
-                <p class="text-sm text-slate-400 mb-4">This prompt defines the agent's behavior for single calls and campaigns that don't specify a custom profile. Use <code>{lead_name}</code>, <code>{business_name}</code>, and <code>{service_type}</code> as placeholders.</p>
-                
-                <form onsubmit="savePrompt(event)">
-                    <textarea id="system-prompt" rows="20" class="font-mono text-sm leading-relaxed mb-6"></textarea>
-                    
-                    <div class="mb-6">
-                        <label class="text-sm text-slate-400 mb-2 block">Global Enabled Tools</label>
-                        <div class="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm" id="global-tools-container">
-                            <!-- checkboxes injected here -->
-                        </div>
-                        <p class="text-xs text-slate-500 mt-2">These tools will be available for all calls unless overridden by an Agent Profile.</p>
-                    </div>
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold">Default System Prompt</h2>
+                <div class="badge bg-purple-500/10 text-purple-400 border border-purple-500/20 px-3 py-1 rounded-full text-xs font-medium">Susanna Persona</div>
+            </div>
 
-                    <div class="flex items-center gap-3">
-                        <button type="submit" class="primary" id="btn-save-prompt"><i class="fas fa-save mr-2"></i>Save Global Settings</button>
-                        <button type="button" class="secondary" onclick="resetPrompt()"><i class="fas fa-undo mr-2"></i>Reset to Default</button>
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <!-- Left: Prompt Editor (8 columns) -->
+                <div class="lg:col-span-7">
+                    <div class="card p-6">
+                        <p class="text-sm text-slate-400 mb-4">This prompt defines the agent's behavior for single calls and campaigns that don't specify a custom profile. Use <code>{lead_name}</code>, <code>{business_name}</code>, and <code>{service_type}</code> as placeholders.</p>
+                        
+                        <form onsubmit="savePrompt(event)">
+                            <textarea id="system-prompt" rows="20" class="font-mono text-sm leading-relaxed mb-6"></textarea>
+                            
+                            <div class="mb-6">
+                                <label class="text-sm text-slate-400 mb-2 block">Global Enabled Tools</label>
+                                <div class="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm" id="global-tools-container">
+                                    <!-- checkboxes injected here -->
+                                </div>
+                                <p class="text-xs text-slate-500 mt-2">These tools will be available for all calls unless overridden by an Agent Profile.</p>
+                            </div>
+
+                            <div class="flex items-center gap-3">
+                                <button type="submit" class="primary" id="btn-save-prompt"><i class="fas fa-save mr-2"></i>Save Global Settings</button>
+                                <button type="button" class="secondary" onclick="resetPrompt()"><i class="fas fa-undo mr-2"></i>Reset to Default</button>
+                            </div>
+                        </form>
                     </div>
-                </form>
+                </div>
+
+                <!-- Right: Chat Tester (5 columns) -->
+                <div class="lg:col-span-5">
+                    <div class="card p-6 flex flex-col h-[750px] border-blue-500/20 bg-blue-500/[0.02]">
+                        <h3 class="text-lg font-bold mb-1 flex items-center gap-2">
+                            <i class="fas fa-comments text-blue-400"></i> Simulated Chat Tester
+                        </h3>
+                        <p class="text-xs text-slate-400 mb-4 border-b border-slate-700/50 pb-4">Test your prompt and tools in real-time. This uses the <code>gemini-2.0-flash</code> model to simulate a text conversation.</p>
+                        
+                        <div id="chat-messages" class="flex-1 overflow-y-auto mb-4 space-y-4 p-4 bg-slate-900/80 rounded-xl border border-slate-700/50 scroll-smooth">
+                            <div class="flex flex-col items-center justify-center h-full text-slate-500 text-center px-6">
+                                <div class="w-12 h-12 rounded-full bg-slate-800 flex items-center justify-center mb-3">
+                                    <i class="fas fa-robot text-xl opacity-50"></i>
+                                </div>
+                                <p class="text-sm">Start a conversation to test how Susanna uses her tools and prompt instructions.</p>
+                                <p class="text-[10px] mt-2 text-slate-600">Tip: Try asking "Check the status of Lulu Mall charger"</p>
+                            </div>
+                        </div>
+                        
+                        <div class="relative">
+                            <input type="text" id="chat-input" placeholder="Say something to Susanna..." 
+                                class="w-full bg-slate-800 border-slate-600 pr-24 py-3 rounded-xl focus:ring-blue-500/50" 
+                                onkeypress="if(event.key==='Enter') sendChat()">
+                            <button class="absolute right-2 top-1.5 primary px-4 py-1.5 text-xs rounded-lg h-9 shadow-lg shadow-blue-500/20" 
+                                onclick="sendChat()" id="btn-send-chat">Send <i class="fas fa-paper-plane ml-1"></i></button>
+                        </div>
+                        <div class="flex justify-between items-center mt-2 px-1">
+                            <button class="text-[10px] text-slate-500 hover:text-slate-300 transition-colors" onclick="clearChat()">
+                                <i class="fas fa-trash-alt mr-1"></i> Clear History
+                            </button>
+                            <span class="text-[10px] text-slate-600" id="chat-status">Ready</span>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -847,9 +889,104 @@
             const res = await fetch('/api/prompt', { method: 'DELETE' });
             const data = await res.json();
             document.getElementById('system-prompt').value = data.prompt;
-            showToast('Reset to default');
+            showToast('Reset to default prompt');
         } catch (e) { showToast('Error resetting', 'error'); }
     }
+
+    // ── Chat Simulation ──────────────────────────────────────────────────
+    let chatHistory = [];
+
+    async function sendChat() {
+        const input = document.getElementById('chat-input');
+        const message = input.value.trim();
+        if (!message) return;
+
+        const chatMessages = document.getElementById('chat-messages');
+        const btn = document.getElementById('btn-send-chat');
+        const status = document.getElementById('chat-status');
+
+        // Add user message to UI
+        addChatMessage('user', message);
+        input.value = '';
+        
+        btn.disabled = true;
+        status.innerText = 'Thinking...';
+        status.classList.add('animate-pulse', 'text-blue-400');
+
+        try {
+            // Get current state to test with
+            const prompt = document.getElementById('system-prompt').value;
+            const checkboxes = document.querySelectorAll('#global-tools-container input[type="checkbox"]');
+            const enabledTools = Array.from(checkboxes)
+                .filter(c => c.checked)
+                .map(c => c.value);
+
+            const resp = await fetch('/api/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    message: message,
+                    history: chatHistory,
+                    system_prompt: prompt,
+                    enabled_tools: JSON.stringify(enabledTools)
+                })
+            });
+
+            const data = await resp.json();
+            
+            // Update history and UI
+            if (data.history) chatHistory = data.history;
+            addChatMessage('ai', data.response);
+            
+        } catch (err) {
+            addChatMessage('ai', 'Error: ' + err.message);
+        } finally {
+            btn.disabled = false;
+            status.innerText = 'Ready';
+            status.classList.remove('animate-pulse', 'text-blue-400');
+        }
+    }
+
+    function addChatMessage(role, text) {
+        const container = document.getElementById('chat-messages');
+        
+        // Clear empty state if first message
+        if (container.querySelector('.text-slate-500')) {
+            container.innerHTML = '';
+        }
+
+        const div = document.createElement('div');
+        div.className = `flex ${role === 'user' ? 'justify-end' : 'justify-start'}`;
+        
+        const bubble = document.createElement('div');
+        bubble.className = `max-w-[85%] rounded-2xl px-4 py-2 text-sm ${
+            role === 'user' 
+            ? 'bg-blue-600 text-white rounded-tr-none' 
+            : 'bg-slate-800 text-slate-200 border border-slate-700 rounded-tl-none'
+        }`;
+        
+        // Handle markdown-ish bolding
+        bubble.innerText = text;
+        
+        div.appendChild(bubble);
+        container.appendChild(div);
+        container.scrollTop = container.scrollHeight;
+    }
+
+    function clearChat() {
+        chatHistory = [];
+        document.getElementById('chat-messages').innerHTML = `
+            <div class="flex flex-col items-center justify-center h-full text-slate-500 text-center px-6">
+                <div class="w-12 h-12 rounded-full bg-slate-800 flex items-center justify-center mb-3">
+                    <i class="fas fa-robot text-xl opacity-50"></i>
+                </div>
+                <p class="text-sm">Chat history cleared. Ready to test again.</p>
+            </div>
+        `;
+        document.getElementById('chat-status').innerText = 'Ready';
+    }
+
+    // ── Tab Navigation ──────────────────────────────────────────────────
 
     // 6. Settings
     async function loadSettings() {

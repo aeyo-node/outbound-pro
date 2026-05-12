@@ -111,6 +111,14 @@ class NotesRequest(BaseModel):
     notes: str
 
 
+class ChatRequest(BaseModel):
+    message: str
+    history: list = []
+    system_prompt: Optional[str] = None
+    enabled_tools: Optional[str] = None
+    phone_number: Optional[str] = "+919876543210"
+
+
 class CampaignRequest(BaseModel):
     name: str
     contacts: list
@@ -610,3 +618,72 @@ async def api_update_campaign_status(campaign_id: str, req: StatusRequest):
         if campaign and campaign.get("schedule_type") in ("daily", "weekdays"):
             _schedule_campaign(campaign_id, campaign["schedule_type"], campaign.get("schedule_time", "09:00"))
     return {"status": req.status}
+
+
+# ── Chat Simulation (Testing) ──────────────────────────────────────────────────
+
+@app.post("/api/chat")
+async def api_chat_test(req: ChatRequest):
+    api_key = await eff("GOOGLE_API_KEY")
+    if not api_key:
+        raise HTTPException(400, "GOOGLE_API_KEY not configured.")
+
+    try:
+        import google.generativeai as genai
+        from tools import AppointmentTools
+        from db import get_enabled_tools
+        
+        genai.configure(api_key=api_key)
+        
+        # 1. Resolve tools
+        enabled = req.enabled_tools
+        if enabled is None:
+             enabled = await get_setting("ENABLED_TOOLS", "[]")
+        
+        try:
+            enabled_list = json.loads(enabled)
+        except:
+            enabled_list = []
+            
+        # Mock a JobContext for AppointmentTools
+        class MockJobContext:
+            def __init__(self):
+                self.room = type('Room', (), {'name': 'chat-test', 'remote_participants': {}})
+                self.api = None
+        
+        tool_ctx = AppointmentTools(MockJobContext(), phone_number=req.phone_number)
+        active_tools = tool_ctx.build_tool_list(enabled_list)
+        
+        # 2. Build system prompt
+        system_prompt = req.system_prompt or await get_setting("system_prompt", DEFAULT_SYSTEM_PROMPT)
+        
+        # 3. Initialize model with tools
+        # Note: We use a standard Gemini model here, not the Realtime one, for easier sync chat
+        model = genai.GenerativeModel(
+            model_name="gemini-2.0-flash",
+            system_instruction=system_prompt,
+            tools=active_tools if active_tools else None
+        )
+        
+        # 4. Convert history to Google format
+        chat = model.start_chat(history=req.history)
+        
+        # 5. Send message (with tool handling)
+        response = chat.send_message(req.message, enable_automatic_function_calling=True)
+        
+        new_history = []
+        for content in chat.history:
+            parts = []
+            for part in content.parts:
+                if hasattr(part, 'text'): parts.append({'text': part.text})
+                # Function calls/results are complex to serialize back to the UI simply, 
+                # but for testing the 'text' is what matters most to the user.
+            new_history.append({'role': content.role, 'parts': parts})
+
+        return {
+            "response": response.text,
+            "history": new_history
+        }
+    except Exception as exc:
+        logger.error("Chat test error: %s", exc)
+        return {"response": f"Error: {str(exc)}", "history": req.history}
