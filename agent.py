@@ -376,20 +376,20 @@ async def entrypoint(ctx: agents.JobContext) -> None:
                 await _log("warning", f"Recording start failed (non-fatal): {_exc}")
 
     # ── Greeting ─────────────────────────────────────────────────────────────
-    # gemini-2.0 native-audio speak autonomously from system prompt.
-    # generate_reply() is blocked by the plugin for these models — skip entirely.
-    _active_model = os.getenv("GEMINI_MODEL", "")
-    if "3.1" in _active_model or "2.5" in _active_model or "2.0" in _active_model:
-        await _log("info", "Gemini native-audio model: will greet autonomously from system prompt")
-    else:
-        greeting = (
-            f"The call just connected. Greet the lead and ask if you're speaking with {lead_name}."
-            if phone_number else "Greet the caller warmly."
-        )
+    greeting = (
+        f"The call just connected. Greet the lead and ask if you're speaking with {lead_name}."
+        if phone_number else "Greet the caller warmly and ask how you can help."
+    )
+    try:
+        await session.generate_reply(instructions=greeting)
+    except Exception as _gr_exc:
+        await _log("warning", f"generate_reply not supported: {_gr_exc}")
+        # Fallback for models that don't support generate_reply: push a user message
         try:
-            await session.generate_reply(instructions=greeting)
-        except Exception as _gr_exc:
-            await _log("warning", f"generate_reply not supported: {_gr_exc}")
+            if hasattr(session, "chat_ctx"):
+                session.chat_ctx.add_message(role="user", text="[The call just connected. Please greet the caller.]")
+        except Exception:
+            pass
 
     # ── Keep session alive until SIP participant leaves ───────────────────────
     # Without this the entrypoint returns and the worker spins down.
