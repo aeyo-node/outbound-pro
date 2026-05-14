@@ -11,7 +11,8 @@ from livekit.agents import llm
 from db import (
     log_error, log_call, insert_appointment, check_slot, 
     get_next_available, get_calls_by_phone, get_appointments_by_phone,
-    add_contact_memory, get_contact_memory, compress_contact_memory
+    add_contact_memory, get_contact_memory, compress_contact_memory,
+    log_transaction
 )
 
 logger = logging.getLogger("appointment-tools")
@@ -560,6 +561,17 @@ class AppointmentTools(llm.ToolContext):
             message = result.get("message", "")
             
             if status == "success":
+                tx_details = result.get("tx_details", {})
+                if tx_details:
+                    asyncio.create_task(log_transaction(
+                        charger_identity=charger_identifier,
+                        charger_name=tx_details.get("charger_name", charger_identifier),
+                        user_name=tx_details.get("user", "Unknown"),
+                        phone=tx_details.get("mobile", phone),
+                        start_time=tx_details.get("start_time", ""),
+                        energy_kwh=tx_details.get("energy_kwh", "0"),
+                        amount=tx_details.get("amount", "0")
+                    ))
                 return f"Success! {message}"
             elif status == "verify_mobile":
                 return f"STATUS: verify_mobile. MESSAGE: {message}. Please ask the user to confirm their mobile number before proceeding."

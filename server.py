@@ -31,7 +31,7 @@ from db import (
     delete_agent_profile, set_default_agent_profile, get_calls_by_phone, get_campaign,
     get_contacts, get_errors, get_logs, get_setting, get_stats, init_db, log_error,
     save_settings, set_setting, update_call_notes, update_campaign_run_stats,
-    update_campaign_status,
+    update_campaign_status, get_all_transactions, get_incoming_calls, log_incoming_call
 )
 from prompts import DEFAULT_SYSTEM_PROMPT
 
@@ -229,6 +229,41 @@ async def api_update_notes(call_id: str, req: NotesRequest):
     if not ok:
         raise HTTPException(404, "Call not found")
     return {"status": "updated"}
+
+@app.get("/api/transactions")
+async def api_get_transactions(limit: int = 50):
+    return await get_all_transactions(limit=limit)
+
+@app.get("/api/incoming_calls")
+async def api_get_incoming_calls(limit: int = 50):
+    return await get_incoming_calls(limit=limit)
+
+@app.post("/api/webhook")
+async def livekit_webhook(request: Request):
+    """Webhook to receive LiveKit events, such as inbound calls."""
+    try:
+        body = await request.body()
+        data = json.loads(body.decode("utf-8"))
+        event_type = data.get("event")
+        
+        # When a SIP call comes in, LiveKit sends various events.
+        # Let's log 'participant_joined' if it's a SIP participant, or 'sip_inbound_call'.
+        if event_type == "sip_inbound_call":
+            phone = data.get("sip_call", {}).get("from_uri", "Unknown")
+            await log_incoming_call(phone=phone, status="received")
+            await log_error("webhook", f"Inbound SIP Call from {phone}", json.dumps(data), "info")
+            
+        elif event_type == "participant_joined":
+            # Just another way to track if we miss sip_inbound_call
+            participant = data.get("participant", {})
+            if "sip" in participant.get("identity", ""):
+                phone = participant.get("name", participant.get("identity", "Unknown"))
+                await log_incoming_call(phone=phone, status="joined_room")
+                
+        return {"status": "ok"}
+    except Exception as e:
+        logger.error(f"Webhook error: {e}")
+        return {"status": "error", "message": str(e)}
 
 
 # ── Stats ─────────────────────────────────────────────────────────────────────

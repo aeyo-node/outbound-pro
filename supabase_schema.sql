@@ -88,3 +88,28 @@ CREATE TABLE IF NOT EXISTS agent_profiles (
     created_at TEXT NOT NULL
 );
 ALTER TABLE agent_profiles DISABLE ROW LEVEL SECURITY;
+
+CREATE TABLE IF NOT EXISTS transactions (
+    id TEXT PRIMARY KEY,
+    charger_identity TEXT NOT NULL,
+    charger_name TEXT,
+    user_name TEXT,
+    phone TEXT,
+    start_time TEXT,
+    stop_time TEXT,
+    energy_kwh TEXT,
+    amount TEXT,
+    status TEXT NOT NULL DEFAULT 'completed',
+    created_at TEXT NOT NULL
+);
+ALTER TABLE transactions DISABLE ROW LEVEL SECURITY;
+
+CREATE TABLE IF NOT EXISTS incoming_calls (
+    id TEXT PRIMARY KEY,
+    phone_number TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'received',
+    duration_seconds INTEGER DEFAULT 0,
+    recording_url TEXT,
+    timestamp TEXT NOT NULL
+);
+ALTER TABLE incoming_calls DISABLE ROW LEVEL SECURITY;

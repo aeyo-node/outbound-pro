@@ -212,7 +212,15 @@ def remote_stop(identifier, confirmed_mobile=None):
     return {
         "status": "success",
         "message": f"Charging stopped for {tx_user} on connector {connector_id}.",
-        "transactionId": tx_id
+        "transactionId": tx_id,
+        "tx_details": {
+            "user": tx_user,
+            "mobile": tx_mobile,
+            "energy_kwh": active_tx.get("usedEnergy") if active_tx else None,
+            "start_time": active_tx.get("startAt") if active_tx else None,
+            "amount": active_tx.get("currentUsedAmount") if active_tx else None,
+            "charger_name": charger_details.get("chargerName", identity) if charger_details else identity
+        }
     }
 
 

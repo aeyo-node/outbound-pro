@@ -474,3 +474,51 @@ async def set_default_agent_profile(profile_id: str) -> None:
     db = await _adb()
     await db.table("agent_profiles").update({"is_default": 0}).neq("id", "placeholder").execute()
     await db.table("agent_profiles").update({"is_default": 1}).eq("id", profile_id).execute()
+
+# ── Transactions ──────────────────────────────────────────────────────────────
+
+async def log_transaction(charger_identity: str, charger_name: str, user_name: str, phone: str, start_time: str, energy_kwh: str, amount: str) -> None:
+    db = await _adb()
+    try:
+        await db.table("transactions").insert({
+            "id": str(uuid.uuid4()),
+            "charger_identity": charger_identity,
+            "charger_name": charger_name,
+            "user_name": user_name,
+            "phone": phone,
+            "start_time": start_time,
+            "stop_time": datetime.now().isoformat(),
+            "energy_kwh": str(energy_kwh) if energy_kwh is not None else "0",
+            "amount": str(amount) if amount is not None else "0",
+            "status": "completed",
+            "created_at": datetime.now().isoformat()
+        }).execute()
+    except Exception as e:
+        print(f"Error logging transaction: {e}")
+
+async def get_all_transactions(limit: int = 50) -> list:
+    db = await _adb()
+    result = await db.table("transactions").select("*").order("created_at", desc=True).limit(limit).execute()
+    return result.data or []
+
+# ── Incoming Calls ────────────────────────────────────────────────────────────
+
+async def log_incoming_call(phone: str, status: str = "received", duration: int = 0) -> str:
+    call_id = str(uuid.uuid4())
+    db = await _adb()
+    try:
+        await db.table("incoming_calls").insert({
+            "id": call_id,
+            "phone_number": phone,
+            "status": status,
+            "duration_seconds": duration,
+            "timestamp": datetime.now().isoformat()
+        }).execute()
+    except Exception as e:
+        print(f"Error logging incoming call: {e}")
+    return call_id
+
+async def get_incoming_calls(limit: int = 50) -> list:
+    db = await _adb()
+    result = await db.table("incoming_calls").select("*").order("timestamp", desc=True).limit(limit).execute()
+    return result.data or []
