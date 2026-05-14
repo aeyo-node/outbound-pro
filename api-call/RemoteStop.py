@@ -11,7 +11,8 @@ env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__
 load_dotenv(dotenv_path=env_path)
 
 # BASE_URL settings are now fetched dynamically inside functions.
-
+ORG_ID = "64b793030dd6bb39c1c3e270"
+PROJECT_ID = "6494141957d29409895704d2"
 def make_request(method, url, **kwargs):
     token = get_auth_token()
     headers = kwargs.pop("headers", {})
