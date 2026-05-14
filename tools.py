@@ -565,6 +565,10 @@ class AppointmentTools(llm.ToolContext):
                 return f"STATUS: verify_mobile. MESSAGE: {message}. Please ask the user to confirm their mobile number before proceeding."
             elif status == "no_active_session":
                 return f"I couldn't find an active session on that charger. {message}"
+            elif status == "mobile_mismatch":
+                return f"STATUS: mobile_mismatch. MESSAGE: {message}. Please inform the user."
+            elif status == "unavailable":
+                return f"STATUS: unavailable. MESSAGE: {message}. Please inform the user."
             else:
                 return f"Error: {message}"
         except Exception as e:
