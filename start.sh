@@ -2,7 +2,7 @@
 set -e
 cd "$(dirname "$0")"
 
-echo "🚀 Starting OutboundAI..."
+echo "🚀 Starting Swaram AI Platform..."
 
 if [ -f ".env" ]; then
     export $(cat .env | grep -v '^#' | grep -v '^$' | xargs)
@@ -10,18 +10,36 @@ fi
 
 echo "📋 Configuration:"
 echo "   LiveKit:   ${LIVEKIT_URL}"
-echo "   Gemini:    ${GEMINI_MODEL:-gemini-3.1-flash-live-preview}"
 echo "   Supabase:  ${SUPABASE_URL}"
 echo "   Voice:     ${GEMINI_TTS_VOICE:-Aoede}"
 
+# Next.js proxy target — inside Docker both run in same container
+export BACKEND_URL="http://localhost:8000"
+
 echo ""
-echo "🌐 Starting FastAPI server on port 8000..."
+echo "🌐 Starting FastAPI backend on port 8000..."
 uvicorn server:app --host 0.0.0.0 --port 8000 &
 SERVER_PID=$!
 
+echo "🎨 Starting Next.js dashboard on port 3000..."
+cd swaram-dashboard
+npx next start -p 3000 &
+NEXT_PID=$!
+cd ..
+
 sleep 2
 
-echo "🤖 Starting LiveKit Gemini Live agent worker..."
-python agent.py start
+echo "🤖 Starting LiveKit AI agent worker..."
+python agent.py start &
+AGENT_PID=$!
 
-kill $SERVER_PID 2>/dev/null || true
+echo ""
+echo "✅ All services running:"
+echo "   → Dashboard:  http://localhost:3000"
+echo "   → Backend:    http://localhost:8000"
+echo "   → Agent:      LiveKit worker active"
+echo ""
+
+# Wait for any process to exit, then kill all
+wait -n $SERVER_PID $NEXT_PID $AGENT_PID
+kill $SERVER_PID $NEXT_PID $AGENT_PID 2>/dev/null || true

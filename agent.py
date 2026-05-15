@@ -73,8 +73,21 @@ def load_db_settings_to_env() -> None:
         result = client.table("settings").select("key, value").execute()
         for row in (result.data or []):
             if row.get("value"):
-                # Always override so UI changes take effect immediately
-                os.environ[row["key"]] = row["value"].strip()
+                val = row["value"].strip()
+                # Defensive: if the value is a stringified JSON object (common corruption symptom),
+                # try to unwrap it until we hit a real string.
+                import ast
+                try:
+                    while val.startswith("{") and "value" in val:
+                        parsed = ast.literal_eval(val)
+                        if isinstance(parsed, dict) and "value" in parsed:
+                            val = str(parsed["value"]).strip()
+                        else:
+                            break
+                except:
+                    pass
+                
+                os.environ[row["key"]] = val
     except Exception as exc:
         logger.warning("Could not load settings from Supabase: %s", exc)
 

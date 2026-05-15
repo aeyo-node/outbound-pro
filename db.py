@@ -103,11 +103,18 @@ async def get_all_settings() -> dict:
 async def save_settings(data: dict) -> None:
     db = await _adb()
     updated_at = datetime.now().isoformat()
-    rows = [
-        {"key": k, "value": str(v), "updated_at": updated_at}
-        for k, v in data.items()
-        if v is not None and v != ""
-    ]
+    rows = []
+    for k, v in data.items():
+        if v is None or v == "": continue
+        
+        # If the UI accidentally sends back the {value, configured} object, 
+        # extract the value string before saving.
+        val_str = v
+        if isinstance(v, dict) and "value" in v:
+            val_str = v["value"]
+        
+        rows.append({"key": k, "value": str(val_str), "updated_at": updated_at})
+    
     if rows:
         await db.table("settings").upsert(rows, on_conflict="key").execute()
 
@@ -120,7 +127,15 @@ async def get_setting(key: str, default: str = "") -> str:
         db = await _adb()
         result = await db.table("settings").select("value").eq("key", key).maybe_single().execute()
         if result and result.data:
-            return result.data["value"]
+            val = result.data["value"]
+            if val and val.startswith("{") and "value" in val:
+                import ast
+                try:
+                    parsed = ast.literal_eval(val)
+                    if isinstance(parsed, dict) and "value" in parsed:
+                        return str(parsed["value"])
+                except: pass
+            return val
     except Exception as exc:
         pass
     return DEFAULTS.get(key) or default
