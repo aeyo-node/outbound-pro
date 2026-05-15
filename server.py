@@ -46,6 +46,21 @@ logger = logging.getLogger("server")
 
 init_db()
 
+# Add api-call directory to path for EV tool imports
+import sys
+_api_call_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "api-call")
+if _api_call_path not in sys.path:
+    sys.path.append(_api_call_path)
+
+try:
+    from chargepoints import resolve_charger, fetch_chargepoint_details
+    from charger_action import charger_action
+    from RemoteStart import get_customer_info, get_wallet_balance
+    _EV_TOOLS_AVAILABLE = True
+except ImportError as e:
+    _EV_TOOLS_AVAILABLE = False
+    logger.warning(f"EV tools logic not found or incomplete: {e}")
+
 try:
     from apscheduler.schedulers.asyncio import AsyncIOScheduler
     from apscheduler.triggers.cron import CronTrigger
@@ -145,6 +160,59 @@ async def serve_dashboard():
         status_code=404,
     )
 
+@app.get("/api/init_demo_data")
+async def init_demo_data():
+    from prompts import INDUSTRY_PROMPTS
+    import uuid
+    from datetime import datetime
+    try:
+        from db import _adb
+        db_client = await _adb()
+        
+        # 1. Insert Agent Profiles
+        inserted_profiles = 0
+        for name, prompt in INDUSTRY_PROMPTS.items():
+            # Check if exists
+            res = await db_client.table("agent_profiles").select("id").eq("name", name).execute()
+            if not res.data:
+                await db_client.table("agent_profiles").insert({
+                    "id": str(uuid.uuid4()),
+                    "name": name,
+                    "voice": "Aoede",
+                    "model": "models/gemini-2.0-flash-exp",
+                    "system_prompt": prompt,
+                    "enabled_tools": "[]",
+                    "is_default": False,
+                    "created_at": datetime.now().isoformat()
+                }).execute()
+                inserted_profiles += 1
+                
+        # 2. Insert Demo CRM Leads
+        demo_leads = [
+            {"name": "Ananya Sharma", "phone": "+919876543210", "email": "ananya.s@example.com"},
+            {"name": "Rahul Verma", "phone": "+918765432109", "email": "rahul.v@example.com"},
+            {"name": "Sneha Krishnan", "phone": "+917654321098", "email": "sneha.k@example.com"},
+            {"name": "Vikram Singh", "phone": "+916543210987", "email": "vikram.s@example.com"},
+            {"name": "Priya Patel", "phone": "+915432109876", "email": "priya.p@example.com"}
+        ]
+        inserted_leads = 0
+        for lead in demo_leads:
+            # Check if exists by phone
+            res = await db_client.table("contacts").select("id").eq("phone", lead["phone"]).execute()
+            if not res.data:
+                await db_client.table("contacts").insert({
+                    "id": str(uuid.uuid4()),
+                    "name": lead["name"],
+                    "phone": lead["phone"],
+                    "email": lead["email"],
+                    "created_at": datetime.now().isoformat()
+                }).execute()
+                inserted_leads += 1
+                
+        return JSONResponse({"status": "success", "inserted_profiles": inserted_profiles, "inserted_leads": inserted_leads})
+    except Exception as e:
+        logger.error(f"Error initializing demo data: {e}")
+        return JSONResponse({"status": "error", "detail": str(e)}, status_code=500)
 
 # ── Call dispatch ─────────────────────────────────────────────────────────────
 
@@ -175,8 +243,8 @@ async def api_dispatch_call(req: CallRequest):
             effective_model = profile.get("model")
             effective_tools = profile.get("enabled_tools")
 
-    if not effective_prompt:
-        effective_prompt = await get_setting("system_prompt", "") or None
+    from prompts import build_prompt
+    effective_prompt = build_prompt(req.lead_name, req.business_name, req.service_type, effective_prompt)
 
     room_name = f"call-{phone.replace('+', '')}-{random.randint(1000, 9999)}"
     metadata: dict = {
@@ -346,6 +414,214 @@ async def api_save_settings(req: SettingsRequest):
         os.environ[k] = str(v)
     return {"status": "saved", "count": len(filtered)}
 
+
+# ── Profiles ──────────────────────────────────────────────────────────────────
+
+@app.get("/api/profiles")
+async def api_get_profiles():
+    return await get_all_agent_profiles()
+
+
+@app.post("/api/profiles")
+async def api_create_profile(req: AgentProfileRequest):
+    profile_id = await create_agent_profile(
+        name=req.name, voice=req.voice, model=req.model,
+        system_prompt=req.system_prompt, enabled_tools=req.enabled_tools,
+        is_default=req.is_default
+    )
+    return {"status": "created", "id": profile_id}
+
+
+@app.put("/api/profiles/{profile_id}")
+async def api_update_profile(profile_id: str, updates: dict):
+    ok = await update_agent_profile(profile_id, updates)
+    return {"status": "updated" if ok else "not_found"}
+
+
+@app.delete("/api/profiles/{profile_id}")
+async def api_delete_profile(profile_id: str):
+    await delete_agent_profile(profile_id)
+    return {"status": "deleted"}
+
+
+@app.post("/api/profiles/{profile_id}/default")
+async def api_set_default_profile(profile_id: str):
+    await set_default_agent_profile(profile_id)
+    return {"status": "default_set"}
+
+
+# ── CRM / Contacts ────────────────────────────────────────────────────────────
+
+@app.get("/api/contacts")
+async def api_get_contacts():
+    return await get_contacts()
+
+
+@app.post("/api/contacts")
+async def api_create_contact(req: dict):
+    contact_id = await create_contact(
+        name=req.get("name", "Unknown"),
+        phone=req.get("phone", ""),
+        email=req.get("email", "")
+    )
+    return {"status": "created", "id": contact_id}
+
+
+# ── Calls ─────────────────────────────────────────────────────────────────────
+
+@app.get("/api/calls")
+async def api_get_calls(page: int = 1, limit: int = 50):
+    return await get_all_calls(page=page, limit=limit)
+
+
+# ── Transactions ──────────────────────────────────────────────────────────────
+
+@app.get("/api/transactions")
+async def api_get_transactions(limit: int = 50):
+    return await get_all_transactions(limit=limit)
+
+
+# ── Campaigns ─────────────────────────────────────────────────────────────────
+
+@app.get("/api/campaigns")
+async def api_get_campaigns():
+    return await get_all_campaigns()
+
+
+@app.post("/api/campaigns")
+async def api_create_campaign(req: dict):
+    # Process contacts from JSON string or list
+    contacts = req.get("contacts", [])
+    import json
+    contacts_json = json.dumps(contacts) if isinstance(contacts, list) else str(contacts)
+
+    campaign_id = await create_campaign(
+        name=req.get("name", "New Campaign"),
+        contacts_json=contacts_json,
+        schedule_type=req.get("schedule_type", "once"),
+        schedule_time=req.get("schedule_time", "09:00"),
+        call_delay_seconds=req.get("call_delay_seconds", 3),
+        system_prompt=req.get("system_prompt"),
+        agent_profile_id=req.get("agent_profile_id")
+    )
+    return {"status": "created", "id": campaign_id}
+
+
+@app.delete("/api/campaigns/{id}")
+async def api_delete_campaign(id: str):
+    success = await delete_campaign(id)
+    return {"status": "deleted" if success else "failed"}
+
+
+# ── Stats ─────────────────────────────────────────────────────────────────────
+
+@app.get("/api/stats")
+async def api_get_stats():
+    return await get_stats()
+
+
+# ── Incoming Calls ────────────────────────────────────────────────────────────
+
+@app.get("/api/calls/incoming")
+async def api_get_incoming_calls():
+    return await get_incoming_calls()
+
+
+# ── Appointments ──────────────────────────────────────────────────────────────
+
+@app.get("/api/appointments")
+async def api_get_appointments():
+    return await get_all_appointments()
+
+
+@app.post("/api/appointments/{id}/cancel")
+async def api_cancel_appointment(id: str):
+    success = await cancel_appointment(id)
+    return {"status": "cancelled" if success else "failed"}
+
+
+@app.post("/api/call")
+async def api_dispatch_call(req: CallRequest):
+    """Dispatch a single outbound call via LiveKit."""
+    url    = await eff("LIVEKIT_URL")
+    key    = await eff("LIVEKIT_API_KEY")
+    secret = await eff("LIVEKIT_API_SECRET")
+    if not (url and key and secret):
+        raise HTTPException(400, "LiveKit credentials not configured.")
+
+    from livekit import api as lk_api
+    ctx = ssl.create_default_context()
+    ctx.check_hostname = False
+    ctx.verify_mode = ssl.CERT_NONE
+    session = aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=ctx))
+    
+    try:
+        lk = lk_api.LiveKitAPI(url=url, api_key=key, api_secret=secret, session=session)
+        room_name = f"call-{req.phone.replace('+','')}-{random.randint(1000,9999)}"
+        
+        # Get profile if requested
+        profile = None
+        if req.agent_profile_id:
+            profile = await get_agent_profile(req.agent_profile_id)
+
+        success = await _dispatch_one(lk, lk_api, {"phone": req.phone, "lead_name": req.lead_name}, room_name, req.system_prompt, profile)
+        await lk.aclose()
+        if not success:
+            raise HTTPException(500, "Dispatch failed")
+        return {"status": "dispatched", "room": room_name}
+    finally:
+        await session.close()
+
+
+# ── EV Operations ─────────────────────────────────────────────────────────────
+
+@app.get("/api/ev/stations/search")
+async def api_search_stations(q: str):
+    if not _EV_TOOLS_AVAILABLE:
+        raise HTTPException(503, "EV tools unavailable")
+    res = resolve_charger(q)
+    return res
+
+@app.get("/api/ev/stations/{identity}")
+async def api_get_station_details(identity: str):
+    if not _EV_TOOLS_AVAILABLE:
+        raise HTTPException(530, "EV tools unavailable")
+    details = fetch_chargepoint_details(identity)
+    if not details:
+        raise HTTPException(404, "Station not found")
+    return details
+
+@app.get("/api/ev/wallet/{phone}")
+async def api_get_wallet(phone: str):
+    if not _EV_TOOLS_AVAILABLE:
+        raise HTTPException(503, "EV tools unavailable")
+    user, err = get_customer_info(phone)
+    if err or not user:
+        raise HTTPException(404, "User not found")
+    balance, err = get_wallet_balance(user["userId"])
+    return {"phone": phone, "user": user, "balance": balance, "error": err}
+
+@app.post("/api/ev/actions")
+async def api_ev_action(req: dict):
+    """
+    Generic endpoint for EV actions: availability, start, stop, tariff.
+    """
+    if not _EV_TOOLS_AVAILABLE:
+        raise HTTPException(503, "EV tools unavailable")
+    
+    action = req.get("action")
+    identity = req.get("charger_identity")
+    
+    res = charger_action(
+        action=action,
+        charger_identity=identity,
+        customer_mobile=req.get("customer_mobile"),
+        connector_id=req.get("connector_id"),
+        otp_method=req.get("otp_method"),
+        otp_code=req.get("otp_code"),
+        confirmed_mobile=req.get("confirmed_mobile")
+    )
+    return res
 
 # ── SIP trunk setup ───────────────────────────────────────────────────────────
 
@@ -737,3 +1013,74 @@ async def api_chat_test(req: ChatRequest):
     except Exception as exc:
         logger.error("Chat test error: %s", exc)
         return {"response": f"Error: {str(exc)}", "history": req.history}
+
+
+# ── Demo Data Initialization ──────────────────────────────────────────────────
+
+@app.get("/api/init_demo_data")
+async def api_init_demo_data():
+    """Populate the database with sample data for demonstration."""
+    import uuid
+    from datetime import datetime, timedelta
+    import db
+    
+    try:
+        # 1. Add Agent Profiles
+        profiles = await db.get_all_agent_profiles()
+        if not profiles:
+            await db.create_agent_profile(
+                name="Swaram AI (Default)", 
+                voice="Aoede", 
+                model="models/gemini-2.0-flash-exp",
+                system_prompt="You are Swaram, a friendly AI assistant for EV charging.",
+                is_default=True
+            )
+            await db.create_agent_profile(
+                name="Sales Closer", 
+                voice="Charon", 
+                model="models/gemini-2.0-flash-exp",
+                system_prompt="You are a professional sales closer.",
+                is_default=False
+            )
+
+        # 2. Add Contacts (Leads)
+        contacts = await db.get_contacts()
+        if not contacts:
+            leads = [
+                {"name": "Chris Smith", "phone": "+919876543210", "email": "chris@example.com"},
+                {"name": "Sarah Jones", "phone": "+918765432109", "email": "sarah@example.com"},
+                {"name": "Mike Ross", "phone": "+917654321098", "email": "mike@example.com"},
+            ]
+            for lead in leads:
+                await db.create_contact(lead["name"], lead["phone"], lead["email"])
+
+        # 3. Add EV Transactions
+        transactions = await db.get_all_transactions()
+        if not transactions:
+            db_client = await db._adb()
+            for i in range(5):
+                await db_client.table("transactions").insert({
+                    "id": str(uuid.uuid4()),
+                    "charger_identity": f"CM-00{i+1}",
+                    "charger_name": f"ChargeMOD Station {i+1}",
+                    "user_name": ["Chris", "Sarah", "Mike", "John", "Doe"][i],
+                    "phone": f"+91900000000{i}",
+                    "energy_kwh": str(round(random.uniform(5, 40), 2)),
+                    "amount": str(random.randint(100, 1000)),
+                    "status": "completed",
+                    "created_at": (datetime.now() - timedelta(days=i)).isoformat()
+                }).execute()
+
+        # 4. Add Campaigns
+        campaigns = await db.get_all_campaigns()
+        if not campaigns:
+            await db.create_campaign(
+                name="Demo Campaign",
+                contacts_json=json.dumps([{"phone": "+919876543210"}]),
+                schedule_type="once"
+            )
+
+        return {"status": "success", "message": "Demo data initialized"}
+    except Exception as e:
+        logger.error("Failed to init demo data: %s", e)
+        return {"status": "error", "message": str(e)}

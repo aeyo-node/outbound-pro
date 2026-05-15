@@ -1,0 +1,279 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+:root {
+  --background: #F8F5EC;
+  --foreground: #222222;
+  --primary: #1C1C1E;
+  --accent: #FFD166;
+  --accent-glow: #FFE08A;
+  --muted: #8E8E93;
+  --glass: rgba(255,255,255,0.6);
+  --glass-border: rgba(255,255,255,0.8);
+  --card-radius: 2rem;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  color: var(--foreground);
+  font-family: "Inter", system-ui, -apple-system, sans-serif;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body.landing-body {
+  background: #0A0A0A;
+  color: #ffffff;
+}
+
+body.dashboard-body {
+  background: linear-gradient(135deg, #FFFDF8 0%, #F5EEDB 100%);
+  color: var(--foreground);
+}
+
+body.login-body {
+  background: #0A0A0A;
+  color: #ffffff;
+}
+
+/* ─── Scrollbar ─────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+
+/* ─── Kill browser autofill background ──── */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 30px #0A0A0A inset !important;
+  -webkit-text-fill-color: #ffffff !important;
+  caret-color: #ffffff !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+.autofill-fix:-webkit-autofill {
+  -webkit-box-shadow: 0 0 0 30px transparent inset !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
+
+/* ─── Animations ────────────────────────── */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-20px); }
+}
+
+@keyframes pulse-ring {
+  0% { transform: scale(0.8); opacity: 1; }
+  100% { transform: scale(2.5); opacity: 0; }
+}
+
+@keyframes gradient-shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes waveform {
+  0%, 100% { height: 8px; }
+  50% { height: 32px; }
+}
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(40px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slide-in-right {
+  from { opacity: 0; transform: translateX(60px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes typewriter {
+  from { width: 0; }
+  to { width: 100%; }
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+@keyframes orbit {
+  from { transform: rotate(0deg) translateX(140px) rotate(0deg); }
+  to { transform: rotate(360deg) translateX(140px) rotate(-360deg); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+.animate-float { animation: float 6s ease-in-out infinite; }
+.animate-pulse-ring { animation: pulse-ring 2s ease-out infinite; }
+.animate-gradient { 
+  background-size: 200% 200%;
+  animation: gradient-shift 4s ease infinite; 
+}
+.animate-fade-up { animation: fade-up 0.8s ease-out forwards; }
+.animate-slide-in-right { animation: slide-in-right 0.6s ease-out forwards; }
+.animate-shimmer {
+  background: linear-gradient(90deg, transparent 0%, rgba(255,209,102,0.3) 50%, transparent 100%);
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite;
+}
+
+.delay-100 { animation-delay: 0.1s; }
+.delay-200 { animation-delay: 0.2s; }
+.delay-300 { animation-delay: 0.3s; }
+.delay-400 { animation-delay: 0.4s; }
+.delay-500 { animation-delay: 0.5s; }
+.delay-600 { animation-delay: 0.6s; }
+
+.duration-400 { transition-duration: 400ms; }
+
+/* ─── Glass Card ────────────────────────── */
+.glass-card {
+  background: rgba(255,255,255,0.03);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 1.5rem;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.glass-card:hover {
+  background: rgba(255,255,255,0.06);
+  border-color: rgba(255,209,102,0.2);
+  transform: translateY(-4px);
+  box-shadow: 0 20px 60px rgba(255,209,102,0.08);
+}
+
+/* ─── Glow Effects ──────────────────────── */
+.glow-accent {
+  box-shadow: 0 0 40px rgba(255,209,102,0.2), 0 0 80px rgba(255,209,102,0.1);
+}
+
+.text-gradient {
+  background: linear-gradient(135deg, #FFD166 0%, #FFE08A 50%, #FFF4D0 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ─── Waveform Bars ─────────────────────── */
+.waveform-bar {
+  width: 3px;
+  border-radius: 2px;
+  background: linear-gradient(to top, #FFD166, #FFE08A);
+  animation: waveform 1.2s ease-in-out infinite;
+}
+
+/* ─── Section Fade Observer ─────────────── */
+.section-hidden {
+  opacity: 0;
+  transform: translateY(40px);
+  transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.section-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ─── Dashboard Scrollbar ───────────────── */
+.dashboard-body ::-webkit-scrollbar-thumb {
+  background: rgba(0,0,0,0.1);
+}
+.dashboard-body ::-webkit-scrollbar-thumb:hover {
+  background: rgba(0,0,0,0.2);
+}
+
+/* ─── Language Pill ─────────────────────── */
+.lang-pill {
+  padding: 0.5rem 1.25rem;
+  border-radius: 9999px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.03);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+}
+.lang-pill:hover, .lang-pill.active {
+  background: rgba(255,209,102,0.15);
+  border-color: rgba(255,209,102,0.4);
+  color: #FFD166;
+}
+
+/* ─── Use-case card ─────────────────────── */
+.usecase-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 1.5rem;
+  padding: 2rem;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.06);
+  cursor: pointer;
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.usecase-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(255,209,102,0.08) 0%, transparent 60%);
+  opacity: 0;
+  transition: opacity 0.4s;
+}
+.usecase-card:hover::before { opacity: 1; }
+.usecase-card:hover {
+  border-color: rgba(255,209,102,0.3);
+  transform: translateY(-6px);
+  box-shadow: 0 30px 60px rgba(0,0,0,0.3);
+}
+
+/* ─── CTA Button ────────────────────────── */
+.cta-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.875rem 2rem;
+  background: #FFD166;
+  color: #0A0A0A;
+  font-weight: 600;
+  font-size: 0.9rem;
+  border-radius: 9999px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-decoration: none;
+}
+.cta-btn:hover {
+  background: #FFE08A;
+  transform: translateY(-2px);
+  box-shadow: 0 10px 40px rgba(255,209,102,0.3);
+}
+
+.cta-btn-outline {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.875rem 2rem;
+  background: transparent;
+  color: #FFD166;
+  font-weight: 600;
+  font-size: 0.9rem;
+  border-radius: 9999px;
+  border: 1px solid rgba(255,209,102,0.4);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-decoration: none;
+}
+.cta-btn-outline:hover {
+  background: rgba(255,209,102,0.1);
+  border-color: #FFD166;
+}

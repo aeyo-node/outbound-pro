@@ -287,27 +287,25 @@ async def update_call_notes(call_id: str, notes: str) -> bool:
 
 async def get_contacts() -> list:
     db = await _adb()
-    result = await db.table("call_logs").select("*").order("timestamp", desc=True).execute()
-    rows = result.data or []
-    contacts: dict = {}
-    for row in rows:
-        phone = row["phone_number"]
-        if phone not in contacts:
-            contacts[phone] = {
-                "phone_number": phone, "lead_name": row.get("lead_name"),
-                "total_calls": 0, "booked": 0,
-                "last_call": row["timestamp"], "last_outcome": row.get("outcome"),
-            }
-        contacts[phone]["total_calls"] += 1
-        if row.get("outcome") == "booked":
-            contacts[phone]["booked"] += 1
-    return sorted(contacts.values(), key=lambda c: c["last_call"], reverse=True)
+    result = await db.table("contacts").select("*").order("created_at", desc=True).execute()
+    return result.data or []
+
+
+async def create_contact(name: str, phone: str, email: str = "") -> str:
+    contact_id = str(uuid.uuid4())
+    db = await _adb()
+    await db.table("contacts").insert({
+        "id": contact_id, "name": name, "phone": phone, "email": email,
+        "created_at": datetime.now().isoformat()
+    }).execute()
+    return contact_id
 
 
 # ── Stats ─────────────────────────────────────────────────────────────────────
 
 async def get_stats() -> dict:
     db = await _adb()
+    # Outbound calls
     rows = (await db.table("call_logs").select("outcome, duration_seconds, timestamp").execute()).data or []
     total_calls    = len(rows)
     booked         = sum(1 for r in rows if r.get("outcome") == "booked")
@@ -315,20 +313,28 @@ async def get_stats() -> dict:
     durations      = [r["duration_seconds"] for r in rows if r.get("duration_seconds")]
     avg_dur        = sum(durations) / len(durations) if durations else 0
     booking_rate   = round((booked / total_calls * 100) if total_calls else 0, 1)
+    
+    # Incoming calls
+    incoming_rows = (await db.table("incoming_calls").select("id").execute()).data or []
+    total_incoming = len(incoming_rows)
+
     outcomes: dict = {}
     for r in rows:
         o = r.get("outcome") or "unknown"
         outcomes[o] = outcomes.get(o, 0) + 1
+    
     daily: dict = defaultdict(int)
     for r in rows:
         ts = (r.get("timestamp") or "")[:10]
         if ts:
             daily[ts] += 1
+            
     today = datetime.now().date()
     timeline = [
         {"date": (today - timedelta(days=i)).isoformat(), "count": daily.get((today - timedelta(days=i)).isoformat(), 0)}
         for i in range(13, -1, -1)
     ]
+    
     dur_sum: dict = defaultdict(float)
     dur_cnt: dict = defaultdict(int)
     for r in rows:
@@ -338,10 +344,17 @@ async def get_stats() -> dict:
             dur_sum[o] += sec
             dur_cnt[o] += 1
     duration_by_outcome = {o: dur_sum[o] / dur_cnt[o] for o in dur_sum}
+    
     return {
-        "total_calls": total_calls, "booked": booked, "not_interested": not_interested,
-        "avg_duration_seconds": round(avg_dur, 1), "booking_rate_percent": booking_rate,
-        "outcomes": outcomes, "timeline": timeline, "duration_by_outcome": duration_by_outcome,
+        "total_calls": total_calls, 
+        "total_incoming": total_incoming,
+        "booked": booked, 
+        "not_interested": not_interested,
+        "avg_duration_seconds": round(avg_dur, 1), 
+        "booking_rate_percent": booking_rate,
+        "outcomes": outcomes, 
+        "timeline": timeline, 
+        "duration_by_outcome": duration_by_outcome,
     }
 
 
