@@ -1033,14 +1033,14 @@ async def api_init_demo_data():
                 voice="Aoede", 
                 model="models/gemini-2.0-flash-exp",
                 system_prompt="You are Swaram, a friendly AI assistant for EV charging.",
-                is_default=True
+                is_default=1
             )
             await db.create_agent_profile(
                 name="Sales Closer", 
                 voice="Charon", 
                 model="models/gemini-2.0-flash-exp",
                 system_prompt="You are a professional sales closer.",
-                is_default=False
+                is_default=0
             )
 
         # 2. Add Contacts (Leads)

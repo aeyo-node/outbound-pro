@@ -476,12 +476,15 @@ async def create_agent_profile(
 ) -> str:
     profile_id = str(uuid.uuid4())
     db = await _adb()
-    if is_default:
+    # Force integer (Supabase INTEGER column expects 0 or 1, not boolean)
+    default_val = 1 if is_default in (True, 1, "true", "1") else 0
+    
+    if default_val == 1:
         await db.table("agent_profiles").update({"is_default": 0}).neq("id", "placeholder").execute()
     await db.table("agent_profiles").insert({
         "id": profile_id, "name": name, "voice": voice, "model": model,
         "system_prompt": system_prompt, "enabled_tools": enabled_tools,
-        "is_default": 1 if is_default else 0, "created_at": datetime.now().isoformat(),
+        "is_default": default_val, "created_at": datetime.now().isoformat(),
     }).execute()
     return profile_id
 
