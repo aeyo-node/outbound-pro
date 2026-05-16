@@ -466,10 +466,25 @@ async def entrypoint(ctx: agents.JobContext) -> None:
 if __name__ == "__main__":
     init_db()
     load_db_settings_to_env()
-    agents.cli.run_app(
-        agents.WorkerOptions(
-            entrypoint_fnc=entrypoint,
-            agent_name="outbound-caller",
-            num_idle_processes=1,
+    
+    # ── Pre-flight check for LiveKit keys ────────────────────────────────────
+    # If keys are missing (like on a fresh install), don't crash. 
+    # Sleep instead so the Dashboard stays up, allowing the user to add keys in the UI.
+    url = os.getenv("LIVEKIT_URL", "").strip()
+    key = os.getenv("LIVEKIT_API_KEY", "").strip()
+    secret = os.getenv("LIVEKIT_API_SECRET", "").strip()
+    
+    if not url or not key or not secret:
+        logger.error("⚠️ LiveKit credentials missing! Agent worker is paused.")
+        logger.error("👉 Please open the Dashboard, go to Settings, and save your LiveKit keys.")
+        import time
+        while True:
+            time.sleep(60)
+    else:
+        agents.cli.run_app(
+            agents.WorkerOptions(
+                entrypoint_fnc=entrypoint,
+                agent_name="outbound-caller",
+                num_idle_processes=1,
+            )
         )
-    )
