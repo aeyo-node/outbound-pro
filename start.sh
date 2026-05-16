@@ -42,8 +42,8 @@ echo ""
 
 # Keep the container alive and monitor processes
 while true; do
-  ps -p $SERVER_PID > /dev/null || exit 1
-  ps -p $NEXT_PID > /dev/null || exit 1
-  ps -p $AGENT_PID > /dev/null || exit 1
+  kill -0 $SERVER_PID 2>/dev/null || { echo "❌ Backend died. Exiting."; exit 1; }
+  kill -0 $NEXT_PID 2>/dev/null || { echo "❌ Dashboard died. Exiting."; exit 1; }
+  kill -0 $AGENT_PID 2>/dev/null || { echo "❌ Agent died. Exiting."; exit 1; }
   sleep 5
 done
