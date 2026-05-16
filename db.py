@@ -301,9 +301,12 @@ async def update_call_notes(call_id: str, notes: str) -> bool:
 
 
 async def get_contacts() -> list:
-    db = await _adb()
-    result = await db.table("contacts").select("*").order("created_at", desc=True).execute()
-    return result.data or []
+    try:
+        db = await _adb()
+        result = await db.table("contacts").select("*").order("created_at", desc=True).execute()
+        return result.data or []
+    except Exception:
+        return []
 
 
 async def create_contact(name: str, phone: str, email: str = "") -> str:

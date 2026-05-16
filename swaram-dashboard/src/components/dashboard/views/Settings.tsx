@@ -181,6 +181,45 @@ export function Settings() {
             </div>
           </div>
 
+          {/* Gemini Section */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-medium text-white flex items-center gap-2 border-b border-white/10 pb-2">
+              <Key className="w-5 h-5 text-[#FFD166]" /> Google Gemini AI
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-400">Google API Key</label>
+                <div className="relative">
+                  <input 
+                    type={showSecrets.GOOGLE_API_KEY ? "text" : "password"} 
+                    name="GOOGLE_API_KEY"
+                    value={settings.GOOGLE_API_KEY || ""}
+                    onChange={handleChange}
+                    placeholder="AIzaSy..."
+                    className="w-full bg-[#0A0A0A] border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#FFD166]/50 transition-colors pr-12"
+                  />
+                  <button 
+                    type="button"
+                    onClick={() => toggleSecret('GOOGLE_API_KEY')}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white"
+                  >
+                    {showSecrets.GOOGLE_API_KEY ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-400">Gemini Model</label>
+                <input 
+                  type="text" 
+                  name="GEMINI_MODEL"
+                  value={settings.GEMINI_MODEL || "models/gemini-2.0-flash-exp"}
+                  onChange={handleChange}
+                  className="w-full bg-[#0A0A0A] border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#FFD166]/50 transition-colors"
+                />
+              </div>
+            </div>
+          </div>
+
           {/* Twilio Section */}
           <div className="space-y-4">
             <h3 className="text-lg font-medium text-white flex items-center gap-2 border-b border-white/10 pb-2">
