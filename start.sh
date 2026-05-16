@@ -40,6 +40,10 @@ echo "   → Backend:    http://localhost:8000"
 echo "   → Agent:      LiveKit worker active"
 echo ""
 
-# Wait for any process to exit, then kill all
-wait -n $SERVER_PID $NEXT_PID $AGENT_PID
-kill $SERVER_PID $NEXT_PID $AGENT_PID 2>/dev/null || true
+# Keep the container alive and monitor processes
+while true; do
+  ps -p $SERVER_PID > /dev/null || exit 1
+  ps -p $NEXT_PID > /dev/null || exit 1
+  ps -p $AGENT_PID > /dev/null || exit 1
+  sleep 5
+done
