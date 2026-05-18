@@ -246,9 +246,10 @@ class AppointmentTools(llm.ToolContext):
 
         # 3. Fallback: Check local Supabase transactions history
         try:
-            from db import db
+            from db import _adb
+            db_client = await _adb()
             # Query transactions matching caller's phone number
-            res = await db.table("transactions").select("*").or_(f"phone.eq.{clean_phone},phone.eq.+91{clean_phone}").order("created_at", desc=True).limit(1).execute()
+            res = await db_client.table("transactions").select("*").or_(f"phone.eq.{clean_phone},phone.eq.+91{clean_phone}").order("created_at", desc=True).limit(1).execute()
             if res.data and len(res.data) > 0:
                 last_tx = res.data[0]
                 identity = last_tx.get("charger_identity")
