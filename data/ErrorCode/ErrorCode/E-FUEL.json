@@ -1,0 +1,732 @@
+[
+    {
+        "Error Name": "Normal stop",
+        "Code": "E000",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Manually stop charging",
+        "Code": "E001",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "APP remote stop",
+        "Code": "E002",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Outstanding bill after stopping charging",
+        "Code": "E003",
+        "Resolution": "Contact support"
+    },
+    {
+        "Error Name": "BMS/VIN stops abnormally",
+        "Code": "E004",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "TCU stops normally",
+        "Code": "E005",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "TCU malfunction shutdown",
+        "Code": "E006",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "TCU believes MCU is faulty",
+        "Code": "E007",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Pre-charging module fails to start",
+        "Code": "E008",
+        "Resolution": "Check module or wiring"
+    },
+    {
+        "Error Name": "Adhesion failure during discharge",
+        "Code": "E009",
+        "Resolution": "Check insulation resistance"
+    },
+    {
+        "Error Name": "BRM error",
+        "Code": "E010",
+        "Resolution": "Check BMS compatibility"
+    },
+    {
+        "Error Name": "Input high voltage contact issue",
+        "Code": "E011",
+        "Resolution": "Check wiring and signal line"
+    },
+    {
+        "Error Name": "Output contactor issue",
+        "Code": "E012",
+        "Resolution": "Check K1/K2 contactor"
+    },
+    {
+        "Error Name": "Charging stopped by BMS",
+        "Code": "E013",
+        "Resolution": "Check vehicle"
+    },
+    {
+        "Error Name": "Shunt contactor malfunction",
+        "Code": "E014",
+        "Resolution": "Check busbar and contactor"
+    },
+    {
+        "Error Name": "Charging connector not returned",
+        "Code": "E015",
+        "Resolution": "Reconnect properly"
+    },
+    {
+        "Error Name": "Charging suspended",
+        "Code": "E016",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Bill delivery failed",
+        "Code": "E017",
+        "Resolution": "Backend issue"
+    },
+    {
+        "Error Name": "Bill delivery timeout",
+        "Code": "E018",
+        "Resolution": "Backend issue"
+    },
+    {
+        "Error Name": "Invalid charger code",
+        "Code": "E019",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Output current exceeds limit",
+        "Code": "E020",
+        "Resolution": "Check module"
+    },
+    {
+        "Error Name": "System restart",
+        "Code": "E021",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Reverse battery error",
+        "Code": "E022",
+        "Resolution": "Check polarity"
+    },
+    {
+        "Error Name": "Application update",
+        "Code": "E023",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Time revision failure",
+        "Code": "E024",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Communication failure",
+        "Code": "E025",
+        "Resolution": "Check communication cables"
+    },
+    {
+        "Error Name": "Charging condition reached",
+        "Code": "E026",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "HV fuse fault",
+        "Code": "E027",
+        "Resolution": "Check fuse"
+    },
+    {
+        "Error Name": "VIN validation timeout",
+        "Code": "E028",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Auxiliary power failure",
+        "Code": "E029",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "SOC reached preset",
+        "Code": "E030",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Invalid account model",
+        "Code": "E031",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "LCD communication failure",
+        "Code": "E032",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Charger unpaid history",
+        "Code": "E033",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Output overcurrent",
+        "Code": "E034",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Insulation check failure",
+        "Code": "E035",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Smoke alarm failure",
+        "Code": "E036",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "BMS stop fault",
+        "Code": "E037",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "BMS voltage abnormal",
+        "Code": "E038",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Backstage communication error",
+        "Code": "E039",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Screen timeout",
+        "Code": "E040",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Lightning arrester fault",
+        "Code": "E041",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Lightning arrester maintenance",
+        "Code": "E042",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Emergency stop activated",
+        "Code": "E043",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "AC power failure",
+        "Code": "E044",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "K1/K2 abnormal",
+        "Code": "E045",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Door open",
+        "Code": "E046",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Electronic lock abnormal",
+        "Code": "E047",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Charging module faulty",
+        "Code": "E048",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Charging module partial fault",
+        "Code": "E049",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Charging module AC overvoltage",
+        "Code": "E050",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "AC undervoltage",
+        "Code": "E051",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Charging module short circuit",
+        "Code": "E052",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "AC phase missing",
+        "Code": "E053",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Regulation power failure",
+        "Code": "E054",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Rectifier communication failure",
+        "Code": "E055",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Charger overheated",
+        "Code": "E056",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Contactor adhesion failure",
+        "Code": "E057",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Card number inconsistent",
+        "Code": "E058",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Battery voltage inconsistency",
+        "Code": "E059",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "TCU fault",
+        "Code": "E060",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Electric leakage protection",
+        "Code": "E061",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Account not exist",
+        "Code": "E062",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Abnormal account",
+        "Code": "E063",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Unpaid card record",
+        "Code": "E064",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Incorrect password",
+        "Code": "E065",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Server login failure",
+        "Code": "E066",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Card reader communication failure",
+        "Code": "E067",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Insulation inspection timeout",
+        "Code": "E068",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Battery voltage too high",
+        "Code": "E069",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "PE needle broken",
+        "Code": "E070",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Insulation monitoring alarm",
+        "Code": "E071",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Battery voltage abnormal during insulation check",
+        "Code": "E072",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Insulation check start failure",
+        "Code": "E073",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Insulation fault",
+        "Code": "E074",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Discharge timeout",
+        "Code": "E075",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Charging port lock failure",
+        "Code": "E076",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "BMS communication timeout",
+        "Code": "E077",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Pre-charge battery voltage too low",
+        "Code": "E078",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Pre-charge K1K2 abnormal",
+        "Code": "E079",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Vehicle control guidance failure",
+        "Code": "E080",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Lack of balance",
+        "Code": "E081",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Charging duration complete",
+        "Code": "E082",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Charging capacity complete",
+        "Code": "E083",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Charging amount complete",
+        "Code": "E084",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Fixed error",
+        "Code": "E085",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Meter communication error",
+        "Code": "E086",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Meter faulty",
+        "Code": "E087",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Pre-charging K5K6 abnormal",
+        "Code": "E088",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Connector over temperature",
+        "Code": "E089",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "System reset",
+        "Code": "E090",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "AC input overvoltage",
+        "Code": "E091",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "AC input undervoltage",
+        "Code": "E092",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Communication failure",
+        "Code": "E093",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Temperature alarm",
+        "Code": "E094",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Connector temperature high",
+        "Code": "E095",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Output overvoltage",
+        "Code": "E096",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Output voltage abnormal",
+        "Code": "E097",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Output low",
+        "Code": "E098",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Battery voltage mismatch",
+        "Code": "E099",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Vehicle stop",
+        "Code": "E100",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Charging voltage too low",
+        "Code": "E101",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Charger capacity insufficient",
+        "Code": "E102",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "BCP data abnormal",
+        "Code": "E103",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Unknown fault",
+        "Code": "E104",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "BST insulation fault",
+        "Code": "E105",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "BST connector overheating",
+        "Code": "E106",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "BST-BMS component fault",
+        "Code": "E107",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "BST connector fault",
+        "Code": "E108",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Battery temperature high",
+        "Code": "E109",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Voltage relay fault",
+        "Code": "E110",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "BST detection fault",
+        "Code": "E111",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "BST other faults",
+        "Code": "E112",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "BST current too large",
+        "Code": "E113",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "BST voltage abnormal",
+        "Code": "E114",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Pre-charging voltage high",
+        "Code": "E115",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Standby",
+        "Code": "E116",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Standby",
+        "Code": "E117",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Fan fault",
+        "Code": "E118",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Water failure",
+        "Code": "E119",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "BRM timeout",
+        "Code": "E120",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "BCP timeout",
+        "Code": "E121",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "BRO timeout",
+        "Code": "E122",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "BCS timeout",
+        "Code": "E123",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "BCL timeout",
+        "Code": "E124",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "BRO_AA timeout",
+        "Code": "E125",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Standby",
+        "Code": "E126",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Standby",
+        "Code": "E127",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Standby",
+        "Code": "E128",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "No effective current",
+        "Code": "E129",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Battery overvoltage",
+        "Code": "E130",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Battery undervoltage",
+        "Code": "E131",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "SOC too high",
+        "Code": "E132",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "SOC too low",
+        "Code": "E133",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Charging overcurrent",
+        "Code": "E134",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Battery temperature high",
+        "Code": "E135",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Battery insulation abnormal",
+        "Code": "E136",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Connector not connected",
+        "Code": "E137",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Charging mode abnormal",
+        "Code": "E138",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Temperature & humidity fault",
+        "Code": "E139",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Charging SOC complete",
+        "Code": "E140",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Gun head voltage >60V",
+        "Code": "E141",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Single battery voltage too high",
+        "Code": "E142",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Current deviation too large",
+        "Code": "E143",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Battery temperature abnormal",
+        "Code": "E144",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "No idle modules available",
+        "Code": "E145",
+        "Resolution": ""
+    }
+]

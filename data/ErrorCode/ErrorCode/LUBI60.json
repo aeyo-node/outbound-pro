@@ -1,0 +1,687 @@
+[
+    {
+        "Error Name": "I_O_NoError",
+        "Code": "1",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "I_O_EMPress",
+        "Code": "2",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "I_O_ResetKey",
+        "Code": "3",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "I_O_DoorLock",
+        "Code": "4",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "I_O_GNDFalut",
+        "Code": "5",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "M_Over_Voltage",
+        "Code": "6",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "M_Under_Voltage",
+        "Code": "7",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "M_Over_Current",
+        "Code": "8",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "CAN_Communication_Error",
+        "Code": "9",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "CAN2_Communication_Error",
+        "Code": "10",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "EV_Disconnected",
+        "Code": "11",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "U_StopByPassword",
+        "Code": "12",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "U_StopByRfid",
+        "Code": "13",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "U_StopByRemote",
+        "Code": "14",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "U_StopByTimetoCharge",
+        "Code": "15",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "U_StopByUnittoCharge",
+        "Code": "16",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "M_MeterFailure",
+        "Code": "17",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "M_PowerSwitchFailure",
+        "Code": "18",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "I_O_RCDdetect",
+        "Code": "31",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "S_cuttofSoc",
+        "Code": "32",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "S_stopByTempreture",
+        "Code": "33",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "I_O_WaitForACMains",
+        "Code": "34",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "T_TimeOut",
+        "Code": "35",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "S_FullCharge",
+        "Code": "36",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Isolation_Fault",
+        "Code": "37",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "EVNotReadyToCharge",
+        "Code": "38",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "C_SoftReset",
+        "Code": "44",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "C_HardReset",
+        "Code": "45",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "C_ChangeAvailibility",
+        "Code": "46",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "C_HardReset_Done",
+        "Code": "47",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Voltage_MissMatch",
+        "Code": "50",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "PMFAIL",
+        "Code": "55",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "U_stopBySoc",
+        "Code": "56",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "U_stopByAmount",
+        "Code": "57",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Deauthorized by CMS",
+        "Code": "58",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Network Fluctuate",
+        "Code": "59",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Internet Disconnect",
+        "Code": "60",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "OCPP Disconnect",
+        "Code": "61",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Module Not Ready",
+        "Code": "62",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "IMD Fault",
+        "Code": "63",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Meter_2 Fault",
+        "Code": "64",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "SIG_ERROR_CP_PP",
+        "Code": "101",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "RECEIVED_RESET_BOARD",
+        "Code": "102",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "MSG_RX_TIMEOUT",
+        "Code": "107",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "MSG_ERROR_WRONG_ID",
+        "Code": "108",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "INIT_ERROR_UNKNOWN_STATE",
+        "Code": "109",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "WAIT_ERROR_UNKNOWN_STATE",
+        "Code": "110",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "SLAC_ERROR_UNKNOWN_STATE",
+        "Code": "111",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "SDP_ERROR_UNKNOWN_STATE",
+        "Code": "112",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "SDP_BIND_ERROR_UNKNOWN_STATE",
+        "Code": "113",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "V2G_ACCEPT_UNKNOWN_STATE",
+        "Code": "114",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "V2G_HANDSHAKE_UNKNOWN_STATE",
+        "Code": "115",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "V2G_ERROR_UNKNOWN_STATE",
+        "Code": "116",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "INIT_ERROR_IFADDR",
+        "Code": "117",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "INIT_ERROR_THREAD",
+        "Code": "118",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "INIT_ERROR_OPENCHANNEL",
+        "Code": "119",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "INIT_ERROR_KEY",
+        "Code": "120",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "J1772_ERROR_UNKNOWN_STATE",
+        "Code": "121",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "CHADEMO_ERROR_UNKNOWN_STATE",
+        "Code": "122",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "CHADEMO_RX_ERROR_UNKNOWN_STATE",
+        "Code": "123",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "CHADEMO_TX_ERROR_UNKNOWN_STATE",
+        "Code": "124",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "INIT_ERROR_GENERAL",
+        "Code": "125",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "SLAC_ERROR_INIT",
+        "Code": "132",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "SLAC_ERROR_TIMER_INIT",
+        "Code": "133",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "SLAC_ERROR_TIMER_TIMEOUT",
+        "Code": "134",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "SLAC_ERROR_TIMER_MISC",
+        "Code": "135",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "SLAC_ERROR_PARAM_TIMEOUT",
+        "Code": "136",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "SLAC_ERROR_PARAM_SOCKET",
+        "Code": "137",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "SLAC_ERROR_START_ATTEN_CHAR_TIMEOUT",
+        "Code": "138",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "SLAC_ERROR_MNBC_SOUND_TIMEOUT",
+        "Code": "139",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "SLAC_ERROR_ATTEN_CHAR_TIMEOUT",
+        "Code": "140",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "SLAC_ERROR_ATTEN_CHAR_SOCKET",
+        "Code": "141",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "SLAC_ERROR_VALIDATE_1_TIMEOUT",
+        "Code": "142",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "SLAC_ERROR_VALIDATE_1_SOCKET",
+        "Code": "143",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "SLAC_ERROR_VALIDATE_2_TIMEOUT",
+        "Code": "144",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "SLAC_ERROR_VALIDATE_2_SOCKET",
+        "Code": "145",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "SLAC_ERROR_BCB_TOGGLE_TIMEOUT",
+        "Code": "146",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "SLAC_ERROR_MATCH_TIMEOUT",
+        "Code": "147",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "SLAC_ERROR_MATCH_SOCKET",
+        "Code": "148",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "SLAC_ERROR_READ_SOCKET",
+        "Code": "149",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "SLAC_ERROR_SET_KEY",
+        "Code": "150",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "SDP_ERROR_GENERAL",
+        "Code": "164",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "SDP_ERROR_INIT_SOCKET",
+        "Code": "165",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "SDP_ERROR_INIT_SOCKOPT1",
+        "Code": "166",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "SDP_ERROR_INIT_SOCKOPT2",
+        "Code": "167",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "SDP_ERROR_INIT_BIND",
+        "Code": "168",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "SDP_ERROR_THREAD_SOCKET1",
+        "Code": "169",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "SDP_ERROR_THREAD_SOCKET2",
+        "Code": "170",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "SDP_ERROR_TIMEOUT",
+        "Code": "171",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "DIN_ERROR_GENERAL",
+        "Code": "180",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "DIN_TCP_SOCKET_MAY_CLOSED",
+        "Code": "181",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "DIN_ERROR_INIT_SOCKOPT",
+        "Code": "182",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "DIN_ERROR_INIT_BIND",
+        "Code": "183",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "DIN_ERROR_INIT_LISTEN",
+        "Code": "184",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "DIN_ERROR_INIT_SELECT",
+        "Code": "185",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "DIN_ERROR_INIT_ACCEPT",
+        "Code": "186",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "DIN_ERROR_TIMEOUT",
+        "Code": "187",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "DIN_ERROR_V2GTP_HEADER",
+        "Code": "188",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "DIN_ERROR_V2GTP_HEADER_LEN",
+        "Code": "189",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "DIN_ERROR_DECODE_EXI",
+        "Code": "190",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "DIN_ERROR_CREATE_RESPONSE",
+        "Code": "191",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "DIN_ERROR_ENCODE_EXI",
+        "Code": "192",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "DIN_ERROR_V2GTP_HEADER_WRITE",
+        "Code": "193",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "DIN_ERROR_SOCKET_EXCEPTION",
+        "Code": "194",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "DIN_ERROR_SOCKET_SEND",
+        "Code": "195",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "DIN_ERROR_NO_PROTOCOL",
+        "Code": "196",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "UNKNOWN_SESSION",
+        "Code": "197",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "SEQUENCE_ERROR",
+        "Code": "198",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "DIN_SHUTDOWN_BY_EVSE",
+        "Code": "212",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "DIN_FAILED_RESPONSE",
+        "Code": "228",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "DIN_SEQUENCE_ERROR",
+        "Code": "229",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "DIN_SIGNATURE_ERROR",
+        "Code": "230",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "FAILED_RESPONSE",
+        "Code": "231",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "DIN_SUDDEN_STOP_BY_SECC",
+        "Code": "232",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "DIN_STOP_BY_SECC",
+        "Code": "233",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "DIN_RECEIVED_CST",
+        "Code": "234",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "DIN_STOP_BY_EV",
+        "Code": "235",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "DIN_NO_REQUEST_FROM_EV",
+        "Code": "237",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "DIN_EV_DO_NOT_STOP",
+        "Code": "238",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "V2G_COMM_PORT_MAY_LOST",
+        "Code": "244",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "CP_STATE_B_2SECONDS",
+        "Code": "245",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "CP_STATE_C_2SECONDS",
+        "Code": "246",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "DETECT_CP_ZERO",
+        "Code": "261",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "DETECT_PP_UNPLUG",
+        "Code": "262",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "DETECT_CP_STATE_A",
+        "Code": "263",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "DETECT_CP_STATE_B",
+        "Code": "264",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "DETECT_CP_STATE_C",
+        "Code": "265",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "DETECT_CP_STATE_EF",
+        "Code": "266",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "CAN_SIGNAL_LOSS",
+        "Code": "267",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "DETECT_PP_S3_PRESSED",
+        "Code": "268",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "DIN_STOP_BY_EV",
+        "Code": "324",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "ISO_PAUSE_BY_EV",
+        "Code": "325",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "DIN_EMERGENCY_STOP_BY_CHARGER",
+        "Code": "326",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "DIN_EMERGENCY_STOP_BY_SECC",
+        "Code": "327",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "DIN_STOP_BY_CHARGER",
+        "Code": "329",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "DIN_STOP_BY_CHARGER_INITIALIZE",
+        "Code": "330",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "DIN_STOP_BY_CHARGER_OPERATE",
+        "Code": "331",
+        "Resolution": ""
+    }
+]

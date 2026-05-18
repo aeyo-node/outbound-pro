@@ -1,0 +1,104 @@
+[
+    {
+        "Error Name": "Device Healthy",
+        "Code": "1000",
+        "Resolution": "Nothing to do. if not pushing 1000 please restart the machine, and chack device is okay.",
+        "": ""
+    },
+    {
+        "Error Name": "Charging",
+        "Code": "1001",
+        "Resolution": "It is charging status check it's going good.",
+        "": ""
+    },
+    {
+        "Error Name": "Consumption less than 100Ws",
+        "Code": "1002",
+        "Resolution": "If this case please check connector connection and also please ask to the customer to check the charger is working correctly.",
+        "": null
+    },
+    {
+        "Error Name": "Under Voltage. V less than 185",
+        "Code": "1003",
+        "Resolution": "This case do restart the device. otherwise suggest nearest another station",
+        "": ""
+    },
+    {
+        "Error Name": "Over Voltage. V more than 265",
+        "Code": "1004",
+        "Resolution": "Restart the Device.",
+        "": ""
+    },
+    {
+        "Error Name": "Over Current. I more then 20Amps",
+        "Code": "1005",
+        "Resolution": "Restart the Device.",
+        "": ""
+    },
+    {
+        "Error Name": "Device disconnected due to error",
+        "Code": "1006",
+        "Resolution": "Nothing to do. this is an indication only. if get any error b/w charging after that error code this will be push from the device",
+        "": null
+    },
+    {
+        "Error Name": "Network Disconnected",
+        "Code": "1007",
+        "Resolution": "Restart the machine.",
+        "": ""
+    },
+    {
+        "Error Name": "Manual Stop, Fully charged",
+        "Code": "1008",
+        "Resolution": "Nothing to do.if the customer want more charge please restart the charging.",
+        "": ""
+    },
+    {
+        "Error Name": "Emergency Button pressed",
+        "Code": "1009",
+        "Resolution": "This case Tell to the customer to release the emergency button.(button turn right to release button)",
+        "": ""
+    },
+    {
+        "Error Name": "Connector Disconnected",
+        "Code": "1010",
+        "Resolution": "Please tell to the customer to reconnect the charger.",
+        "": ""
+    },
+    {
+        "Error Name": "KSEB Failed",
+        "Code": "1011",
+        "Resolution": "Suggest another point.",
+        "": ""
+    },
+    {
+        "Error Name": "Internal Battery low",
+        "Code": "1012",
+        "Resolution": "Suggest another point and infrom us.",
+        "": ""
+    },
+    {
+        "Error Name": "Residual Current Ocurred",
+        "Code": "1013",
+        "Resolution": "Suggest another point and infrom us.",
+        "": ""
+    },
+    {
+        "Error Name": "Short Circuit Ocurred",
+        "Code": "1014",
+        "Resolution": "Suggest another point and infrom us.",
+        "": ""
+    },
+    {
+        "Error Name": "Earth wire Break",
+        "Code": "1015",
+        "Resolution": "Do restart the device, then its not worked suggest another point and infrom us.",
+        "": ""
+    },
+    {
+        "Error Name": "Firmware Updating",
+        "Code": "1017",
+        "Resolution": "Suggest another point.",
+        "": ""
+    }
+]

@@ -1,0 +1,182 @@
+[
+    {
+        "Error Name": "Gun Temperature Limit",
+        "Code": "ER001",
+        "Resolution": "Check gun heating, connections and ensure proper cooling"
+    },
+    {
+        "Error Name": "High NE Voltage",
+        "Code": "ER005",
+        "Resolution": "Check earthing and phase voltage conditions"
+    },
+    {
+        "Error Name": "Mains Low",
+        "Code": "ER006",
+        "Resolution": "Check phase voltages"
+    },
+    {
+        "Error Name": "Mains High",
+        "Code": "ER007",
+        "Resolution": "Check phase voltages"
+    },
+    {
+        "Error Name": "RFID Communication Fail",
+        "Code": "ER008",
+        "Resolution": "Check power supply and RS485 connection"
+    },
+    {
+        "Error Name": "AC Meter Communication Fail",
+        "Code": "ER009",
+        "Resolution": "Check RS485, meter config and power"
+    },
+    {
+        "Error Name": "High Leakage Current",
+        "Code": "ER010",
+        "Resolution": "Check cable condition"
+    },
+    {
+        "Error Name": "System Temperature High",
+        "Code": "ER011",
+        "Resolution": "Check cooling fan and airflow"
+    },
+    {
+        "Error Name": "SPD Fault",
+        "Code": "ER012",
+        "Resolution": "Check SPD connection or disable if unused"
+    },
+    {
+        "Error Name": "PLC Communication Fail",
+        "Code": "ER013",
+        "Resolution": "Check CAN wiring and PLC module"
+    },
+    {
+        "Error Name": "Controller Dashboard Fail",
+        "Code": "ER014",
+        "Resolution": "Check power, reset or reinstall software"
+    },
+    {
+        "Error Name": "OCPP Communication Fail",
+        "Code": "ER015",
+        "Resolution": "Check internet and OCPP config"
+    },
+    {
+        "Error Name": "Smoke Detect",
+        "Code": "ER016",
+        "Resolution": "Check sensor or disable if unused"
+    },
+    {
+        "Error Name": "RCCB / MCB Trip",
+        "Code": "ER017",
+        "Resolution": "Check connections and load capacity"
+    },
+    {
+        "Error Name": "Emergency Pressed",
+        "Code": "ER018",
+        "Resolution": "Release emergency switch"
+    },
+    {
+        "Error Name": "All Rectifier Communication Fail",
+        "Code": "ER019",
+        "Resolution": "Check CAN connection and rectifier config"
+    },
+    {
+        "Error Name": "Isolation Fault",
+        "Code": "ER020",
+        "Resolution": "Check IMD module and insulation condition"
+    },
+    {
+        "Error Name": "LED Board Fault",
+        "Code": "ER021",
+        "Resolution": "Check power supply and replace LED board if needed"
+    },
+    {
+        "Error Name": "Rectifier 1 Communication Fail",
+        "Code": "ER023",
+        "Resolution": "Check CAN connection and rectifier condition"
+    },
+    {
+        "Error Name": "Rectifier 2 Communication Fail",
+        "Code": "ER024",
+        "Resolution": "Check CAN connection and rectifier condition"
+    },
+    {
+        "Error Name": "Rectifier 3 Communication Fail",
+        "Code": "ER025",
+        "Resolution": "Check CAN wiring and rectifier"
+    },
+    {
+        "Error Name": "Rectifier 4 Communication Fail",
+        "Code": "ER026",
+        "Resolution": "Check CAN wiring and rectifier"
+    },
+    {
+        "Error Name": "DC Over Voltage",
+        "Code": "ER027",
+        "Resolution": "Check rectifier output vs EV demand"
+    },
+    {
+        "Error Name": "DC Under Voltage",
+        "Code": "ER028",
+        "Resolution": "Check rectifier output"
+    },
+    {
+        "Error Name": "DC Output Over Current",
+        "Code": "ER029",
+        "Resolution": "Check current vs EV demand"
+    },
+    {
+        "Error Name": "HMI Communication Fail",
+        "Code": "ER030",
+        "Resolution": "Check power and RS485 connection"
+    },
+    {
+        "Error Name": "Modem Communication Fail",
+        "Code": "ER031",
+        "Resolution": "Check GSM modem and logs"
+    },
+    {
+        "Error Name": "System Init Fail",
+        "Code": "ER032",
+        "Resolution": "Restart and check hardware peripherals"
+    },
+    {
+        "Error Name": "Relay Board Fail",
+        "Code": "ER033",
+        "Resolution": "Check power and replace board if needed"
+    },
+    {
+        "Error Name": "DC Meter Communication Fail",
+        "Code": "ER034",
+        "Resolution": "Check RS485, config and power supply"
+    },
+    {
+        "Error Name": "All PLC Communication Fail",
+        "Code": "ER035",
+        "Resolution": "Check CAN wiring and PLC module"
+    },
+    {
+        "Error Name": "Tamper Detect",
+        "Code": "ER036",
+        "Resolution": "Check sensor or disable in CDM"
+    },
+    {
+        "Error Name": "Input Contactor Fail",
+        "Code": "ER037",
+        "Resolution": "Check contactor and replace if needed"
+    },
+    {
+        "Error Name": "Rectifier Temperature High",
+        "Code": "ER038",
+        "Resolution": "Check cooling system"
+    },
+    {
+        "Error Name": "Gun DC Contactor Fail",
+        "Code": "ER039",
+        "Resolution": "Check/replace DC contactor"
+    },
+    {
+        "Error Name": "Gun Fuse Damage",
+        "Code": "ER040",
+        "Resolution": "Check fuse continuity and replace"
+    }
+]

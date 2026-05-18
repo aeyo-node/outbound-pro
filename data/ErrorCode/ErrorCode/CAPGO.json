@@ -1,0 +1,302 @@
+[
+    {
+        "Error Name": "Reboot",
+        "Code": "30",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Emergency stop is pressed",
+        "Code": "31",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Lightning protection failure",
+        "Code": "32",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Door is opened",
+        "Code": "33",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Insulation communication failure",
+        "Code": "34",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Meter communication failure",
+        "Code": "35",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Communication failure with charging module",
+        "Code": "36",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Cabinet over temperature",
+        "Code": "37",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "CC1 has a problem",
+        "Code": "38",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Module short circuit fault",
+        "Code": "39",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Electronic lock without feedback",
+        "Code": "3A",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "BHM not received",
+        "Code": "3B",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "BHM completed but meter voltage DC > 10V",
+        "Code": "3C",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Meter voltage > 10V at start of insulation",
+        "Code": "3D",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Insulation voltage not reached",
+        "Code": "3E",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Insulation resistance too low",
+        "Code": "3F",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "ISO module not completed insulation monitoring",
+        "Code": "40",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "ISO bleeder circuit failure",
+        "Code": "41",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "BRM not received",
+        "Code": "42",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "BCP not received",
+        "Code": "43",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Minimum charger voltage > EV required voltage",
+        "Code": "44",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "BRO_AA not received, vehicle not ready",
+        "Code": "45",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Meter voltage mismatch with BMS",
+        "Code": "46",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Precharge failed",
+        "Code": "47",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "BCL not received",
+        "Code": "48",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "BCS not received",
+        "Code": "49",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "BMS communication timeout",
+        "Code": "4A",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Gun temperature too high",
+        "Code": "4B",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Battery polarity reversed",
+        "Code": "4C",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Emergency stop is pressed",
+        "Code": "60",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Lightning protection failure",
+        "Code": "61",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Door is opened",
+        "Code": "62",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Insulation communication failure",
+        "Code": "63",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Meter communication failure",
+        "Code": "64",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Module communication failure",
+        "Code": "65",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Cabinet over temperature",
+        "Code": "66",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Gun link failure",
+        "Code": "67",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Module status failure",
+        "Code": "68",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Charging waiting stage - stop button pressed",
+        "Code": "69",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Did not receive H100-102",
+        "Code": "6A",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Vehicle demand voltage > maximum battery voltage",
+        "Code": "6B",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Minimum vehicle voltage > charger voltage",
+        "Code": "6C",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Waiting for vehicle charging permission timeout",
+        "Code": "6D",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Busbar voltage >10V when electromagnetic lock enabled",
+        "Code": "6E",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Electronic lock without feedback",
+        "Code": "6F",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Busbar voltage >10V before insulation",
+        "Code": "70",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Module output voltage not reached",
+        "Code": "71",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Insulation resistance too low",
+        "Code": "72",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Insulation detection timeout",
+        "Code": "73",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Bleeder circuit issue after insulation test",
+        "Code": "74",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Normal stop before vehicle charging",
+        "Code": "75",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Vehicle battery not detected or main contactor not closed",
+        "Code": "76",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Pre-charge demand current is 0",
+        "Code": "77",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Charging vehicle message interrupted and stopped",
+        "Code": "78",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Charging system fault - charging forbidden",
+        "Code": "79",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Negative voltage detected at start/end",
+        "Code": "7A",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Emergency stop is pressed",
+        "Code": "90",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Meter communication failure",
+        "Code": "91",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "CP line abnormal",
+        "Code": "92",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Grid fluctuation",
+        "Code": "93",
+        "Resolution": ""
+    }
+]

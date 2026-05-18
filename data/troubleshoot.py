@@ -528,13 +528,37 @@ def analyze_ac_charger(charger_data, snapshot):
         result["interpretation"] = "No communication from charger"
         result["next_steps"] = ["Try another station"]
         result["escalation"] = "Field support required"
+    elif status == "SuspendedEVSE":
+        result["summary"] = "Charging suspended by charger (SuspendedEVSE)"
+        result["interpretation"] = "The charger has suspended the session. This is usually caused by an active emergency stop trigger, power grid drop, or charger fault."
+        result["next_steps"] = [
+            "Release the emergency stop button by twisting it clockwise",
+            "Verify connector cable is plugged in securely",
+            "Try restarting the charging session"
+        ]
+    elif status == "SuspendedEV":
+        result["summary"] = "Charging suspended by Vehicle (SuspendedEV)"
+        result["interpretation"] = "The electric vehicle has suspended charging. This can happen if the vehicle battery is fully charged, or if the vehicle's onboard charger suspended power flow."
+        result["next_steps"] = [
+            "Verify vehicle charging limit settings",
+            "Re-plug the vehicle connector securely"
+        ]
+    elif status == "Faulted":
+        result["summary"] = "Charger in Faulted state"
+        result["interpretation"] = "The charger has reported a system fault. Check if the emergency button is pressed, or if there is a grounding issue."
+        result["next_steps"] = [
+            "Release emergency stop button by twisting it clockwise",
+            "Reset the charger",
+            "Try another charger"
+        ]
     elif snapshot.get("raw_log_count", 0) == 0:
         result["summary"] = "No logs available"
         result["interpretation"] = "Charger may be offline"
         result["next_steps"] = ["Try another charger"]
     else:
-        result["summary"] = "Charger working normally"
-        result["interpretation"] = "No issues detected"
+        result["summary"] = f"Charger status is {status}"
+        result["interpretation"] = "No specific active error code found in database or logs, but charger reports non-idle status."
+        result["next_steps"] = ["Check connector cable", "Restart charging session"]
 
     return result
 

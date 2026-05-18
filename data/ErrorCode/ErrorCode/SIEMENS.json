@@ -1,0 +1,367 @@
+[
+    {
+        "Error Name": "ZJKZQ communication failure",
+        "Code": "ZJKZQ communication failure",
+        "Resolution": "Power-on again"
+    },
+    {
+        "Error Name": "energy meter communication failure",
+        "Code": "energy meter communication failure",
+        "Resolution": "Power-on again"
+    },
+    {
+        "Error Name": "BMS communication failure",
+        "Code": "BMS communication failure",
+        "Resolution": "plug and unplug"
+    },
+    {
+        "Error Name": "card-reader communication failure",
+        "Code": "card-reader communication failure",
+        "Resolution": "Power-on again"
+    },
+    {
+        "Error Name": "Alarm1-Err1",
+        "Code": "Alarm1-Err1",
+        "Resolution": "Power-on again"
+    },
+    {
+        "Error Name": "Alarm1-Err2",
+        "Code": "Alarm1-Err2",
+        "Resolution": "Power-on again"
+    },
+    {
+        "Error Name": "Alarm1-Err4",
+        "Code": "Alarm1-Err4",
+        "Resolution": "contact supplier"
+    },
+    {
+        "Error Name": "Alarm1-Err8",
+        "Code": "Alarm1-Err8",
+        "Resolution": "Power-on again"
+    },
+    {
+        "Error Name": "Alarm1-Err10",
+        "Code": "Alarm1-Err10",
+        "Resolution": "Power-on again"
+    },
+    {
+        "Error Name": "Alarm1-Err20",
+        "Code": "Alarm1-Err20",
+        "Resolution": "Power-on again"
+    },
+    {
+        "Error Name": "Alarm1-Err40",
+        "Code": "Alarm1-Err40",
+        "Resolution": "Power-on again"
+    },
+    {
+        "Error Name": "Alarm1-Err80",
+        "Code": "Alarm1-Err80",
+        "Resolution": "Power-on again"
+    },
+    {
+        "Error Name": "Alarm1-Err100",
+        "Code": "Alarm1-Err100",
+        "Resolution": "Power-on again"
+    },
+    {
+        "Error Name": "Alarm1-Err200",
+        "Code": "Alarm1-Err200",
+        "Resolution": "Power-on again"
+    },
+    {
+        "Error Name": "Alarm1-Err400",
+        "Code": "Alarm1-Err400",
+        "Resolution": "Power-on again"
+    },
+    {
+        "Error Name": "Alarm1-Err800",
+        "Code": "Alarm1-Err800",
+        "Resolution": "Power-on again"
+    },
+    {
+        "Error Name": "Alarm1-Err1000",
+        "Code": "Alarm1-Err1000",
+        "Resolution": "Power-on again"
+    },
+    {
+        "Error Name": "Alarm1-Err2000",
+        "Code": "Alarm1-Err2000",
+        "Resolution": "check the door"
+    },
+    {
+        "Error Name": "Alarm1-Err4000",
+        "Code": "Alarm1-Err4000",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Alarm1-Err8000",
+        "Code": "Alarm1-Err8000",
+        "Resolution": "check the communication"
+    },
+    {
+        "Error Name": "Alarm2-Err1",
+        "Code": "Alarm2-Err1",
+        "Resolution": "unplug to start again"
+    },
+    {
+        "Error Name": "Alarm2-Err2",
+        "Code": "Alarm2-Err2",
+        "Resolution": "unplug to start again"
+    },
+    {
+        "Error Name": "Alarm2-Err4",
+        "Code": "Alarm2-Err4",
+        "Resolution": "no shutdown, no need treatment"
+    },
+    {
+        "Error Name": "Alarm2-Err8",
+        "Code": "Alarm2-Err8",
+        "Resolution": "no shutdown, no need treatment"
+    },
+    {
+        "Error Name": "Alarm2-Err10",
+        "Code": "Alarm2-Err10",
+        "Resolution": "only alarm, no shutdown"
+    },
+    {
+        "Error Name": "Alarm2-Err20",
+        "Code": "Alarm2-Err20",
+        "Resolution": "only alarm, no shutdown"
+    },
+    {
+        "Error Name": "Alarm2-Err40",
+        "Code": "Alarm2-Err40",
+        "Resolution": "only alarm, no shutdown"
+    },
+    {
+        "Error Name": "Alarm2-Err80",
+        "Code": "Alarm2-Err80",
+        "Resolution": "only alarm, no shutdown"
+    },
+    {
+        "Error Name": "Alarm2-Err100",
+        "Code": "Alarm2-Err100",
+        "Resolution": "alarm, shutdown"
+    },
+    {
+        "Error Name": "100 shutdown",
+        "Code": "100 shutdown",
+        "Resolution": "Power-on again"
+    },
+    {
+        "Error Name": "101 shutdown",
+        "Code": "101 shutdown",
+        "Resolution": "Power-on again"
+    },
+    {
+        "Error Name": "102 shutdown",
+        "Code": "102 shutdown",
+        "Resolution": "contact supplier"
+    },
+    {
+        "Error Name": "103 shutdown",
+        "Code": "103 shutdown",
+        "Resolution": "Power-on again"
+    },
+    {
+        "Error Name": "105 shutdown",
+        "Code": "105 shutdown",
+        "Resolution": "Power-on again"
+    },
+    {
+        "Error Name": "106 shutdown",
+        "Code": "106 shutdown",
+        "Resolution": "Power-on again"
+    },
+    {
+        "Error Name": "107 shutdown",
+        "Code": "107 shutdown",
+        "Resolution": "Power-on again"
+    },
+    {
+        "Error Name": "108 shutdown",
+        "Code": "108 shutdown",
+        "Resolution": "Power-on again"
+    },
+    {
+        "Error Name": "109 shutdown",
+        "Code": "109 shutdown",
+        "Resolution": "Power-on again"
+    },
+    {
+        "Error Name": "10A shutdown",
+        "Code": "10A shutdown",
+        "Resolution": "Power-on again"
+    },
+    {
+        "Error Name": "10B shutdown",
+        "Code": "10B shutdown",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "10C shutdown",
+        "Code": "10C shutdown",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "10D shutdown",
+        "Code": "10D shutdown",
+        "Resolution": "close the charger door"
+    },
+    {
+        "Error Name": "10E shutdown",
+        "Code": "10E shutdown",
+        "Resolution": "restore after temperature decreased"
+    },
+    {
+        "Error Name": "201 shutdown",
+        "Code": "201 shutdown",
+        "Resolution": "check polarity / controller connection"
+    },
+    {
+        "Error Name": "202 shutdown",
+        "Code": "202 shutdown",
+        "Resolution": "check voltage compatibility"
+    },
+    {
+        "Error Name": "203 shutdown",
+        "Code": "203 shutdown",
+        "Resolution": "unplug and retry"
+    },
+    {
+        "Error Name": "204 shutdown",
+        "Code": "204 shutdown",
+        "Resolution": "retry 3 times"
+    },
+    {
+        "Error Name": "205 shutdown",
+        "Code": "205 shutdown",
+        "Resolution": "check BMS stop condition"
+    },
+    {
+        "Error Name": "206 shutdown",
+        "Code": "206 shutdown",
+        "Resolution": "cannot use this charger"
+    },
+    {
+        "Error Name": "207 shutdown",
+        "Code": "207 shutdown",
+        "Resolution": "discharge battery first"
+    },
+    {
+        "Error Name": "208 shutdown",
+        "Code": "208 shutdown",
+        "Resolution": "contact supplier"
+    },
+    {
+        "Error Name": "209 shutdown",
+        "Code": "209 shutdown",
+        "Resolution": "contact supplier"
+    },
+    {
+        "Error Name": "20A shutdown",
+        "Code": "20A shutdown",
+        "Resolution": "contact supplier"
+    },
+    {
+        "Error Name": "20B shutdown",
+        "Code": "20B shutdown",
+        "Resolution": "contact supplier"
+    },
+    {
+        "Error Name": "20C shutdown",
+        "Code": "20C shutdown",
+        "Resolution": "contact supplier"
+    },
+    {
+        "Error Name": "20D shutdown",
+        "Code": "20D shutdown",
+        "Resolution": "check grounding resistance"
+    },
+    {
+        "Error Name": "20E shutdown",
+        "Code": "20E shutdown",
+        "Resolution": "check voltage parameters"
+    },
+    {
+        "Error Name": "20F shutdown",
+        "Code": "20F shutdown",
+        "Resolution": "contact supplier"
+    },
+    {
+        "Error Name": "210 shutdown",
+        "Code": "210 shutdown",
+        "Resolution": "contact supplier"
+    },
+    {
+        "Error Name": "211 shutdown",
+        "Code": "211 shutdown",
+        "Resolution": "contact supplier"
+    },
+    {
+        "Error Name": "212 shutdown",
+        "Code": "212 shutdown",
+        "Resolution": "contact supplier"
+    },
+    {
+        "Error Name": "213 shutdown",
+        "Code": "213 shutdown",
+        "Resolution": "contact supplier"
+    },
+    {
+        "Error Name": "400 shutdown",
+        "Code": "400 shutdown",
+        "Resolution": "normal if full, else contact supplier"
+    },
+    {
+        "Error Name": "800 shutdown",
+        "Code": "800 shutdown",
+        "Resolution": "normal"
+    },
+    {
+        "Error Name": "X MK Com Failed",
+        "Code": "X MK Com Failed",
+        "Resolution": "contact supplier"
+    },
+    {
+        "Error Name": "X module Err1",
+        "Code": "X module Err1",
+        "Resolution": "contact supplier"
+    },
+    {
+        "Error Name": "X module Err2",
+        "Code": "X module Err2",
+        "Resolution": "contact supplier"
+    },
+    {
+        "Error Name": "X module Err4",
+        "Code": "X module Err4",
+        "Resolution": "contact supplier"
+    },
+    {
+        "Error Name": "X module Err8",
+        "Code": "X module Err8",
+        "Resolution": "contact supplier"
+    },
+    {
+        "Error Name": "X module Err10",
+        "Code": "X module Err10",
+        "Resolution": "contact supplier"
+    },
+    {
+        "Error Name": "X module Err20",
+        "Code": "X module Err20",
+        "Resolution": "contact supplier"
+    },
+    {
+        "Error Name": "X module Err40",
+        "Code": "X module Err40",
+        "Resolution": "contact supplier"
+    },
+    {
+        "Error Name": "X module Err80",
+        "Code": "X module Err80",
+        "Resolution": "contact supplier"
+    }
+]

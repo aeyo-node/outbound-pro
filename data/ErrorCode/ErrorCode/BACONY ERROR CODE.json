@@ -1,0 +1,322 @@
+[
+    {
+        "Error Name": "Gun Temperature Fault",
+        "Code": "ER001",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "High NE Voltage",
+        "Code": "ER005",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Mains Low",
+        "Code": "ER006",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Mains high",
+        "Code": "ER007",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "RFID Communication Fail",
+        "Code": "ER008",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "AC Meter Communication Fail",
+        "Code": "ER009",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "High Leakage Current",
+        "Code": "ER010",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "System Temperature high",
+        "Code": "ER011",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "SPD Fault",
+        "Code": "ER012",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "PLC Communication Fail",
+        "Code": "ER013",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Controller Dashboard Fail",
+        "Code": "ER014",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "OCPP Communication Fail",
+        "Code": "ER015",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Smoke Detect",
+        "Code": "ER016",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "RCCB trip/MCB trip",
+        "Code": "ER017",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Emergency Pressed",
+        "Code": "ER018",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "All Rectifier Communication Fail",
+        "Code": "ER019",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Isolation Fault",
+        "Code": "ER020",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "LED Board Fault",
+        "Code": "ER021",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Rectifier 1 Communication Fail",
+        "Code": "ER023",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Rectifier 2 Communication Fail",
+        "Code": "ER024",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Rectifier 3 Communication Fail",
+        "Code": "ER025",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Rectifier 4 Communication Fail",
+        "Code": "ER026",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "DC Over Voltage",
+        "Code": "ER027",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "DC Under Voltage",
+        "Code": "ER028",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "DC Output Over Current",
+        "Code": "ER029",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "HMI Communication Fail",
+        "Code": "ER030",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Modem Communication Fail",
+        "Code": "ER031",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "System Init Fail",
+        "Code": "ER032",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Relay Board Fail",
+        "Code": "ER033",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "DC Meter Communication Fail",
+        "Code": "ER034",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "All PLC Communication Fail",
+        "Code": "ER035",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Tamper Detect",
+        "Code": "ER036",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Input Contactor Fail",
+        "Code": "ER037",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Rectifier Temperature High",
+        "Code": "ER038",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Gun DC Contactor Fail",
+        "Code": "ER039",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Gun Fuse Damage",
+        "Code": "ER040",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Gun Auth Timeout",
+        "Code": "ER041",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Gun CP Line Fault",
+        "Code": "ER042",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Gun SLAC Fault",
+        "Code": "ER043",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Gun V2G Fault",
+        "Code": "ER044",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Gun Precharge Error",
+        "Code": "ER045",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "EV Error",
+        "Code": "ER046",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "All DC meter comm. fail",
+        "Code": "ER047",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "AC TYPE-2 Energy Meter fail",
+        "Code": "ER048",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "AC TYPE-2 Over Voltage",
+        "Code": "ER049",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "AC TYPE-2 Under Voltage",
+        "Code": "ER050",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "AC TYPE-2 Over Current",
+        "Code": "ER051",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "AC TYPE-2 Under Current",
+        "Code": "ER052",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "AC mains fail",
+        "Code": "ER053",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Rectifier 1 fail",
+        "Code": "ER054",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Rectifier 2 fail",
+        "Code": "ER055",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "EV request stop",
+        "Code": "201",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Error from EV",
+        "Code": "202",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Communication with EV fail",
+        "Code": "203",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Normal Stop (Local)",
+        "Code": "301",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Server stop (remote)",
+        "Code": "302",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Server de-authorized",
+        "Code": "303",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Power Loss",
+        "Code": "304",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Emergency stop",
+        "Code": "305",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "EV disconnected",
+        "Code": "306",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Slac Error / High Attenuation",
+        "Code": "307",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Authentication Fail",
+        "Code": "308",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Cable Check Fail",
+        "Code": "309",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Pre-Charge Fail",
+        "Code": "310",
+        "Resolution": ""
+    }
+]

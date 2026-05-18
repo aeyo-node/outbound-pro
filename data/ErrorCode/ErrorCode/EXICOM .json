@@ -1,0 +1,227 @@
+[
+    {
+        "Error Name": "Parameter configuration failed",
+        "Code": "201",
+        "Resolution": "Retry charging | If issue repeats, take PLC serial and CAN logs of the gun and share for analysis"
+    },
+    {
+        "Error Name": "Charging enable timeout",
+        "Code": "202",
+        "Resolution": "Retry charging | If issue repeats, inform vehicle manufacturer | Still issue, take PLC serial and CAN logs and share for analysis"
+    },
+    {
+        "Error Name": "Abnormal voltage of outside bus",
+        "Code": "203",
+        "Resolution": "Check wires of IO-J30 connectors | Check if rectifiers are building voltage | Check DC contactors working properly | Do calibration from settings | Take PLC serial and CAN logs and share"
+    },
+    {
+        "Error Name": "Unable to lock charging gun",
+        "Code": "204",
+        "Resolution": "Check 12V DC output of auxiliary power supply | Check pilot controller sending 12V signal | Check lock feedback wiring"
+    },
+    {
+        "Error Name": "Insulation inspection abnormal",
+        "Code": "205",
+        "Resolution": "Check rectifiers are building voltage | Measure output voltage | Check insulation board voltage | Try another vehicle | Take PLC serial and CAN logs"
+    },
+    {
+        "Error Name": "Insulation inspect timeout",
+        "Code": "206",
+        "Resolution": "Check if rectifiers are building voltage | Try another vehicle | Take PLC serial and CAN logs and share for analysis"
+    },
+    {
+        "Error Name": "EV relay pull-in timeout",
+        "Code": "207",
+        "Resolution": "Check battery voltage after contactors (vehicle side) | Inform vehicle manufacturer if no voltage | Try another vehicle | Take CAN logs and share"
+    },
+    {
+        "Error Name": "Require current timeout",
+        "Code": "208",
+        "Resolution": "Try another vehicle | Take CAN logs and share"
+    },
+    {
+        "Error Name": "Remain time over stop",
+        "Code": "209",
+        "Resolution": "This is normal stop condition | If SOC not 100%, take CAN logs and share"
+    },
+    {
+        "Error Name": "Ring fail alarm",
+        "Code": "210",
+        "Resolution": "Reserved alarm | If shown on screen, contact R&D team"
+    },
+    {
+        "Error Name": "Communication with EV failed",
+        "Code": "211",
+        "Resolution": "Restart vehicle and retry charging | Try another vehicle | Take PLC serial and CAN logs (CCS/CHAdeMO/GBT) | For AC gun check PWM voltage"
+    },
+    {
+        "Error Name": "Plugged gun timeout",
+        "Code": "212",
+        "Resolution": "Check gun properly connected | Restart vehicle and retry | Check CP-PE voltage (12V / 9V / 6V stages) | Try another vehicle | Take PLC and CAN logs | For AC gun check PWM voltage"
+    },
+    {
+        "Error Name": "Pre-charging fault",
+        "Code": "213",
+        "Resolution": "Check rectifiers building voltage | Measure output voltage | Check contactors closing | Try another vehicle"
+    },
+    {
+        "Error Name": "Door open",
+        "Code": "214",
+        "Resolution": "Close door | Check door sensor wiring"
+    },
+    {
+        "Error Name": "Emergency button pressed",
+        "Code": "215",
+        "Resolution": "Release emergency button | Check wiring"
+    },
+    {
+        "Error Name": "SPD fail",
+        "Code": "216",
+        "Resolution": "Replace SPD if faulty | Check SPD wiring"
+    },
+    {
+        "Error Name": "All rectifier fail",
+        "Code": "217",
+        "Resolution": "Check SMR CAN wiring | Check rectifier insertion | Check MCCB ON and voltage | Check SMR LED and test individually"
+    },
+    {
+        "Error Name": "Mains fail",
+        "Code": "218",
+        "Resolution": "Check SMR CAN wiring | Check MCCB and input voltage"
+    },
+    {
+        "Error Name": "All rectifier communication fail",
+        "Code": "219",
+        "Resolution": "Check SMR CAN wiring | Check rectifier insertion | Check input voltage"
+    },
+    {
+        "Error Name": "E-lock failed",
+        "Code": "220",
+        "Resolution": "Check connector configuration | Check 12V pulse LKA+ / LKA- | Check lock feedback wiring"
+    },
+    {
+        "Error Name": "Gun over temperature",
+        "Code": "221",
+        "Resolution": "Try another vehicle | Check temperature externally"
+    },
+    {
+        "Error Name": "Output short circuit",
+        "Code": "222",
+        "Resolution": "Check power module | Check CAN data from controller"
+    },
+    {
+        "Error Name": "PWM failure",
+        "Code": "223",
+        "Resolution": "Check AC connector cable"
+    },
+    {
+        "Error Name": "Ground fault detected",
+        "Code": "224",
+        "Resolution": "Check earth connection | Verify system wiring"
+    },
+    {
+        "Error Name": "CR communication fail",
+        "Code": "250",
+        "Resolution": "Check if RFID is ON/OFF | Check RFID cable connection"
+    },
+    {
+        "Error Name": "kWh meter communication fail",
+        "Code": "251",
+        "Resolution": "Check AC/DC energy meters are ON | Check meter wiring"
+    },
+    {
+        "Error Name": "CCU communication fail",
+        "Code": "252",
+        "Resolution": "Check pilot controller ON/OFF | Check RS485 wiring with controller"
+    },
+    {
+        "Error Name": "EV request stop",
+        "Code": "2",
+        "Resolution": "Try another vehicle | Check vehicle side issue | Take PLC serial and CAN logs"
+    },
+    {
+        "Error Name": "Battery overvoltage",
+        "Code": "301",
+        "Resolution": "Check output voltage matches EV requirement | Try another vehicle | Take PLC and CAN logs"
+    },
+    {
+        "Error Name": "Battery undervoltage",
+        "Code": "302",
+        "Resolution": "Check output voltage | Take PLC and CAN logs"
+    },
+    {
+        "Error Name": "Battery current deviation error",
+        "Code": "303",
+        "Resolution": "Check output current | Take PLC and CAN logs"
+    },
+    {
+        "Error Name": "High battery temperature",
+        "Code": "304",
+        "Resolution": "Try another vehicle | Check vehicle battery condition | Take logs"
+    },
+    {
+        "Error Name": "Battery voltage deviation error",
+        "Code": "305",
+        "Resolution": "Try another vehicle | Check vehicle system | Take logs"
+    },
+    {
+        "Error Name": "Charger connector lock fault",
+        "Code": "306",
+        "Resolution": "Check connector and reconnect | Try another vehicle | Take logs"
+    },
+    {
+        "Error Name": "Vehicle shift position",
+        "Code": "307",
+        "Resolution": "Try another vehicle | Check vehicle status | Take logs"
+    },
+    {
+        "Error Name": "Error status noticed by EV",
+        "Code": "308",
+        "Resolution": "Check rectifier voltage/current | Try another vehicle | Take logs"
+    },
+    {
+        "Error Name": "PLC low-level communication fail",
+        "Code": "309",
+        "Resolution": "Communication setup failed | Try another vehicle | Take logs"
+    },
+    {
+        "Error Name": "PLC high-level communication fail",
+        "Code": "310",
+        "Resolution": "HLC communication failed | Try another vehicle | Take logs"
+    },
+    {
+        "Error Name": "PLC authentication timeout",
+        "Code": "311",
+        "Resolution": "Authentication stage failure | Try another vehicle | Take logs"
+    },
+    {
+        "Error Name": "PLC parameter discovery timeout",
+        "Code": "312",
+        "Resolution": "Parameter discovery stage failed | Try another vehicle | Take logs"
+    },
+    {
+        "Error Name": "Local stop",
+        "Code": "401",
+        "Resolution": "User manually stopped charging"
+    },
+    {
+        "Error Name": "Server stop",
+        "Code": "402",
+        "Resolution": "Check OCPP server command | Contact backend team"
+    },
+    {
+        "Error Name": "Reboot",
+        "Code": "404",
+        "Resolution": "Check server reboot command"
+    },
+    {
+        "Error Name": "Deauthorized",
+        "Code": "405",
+        "Resolution": "Check OCPP server authorization"
+    },
+    {
+        "Error Name": "Other",
+        "Code": "501",
+        "Resolution": "Try another vehicle | Take PLC and CAN logs"
+    }
+]

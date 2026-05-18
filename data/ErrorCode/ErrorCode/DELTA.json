@@ -1,0 +1,717 @@
+[
+    {
+        "Error Name": "System input voltage is higher than workable range (>305 volt)",
+        "Code": "004001",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "System input voltage (L1, L2 or L3) is lower than workable range (<170 volt)",
+        "Code": "004002",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Temperature of air inlet or input contactor is higher than workable range",
+        "Code": "004005",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Temperature of CCS combo charging plug is higher than workable range",
+        "Code": "004006",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Air filters need to be replaced",
+        "Code": "004007",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "System fan error",
+        "Code": "004008",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "System Init Failed",
+        "Code": "004009",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Emergency button is pressed",
+        "Code": "00400A",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Temperature sensor of air inlet is broken",
+        "Code": "00400D",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Temperature sensor of input contactor is broken",
+        "Code": "00400E",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "SPD trigger",
+        "Code": "00400F",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Output fuse on CCS relay board is broken",
+        "Code": "004010",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Output fuse on CHAdeMO relay board is broken",
+        "Code": "004011",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Temperature sensor of CCS combo charging plug is broken",
+        "Code": "004012",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Temperature of air inlet is lower than workable range",
+        "Code": "004013",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Stop charging by RFID",
+        "Code": "004014",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "The plug-in times of CCS charging plug is more than 10000 times",
+        "Code": "004015",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "The plug-in times of CHAdeMO charging plug is more than 10000 times",
+        "Code": "004016",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "System is timeout if user doesn't plug-in in 5 minutes after authorized",
+        "Code": "004017",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Charging time is up",
+        "Code": "004018",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Input voltage is drop (L1) (<20V, 100ms)",
+        "Code": "004022",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "System reach stop SoC",
+        "Code": "004024",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "System reach stop energy",
+        "Code": "004025",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Communication with SMR is broken",
+        "Code": "005006",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Communication with CCS controller is broken",
+        "Code": "005007",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Communication with auxiliary power module is broken",
+        "Code": "005008",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Communication with relay control module is broken",
+        "Code": "005009",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Communication with RFID module is broken",
+        "Code": "00500D",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "3G module is not ready",
+        "Code": "00500E",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "3G connection is disconnected from internet",
+        "Code": "006002",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "3G connection is disconnected from backend office",
+        "Code": "006003",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Ethernet connection is disconnected from backend office",
+        "Code": "006009",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Power rectifier is abnormal",
+        "Code": "007001",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Input voltage of power rectifier is higher than workable range",
+        "Code": "007002",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Input voltage of power rectifier is lower than workable range",
+        "Code": "007003",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Output voltage is higher than workable range of power rectifier",
+        "Code": "007004",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "The temperature of air inlet in power rectifier is higher than workable range",
+        "Code": "007006",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "The fan inside power rectifier is broken",
+        "Code": "00700C",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "5 volt for system controller is higher than workable range",
+        "Code": "008003",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "5 volt for other system modules is higher than workable range",
+        "Code": "008004",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "5 volt for CAN bus is higher than workable range",
+        "Code": "008005",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "12 volt for other system modules is higher than workable range",
+        "Code": "008006",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "12 volt for EV communication is higher than workable range",
+        "Code": "008007",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "24 volt for relay control is higher than workable range",
+        "Code": "008008",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "5 volt for system controller is lower than workable range",
+        "Code": "008009",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "5 volt for other system modules is lower than workable range",
+        "Code": "00800A",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "5 volt for CAN bus is lower than workable range",
+        "Code": "00800B",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "12 volt for other system modules is lower than workable range",
+        "Code": "00800C",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "12 volt for EV communication is lower than workable range",
+        "Code": "00800D",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "24 volt for relay control is lower than workable range",
+        "Code": "00800E",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "The ambient temperature of auxiliary power is higher than workable range",
+        "Code": "008019",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "GFD trigger",
+        "Code": "009001",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "GFD pre-warning",
+        "Code": "009003",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Input contactor 1 is welding",
+        "Code": "00A001",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Input contactor 2 is welding",
+        "Code": "00A003",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "The output relay for CCS charging is drived fault",
+        "Code": "00A00E",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "The output relay for CHAdeMO charging is welding",
+        "Code": "00A00F",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "The output relay for CHAdeMO charging is drived fault",
+        "Code": "00A010",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "The output pre-charge relay for CCS charging is drived fault",
+        "Code": "00A012",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "CCS pilot line is broken",
+        "Code": "00A013",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "CCS proximity is broken",
+        "Code": "00A014",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "The firmware update of auxiliary power module is failure",
+        "Code": "00B001",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "The firmware update of relay control module is failure",
+        "Code": "00B002",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "The firmware update of LCM module is failure",
+        "Code": "00B003",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "The firmware update of CCS charging module is failure",
+        "Code": "00B004",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "The firmware update of CHAdeMO charging module is failure",
+        "Code": "00B005",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "The firmware update of power converter module is failure",
+        "Code": "00B006",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "CCS1 proximity is disconnected",
+        "Code": "00C002",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "SLAC - No data",
+        "Code": "00C100",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "SLAC error",
+        "Code": "00C101",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "SDP error",
+        "Code": "00C102",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "TCP error",
+        "Code": "00C103",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "V2G error - Idle",
+        "Code": "00C104",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "V2G error - supportedAppProtocol",
+        "Code": "00C105",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "V2G error - SessionSetup",
+        "Code": "00C106",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "V2G error - ServiceDiscovery",
+        "Code": "00C107",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "V2G error - ServicePaymentSelection",
+        "Code": "00C108",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "V2G error - ContractAuthentication",
+        "Code": "00C109",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "V2G error - ChargeParameterDiscovery",
+        "Code": "00C10A",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "V2G error - CableCheck",
+        "Code": "00C10B",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "V2G error - PreCharge",
+        "Code": "00C10C",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "V2G error - PowerDelivery",
+        "Code": "00C10D",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "V2G error - CurrentDemand",
+        "Code": "00C10E",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Timeout error - ReadyToCharge",
+        "Code": "00C202",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "CableCheck error - SMR Vout is less than Vcmd",
+        "Code": "00C203",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "CableCheck error - SMR Vout is over 20V",
+        "Code": "00C204",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "CableCheck error - Output voltage is over 60V before insulation test",
+        "Code": "00C205",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "CableCheck error - Output current is over 2A in insulation test",
+        "Code": "00C206",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Precharge error - Output voltage is less than EV Vcmd",
+        "Code": "00C207",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Precharge error - Output current is over 1.5A in precharge",
+        "Code": "00C208",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "EV error - FAILED_RESSTemperatureInhibit",
+        "Code": "00C300",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "EV error - FAILED_EVShiftPosition",
+        "Code": "00C301",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "EV error - FAILED_ChargerConnectorLockFault",
+        "Code": "00C302",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "EV error - FAILED_EVRESSMalfunction",
+        "Code": "00C303",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "EV error - FAILED_ChargingCurrentdifferential",
+        "Code": "00C304",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "EV error - FAILED_ChargingVoltageOutOfRange",
+        "Code": "00C305",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "EV error - FAILED_Reserved_A",
+        "Code": "00C306",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "EV error - FAILED_Reserved_B",
+        "Code": "00C307",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "EV error - FAILED_Reserved_C",
+        "Code": "00C308",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "EV error - FAILED_ChargingSystemIncompatibility",
+        "Code": "00C309",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "EV error - FAILED_NoData",
+        "Code": "00C30A",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Stop charging at supportedAppProtocol",
+        "Code": "00C30B",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Stop charging at SessionSetup",
+        "Code": "00C30C",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Stop charging at ServiceDiscovery",
+        "Code": "00C30D",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Stop charging at ServicePaymentSelection",
+        "Code": "00C30E",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Stop charging at ContractAuthentication",
+        "Code": "00C30F",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Stop charging at ChargeParameterDiscovery",
+        "Code": "00C310",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Stop charging at CableCheck",
+        "Code": "00C311",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Stop charging at PreCharge",
+        "Code": "00C312",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Stop charging at CurrentDemand",
+        "Code": "00C313",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Stop charging at CurrentDemand by PowerDelivery(BulkChargingComplete)",
+        "Code": "00C314",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Stop charging at CurrentDemand by PowerDelivery(ChargingComplete)",
+        "Code": "00C315",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Stop charging by pilot A",
+        "Code": "00C316",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Stop charging by pilot B",
+        "Code": "00C317",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Stop charging by pilot E, F or error",
+        "Code": "00C318",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "No charging permission come from CHAdeMO EV",
+        "Code": "00D001",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Target battery voltage is higher than available output voltage",
+        "Code": "00D003",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Battery undervoltage",
+        "Code": "00D004",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Battery overvoltage",
+        "Code": "00D005",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Present output current is different from target current",
+        "Code": "00D006",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Battery OTP come from CHAdeMO EV",
+        "Code": "00D007",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Present output voltage is different from target voltage",
+        "Code": "00D008",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Position shift alarm is come from CHAdeMO EV",
+        "Code": "00D009",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "EV other fault is come from CHAdeMO EV",
+        "Code": "00D00A",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "CHAdeMO connector lock is broken",
+        "Code": "00D00B",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Battery malfunction - Target battery voltage is higher than maximum battery voltage",
+        "Code": "00D00D",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Charging current request is higher than available output current",
+        "Code": "00D00E",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Timeout error - Start of Vehicle CAN data",
+        "Code": "00D00F",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Timeout error - CAN communication fault",
+        "Code": "00D010",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Timeout error - Charging enable",
+        "Code": "00D011",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Timeout error - EV contactor close",
+        "Code": "00D012",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Timeout error - Charging current request",
+        "Code": "00D013",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Insulation error - SMR Vout is less than Vcmd",
+        "Code": "00D014",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Insulation error - SMR Vout is over 20V",
+        "Code": "00D015",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Insulation error - Output voltage over 10V before insulation test",
+        "Code": "00D016",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Insulation error - Output voltage over 20V after insulation test",
+        "Code": "00D017",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Insulation error - Output current is over 2A in insulation test",
+        "Code": "00D018",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Vehicle voltage error - Output voltage over 10V after charging",
+        "Code": "00D019",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "CHAdeMO system error - process",
+        "Code": "00D01B",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "CHAdeMO EV permission disable time out after charging",
+        "Code": "00D01C",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "CHAdeMO EV contactor open time out after charging",
+        "Code": "00D01D",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "System output voltage is higher than EV battery maximum voltage",
+        "Code": "00D01E",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Permission on before CAN message received",
+        "Code": "00D01F",
+        "Resolution": ""
+    }
+]

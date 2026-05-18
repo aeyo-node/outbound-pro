@@ -170,40 +170,182 @@ class AppointmentTools(llm.ToolContext):
                 active.append(name_map[f])
         return active
 
+    async def _resolve_charger_from_session(self, charger_identifier: Optional[str] = None) -> Optional[dict]:
+        """
+        Attempts to find a charger to troubleshoot:
+        1. If charger_identifier is provided and not empty, use it directly.
+        2. If empty/None, query live active transactions for self.phone_number.
+        3. If no active transaction, query local Supabase database 'transactions' table for self.phone_number.
+        """
+        loop = asyncio.get_event_loop()
+        
+        # 1. If identifier is provided, resolve it directly
+        if charger_identifier and str(charger_identifier).strip() and str(charger_identifier).strip().lower() != "none":
+            resolved = await loop.run_in_executor(None, resolve_charger, charger_identifier)
+            if resolved["status"] == "resolved":
+                return resolved["charger"]
+            return None
+
+        # If no phone number, we can't query sessions
+        phone = self.phone_number
+        if not phone:
+            return None
+            
+        # Clean phone number (remove +91, spaces, etc.)
+        clean_phone = str(phone).strip().replace(" ", "").replace("-", "")
+        if clean_phone.startswith("+91"):
+            clean_phone = clean_phone[3:]
+        elif clean_phone.startswith("91") and len(clean_phone) > 10:
+            clean_phone = clean_phone[2:]
+            
+        print(f"[*] Attempting to auto-locate charger for phone: {clean_phone}...")
+
+        from datetime import datetime, timedelta, timezone
+        # 2. Check live active transactions
+        try:
+            base_url = os.getenv("BASE_LS", "https://ls.console.chargemod.com")
+            from RemoteStop import ORG_ID, PROJECT_ID, make_request
+            now = datetime.now(timezone.utc)
+            start_date = (now - timedelta(days=7)).strftime("%Y-%m-%dT%H:%M:%S.000Z")
+            end_date = now.strftime("%Y-%m-%dT%H:%M:%S.000Z")
+
+            payload = {
+                "organizationId": ORG_ID,
+                "projectId": PROJECT_ID,
+                "perPageCount": 50,
+                "pageNumber": 1,
+                "filterDate": {"startDate": start_date, "endDate": end_date},
+                "searchValue": {"searchKey": ""},
+                "allowedLocations": [],
+                "transactionType": None,
+                "sortType": -1,
+                "solarType": ""
+            }
+            
+            resp = await loop.run_in_executor(
+                None, 
+                lambda: make_request("POST", f"{base_url}/pwr/charger/get-pwr-active-transaction", json=payload)
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                results = data.get("result", [])
+                for tx in results:
+                    tx_mobile = str(tx.get("userMobile") or tx.get("mobile", "")).strip()
+                    if clean_phone in tx_mobile or tx_mobile in clean_phone:
+                        # Found active transaction!
+                        charger_details = tx.get("chargerDetails", {})
+                        identity = tx.get("identity") or tx.get("chargerId") or charger_details.get("identity")
+                        if identity:
+                            print(f"[+] Found live active transaction on charger {identity} for user")
+                            return {
+                                "identity": identity,
+                                "name": tx.get("chargerName") or charger_details.get("chargerName") or identity
+                            }
+        except Exception as e:
+            print(f"[-] Live active transaction search failed: {e}")
+
+        # 3. Fallback: Check local Supabase transactions history
+        try:
+            from db import db
+            # Query transactions matching caller's phone number
+            res = await db.table("transactions").select("*").or_(f"phone.eq.{clean_phone},phone.eq.+91{clean_phone}").order("created_at", desc=True).limit(1).execute()
+            if res.data and len(res.data) > 0:
+                last_tx = res.data[0]
+                identity = last_tx.get("charger_identity")
+                name = last_tx.get("charger_name") or identity
+                if identity:
+                    print(f"[+] Found previous transaction in Supabase on charger {identity} ({name})")
+                    return {
+                        "identity": identity,
+                        "name": name
+                    }
+        except Exception as e:
+            print(f"[-] Supabase transactions fallback search failed: {e}")
+
+        return None
+
     @llm.function_tool
-    async def check_charger_status(self, charger_identifier: str) -> str:
-        """Check live status of an EV charger. charger_identifier: ID or Name (e.g. CMOD123)."""
+    async def check_charger_status(self, charger_identifier: Optional[str] = None) -> str:
+        """
+        Check live status of an EV charger. 
+        
+        charger_identifier: The Name, ID, or location of the charger (e.g. CMOD123). If not provided or empty, it will automatically look up the user's active or previous charging session using their phone number.
+        """
         print(f"[*] TOOL CALL: check_charger_status('{charger_identifier}')")
         if not _EV_TOOLS_AVAILABLE:
             return "EV charging features are currently offline."
         
         try:
             loop = asyncio.get_event_loop()
-            resolved = await loop.run_in_executor(None, resolve_charger, charger_identifier)
-            print(f"[*] Resolved charger: {resolved}")
             
-            if resolved["status"] == "not_found":
-                return f"I couldn't find a charger matching '{charger_identifier}'. Could you please double check the name?"
+            # Auto-resolve from session if not provided
+            charger_info = await self._resolve_charger_from_session(charger_identifier)
+            if not charger_info:
+                return "I couldn't locate an active or previous charging session associated with your phone number. Could you please tell me the name or ID of the charger you are using?"
             
-            if resolved["status"] == "multiple":
-                options = ", ".join([o["label"] for o in resolved["options"]])
-                return f"I found multiple chargers. Did you mean: {options}?"
+            identity = charger_info["identity"]
+            name = charger_info.get("name") or identity
             
-            identity = resolved["charger"]["identity"]
             details = await loop.run_in_executor(None, fetch_chargepoint_details, identity)
-            
             if not details:
-                return "I found the charger but couldn't retrieve its live status. Please try again in a moment."
+                return f"I found your charger '{name}' but couldn't retrieve its live status. Please try again in a moment."
             
             evses = details.get("evses", [])
             status_summary = []
+            needs_troubleshooting = False
             for evse in evses:
                 status = evse.get("connectorStatus", evse.get("status", "Unknown"))
                 conn_id = evse.get("connectorId", "?")
                 status_summary.append(f"Connector {conn_id} is {status}")
+                if status in ("SuspendedEVSE", "Faulted", "Unavailable", "SuspendedEV") or evse.get("connectorErrCode") not in (None, "NoError", "1000", 1000):
+                    needs_troubleshooting = True
             
-            name = details.get("chargerName", charger_identifier)
             result = f"Status for {name}: " + ". ".join(status_summary)
+
+            if needs_troubleshooting:
+                print(f"[*] Abnormal status detected for {name}. Triggering automated live log diagnosis...")
+                try:
+                    from data.troubleshoot import troubleshoot
+                    diag = await loop.run_in_executor(
+                        None,
+                        lambda: troubleshoot(
+                            charger_name=identity,
+                            charger_identity=identity,
+                            issue_summary="Status check diagnosis",
+                            phone=self.phone_number
+                        )
+                    )
+                    if diag and diag.get("status") == "success":
+                        analysis = diag.get("analysis", {})
+                        summary = analysis.get("summary")
+                        interpretation = analysis.get("interpretation")
+                        error_details = diag.get("error_code_details")
+                        
+                        diag_msg = f"\nAutomated Log Diagnosis: {summary}. Explanation: {interpretation}"
+                        if error_details:
+                            if isinstance(error_details, list) and len(error_details) > 0:
+                                err_info = error_details[0]
+                            else:
+                                err_info = error_details
+                            if isinstance(err_info, dict):
+                                err_code = err_info.get("code") or err_info.get("error_code")
+                                err_desc = err_info.get("description") or err_info.get("name")
+                                err_res = err_info.get("resolution") or err_info.get("remedy")
+                                if err_code and err_code != "NoError":
+                                    diag_msg += f" (Active error code: {err_code} - {err_desc}."
+                                    if err_res:
+                                        diag_msg += f" Recommended solution: {err_res})"
+                                    else:
+                                        diag_msg += ")"
+                        
+                        next_steps = analysis.get("next_steps", [])
+                        if next_steps:
+                            diag_msg += " Recommended steps: " + ", ".join(next_steps)
+                        
+                        result += f". {diag_msg}"
+                except Exception as ex:
+                    print(f"[-] Automated diagnosis failed: {ex}")
+            
             print(f"[*] Tool result: {result}")
             return result
             
@@ -596,13 +738,13 @@ class AppointmentTools(llm.ToolContext):
     @llm.function_tool
     async def troubleshoot_charger(
         self,
-        charger_identifier: str,
+        charger_identifier: Optional[str] = None,
         issue_summary: Optional[str] = None
     ) -> str:
         """
         Diagnose charging issues and get troubleshooting steps for a charger.
         
-        charger_identifier: The name, ID, or location of the charger (e.g., 'PTC Arcade' or 'CB1671').
+        charger_identifier: The name, ID, or location of the charger (e.g., 'PTC Arcade' or 'CB1671'). If not provided or empty, it will automatically look up the user's active or previous charging session using their phone number.
         issue_summary: A brief description of the issue faced by the customer (e.g. 'fails to start' or 'error 104').
         """
         print(f"[*] TOOL CALL: troubleshoot_charger('{charger_identifier}', '{issue_summary}')")
@@ -615,11 +757,20 @@ class AppointmentTools(llm.ToolContext):
 
         try:
             loop = asyncio.get_event_loop()
+            
+            # Auto-resolve from session if not provided
+            charger_info = await self._resolve_charger_from_session(charger_identifier)
+            if not charger_info:
+                return "I couldn't locate an active or previous charging session associated with your phone number. Could you please tell me the name or ID of the charger you are using?"
+            
+            identity = charger_info["identity"]
+            name = charger_info.get("name") or identity
+
             result = await loop.run_in_executor(
                 None,
                 lambda: troubleshoot(
-                    charger_name=charger_identifier,
-                    charger_identity=charger_identifier,
+                    charger_name=identity,
+                    charger_identity=identity,
                     issue_summary=issue_summary,
                     phone=self.phone_number
                 )
@@ -643,7 +794,7 @@ class AppointmentTools(llm.ToolContext):
             analysis = result.get("analysis", {})
             matched_as = result.get("matched_as")
             
-            c_name = charger_details.get("name") or charger_details.get("chargerName") or charger_identifier
+            c_name = charger_details.get("name") or charger_details.get("chargerName") or name
             oem_name = "OEM Charger"
             if isinstance(charger_details.get("oem"), dict):
                 oem_name = charger_details["oem"].get("oemName", "OEM Charger")

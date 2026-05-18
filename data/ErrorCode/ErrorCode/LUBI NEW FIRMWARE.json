@@ -1,0 +1,787 @@
+[
+    {
+        "Error Name": "Communication with SMR is broken",
+        "Code": "C001",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Communication with controller is broken (PLC)",
+        "Code": "C002",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Communication with auxiliary power module is broken",
+        "Code": "C003",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Communication with relay control module is broken",
+        "Code": "C004",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Communication with RFID module is broken",
+        "Code": "C005",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "3G module is not ready",
+        "Code": "C006",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "3G connection is disconnected from internet",
+        "Code": "C007",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "3G connection is disconnected from backend office (CMS DISCONNECTED)",
+        "Code": "C008",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Ethernet connection is disconnected from backend office (CMS DISCONNECTED)",
+        "Code": "C009",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "SLAC - No data",
+        "Code": "C010",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "SLAC error",
+        "Code": "C011",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "SDP error",
+        "Code": "C012",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "TCP error",
+        "Code": "C013",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "V2G error - Idle",
+        "Code": "C014",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "V2G error - supportedAppProtocol",
+        "Code": "C015",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "V2G error - SessionSetup",
+        "Code": "C016",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "V2G error - ServiceDiscovery",
+        "Code": "C017",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "V2G error - ServicePaymentSelection",
+        "Code": "C018",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "V2G error - ContractAuthentication",
+        "Code": "C019",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "V2G error - ChargeParameterDiscovery",
+        "Code": "C020",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "V2G error - CableCheck",
+        "Code": "C021",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "V2G error - PreCharge",
+        "Code": "C022",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "V2G error - PowerDelivery",
+        "Code": "C023",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "V2G error - CurrentDemand",
+        "Code": "C024",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Timeout error - ReadyToCharge",
+        "Code": "C025",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "CableCheck error - SMR Vout is less than Vcmd",
+        "Code": "C026",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "CableCheck error - SMR Vout is over 20V",
+        "Code": "C027",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "CableCheck error - Output voltage is over 60V before insulation test",
+        "Code": "C028",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "CableCheck error - Output current is over 2A in insulation test",
+        "Code": "C029",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Precharge error - Output voltage is less than EV Vcmd",
+        "Code": "C030",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Precharge error - Output current is over 1.5A in precharge",
+        "Code": "C031",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Meter Failure",
+        "Code": "C032",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "wifi module is not ready",
+        "Code": "C033",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "wifi connection is disconnected from internet",
+        "Code": "C034",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Ethernet connection is disconnected from internet",
+        "Code": "C035",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "WIFI connection is disconnected from backend office (CMS DISCONNECTED)",
+        "Code": "C036",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Ethernet cable UNPLUG",
+        "Code": "C037",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "EV error - FAILED_RESSTemperatureInhibit",
+        "Code": "E001",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "EV error - FAILED_EVShiftPosition",
+        "Code": "E002",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "EV error - FAILED_ChargerConnectorLockFault",
+        "Code": "E003",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "EV error - FAILED_EVRESSMalfunction",
+        "Code": "E004",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "EV error - FAILED_ChargingCurrentdifferential",
+        "Code": "E005",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "EV error - FAILED_ChargingVoltageOutOfRange",
+        "Code": "E006",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "EV error - FAILED_Reserved_A",
+        "Code": "E007",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "EV error - FAILED_Reserved_B",
+        "Code": "E008",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "EV error - FAILED_Reserved_C",
+        "Code": "E009",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "EV error - FAILED_ChargingSystemIncompatibility",
+        "Code": "E010",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "EV error - FAILED_NoData",
+        "Code": "E011",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Stop charging at supportedAppProtocol",
+        "Code": "E012",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Stop charging at SessionSetup",
+        "Code": "E013",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Stop charging at ServiceDiscovery",
+        "Code": "E014",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Stop charging at ServicePaymentSelection",
+        "Code": "E015",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Stop charging at ContractAuthentication",
+        "Code": "E016",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Stop charging at ChargeParameterDiscovery",
+        "Code": "E017",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Stop charging at CableCheck",
+        "Code": "E018",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Stop charging at PreCharge",
+        "Code": "E019",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Stop charging at CurrentDemand",
+        "Code": "E020",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Stop charging at CurrentDemand by PowerDelivery",
+        "Code": "E021",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Stop charging by pilot (DIN STOP BY CHARGER)",
+        "Code": "E022",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Target battery voltage is higher than available output voltage",
+        "Code": "E023",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Battery undervoltage",
+        "Code": "E024",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Battery overvoltage",
+        "Code": "E025",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Present output current is different from target current",
+        "Code": "E026",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Battery malfunction - Target battery voltage is higher than maximum battery voltage",
+        "Code": "E027",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Charging current request is higher than available output current",
+        "Code": "E028",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Timeout error - Start of Vehicle CAN data",
+        "Code": "E029",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Timeout error - CAN communication fault",
+        "Code": "E030",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Timeout error - Charging enable",
+        "Code": "E031",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Timeout error - EV contactor close",
+        "Code": "E032",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Timeout error - Charging current request",
+        "Code": "E033",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Insulation error - SMR Vout is less than Vcmd",
+        "Code": "E034",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Insulation error - SMR Vout is over 20V",
+        "Code": "E035",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Insulation error - Output voltage over 10V before insulation test",
+        "Code": "E036",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Insulation error - Output voltage over 20V after insulation test",
+        "Code": "E037",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Insulation error - Output current is over 2A in insulation test",
+        "Code": "E038",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Vehicle voltage error - Output voltage over 10V after charging",
+        "Code": "E039",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Output voltage is higher than EV battery maximum voltage",
+        "Code": "E040",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Firmware update of auxiliary power module failed",
+        "Code": "F001",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Firmware update of relay control module failed",
+        "Code": "F002",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Firmware update of LCM module failed",
+        "Code": "F003",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Firmware update of charging module failed",
+        "Code": "F004",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Firmware update of power converter module failed",
+        "Code": "F005",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Ground Fault Detection trigger",
+        "Code": "G001",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Ground Fault Detection pre-warning",
+        "Code": "G002",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Temperature of air inlet or input contactor is higher than workable range",
+        "Code": "H001",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Temperature of charging plug is higher than workable range",
+        "Code": "H002",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Air filters need to be replaced",
+        "Code": "H003",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Fan error",
+        "Code": "H004",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Temperature sensor of air inlet is broken",
+        "Code": "H005",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Temperature sensor of input contactor is broken",
+        "Code": "H006",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "SPD trigger",
+        "Code": "H007",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Output fuse is broken",
+        "Code": "H008",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Temperature sensor of charging plug is broken",
+        "Code": "H009",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Temperature of air inlet is lower than workable range",
+        "Code": "H010",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Power rectifier is abnormal",
+        "Code": "H011",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Air inlet temperature in power rectifier is high",
+        "Code": "H012",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Fan inside power rectifier is broken",
+        "Code": "H013",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Ambient temperature of auxiliary power is high",
+        "Code": "H014",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Input contactor is welding",
+        "Code": "H015",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Output relay is welding",
+        "Code": "H016",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "RCD1 TRIGGER",
+        "Code": "H017",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "RCD2 TRIGGER",
+        "Code": "H018",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Door Lock Open",
+        "Code": "H019",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Power Loss",
+        "Code": "H020",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "AC Main Contactor Feedback not received",
+        "Code": "H021",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Pilot line is broken",
+        "Code": "P001",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Proximity sensor is broken",
+        "Code": "P002",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Proximity is disconnected",
+        "Code": "P003",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Emergency button is pressed",
+        "Code": "S001",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Timeout if gun is not plugged in within 5 minutes",
+        "Code": "S002",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "System input voltage is higher than workable range (>305V)",
+        "Code": "V001",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "System input voltage is lower than workable range (<170V)",
+        "Code": "V002",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Input voltage dropped (L1)",
+        "Code": "V003",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Power rectifier voltage too high",
+        "Code": "V004",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Power rectifier voltage too low",
+        "Code": "V005",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Output voltage too high",
+        "Code": "V006",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "5V controller voltage high",
+        "Code": "V007",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "5V module voltage high",
+        "Code": "V008",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "12V module voltage high",
+        "Code": "V009",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "12V EV communication voltage high",
+        "Code": "V010",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "24V relay control voltage high",
+        "Code": "V011",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "5V controller voltage low",
+        "Code": "V012",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "5V module voltage low",
+        "Code": "V013",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "12V module voltage low",
+        "Code": "V014",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "12V EV communication voltage low",
+        "Code": "V015",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "24V relay control voltage low",
+        "Code": "V016",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Over Current",
+        "Code": "I000",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "FAILED",
+        "Code": "E041",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "FAILED_SequenceError",
+        "Code": "E042",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "FAILED_ServiceIDInvalid",
+        "Code": "E043",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "FAILED_UnknownSession",
+        "Code": "E044",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "FAILED_ServiceSelectionInvalid",
+        "Code": "E045",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "FAILED_PaymentSelectionInvalid",
+        "Code": "E046",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "FAILED_CertificateExpired",
+        "Code": "E047",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "FAILED_SignatureError",
+        "Code": "E048",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "FAILED_NoCertificateAvailable",
+        "Code": "E049",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "FAILED_CertChainError",
+        "Code": "E050",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "FAILED_ChallengeInvalid",
+        "Code": "E051",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "FAILED_ContractCanceled",
+        "Code": "E052",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "FAILED_WrongChargeParameter",
+        "Code": "E053",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "FAILED_PowerDeliveryNotApplied",
+        "Code": "E054",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "FAILED_TariffSelectionInvalid",
+        "Code": "E055",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "FAILED_ChargingProfileInvalid",
+        "Code": "E056",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "FAILED_EVSEPresentVoltageTooLow",
+        "Code": "E057",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "FAILED_MeteringSignatureNotValid",
+        "Code": "E058",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "FAILED_WrongEnergyTransferType",
+        "Code": "E059",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Hard Reset Done",
+        "Code": "E060",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "G1 Stop by CMS (de Authorized)",
+        "Code": "E061",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "G1 Stop by CMS (de Authorized)",
+        "Code": "E062",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Charging stop by Change Availability",
+        "Code": "E063",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Charging stop by Time to Charge",
+        "Code": "U001",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Charging stop by Unit to Charge",
+        "Code": "U002",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Charging stop by SOC",
+        "Code": "U003",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Charging stop by set cutoff SOC",
+        "Code": "U005",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Charging stop by password",
+        "Code": "U006",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Charging stop by RFID",
+        "Code": "U007",
+        "Resolution": ""
+    },
+    {
+        "Error Name": "Charging stop by remote",
+        "Code": "U000",
+        "Resolution": ""
+    }
+]
