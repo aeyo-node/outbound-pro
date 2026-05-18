@@ -125,8 +125,6 @@ def load_charger(identity):
         print(f"[*] Charger file not found locally: {path}. Fetching live details from API...")
         try:
             # Resilient import fallback
-            import sys
-            import os
             api_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "api-call"))
             if api_path not in sys.path:
                 sys.path.append(api_path)
