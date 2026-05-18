@@ -468,7 +468,10 @@ def analyze_ac_charger(charger_data, snapshot):
     voltage = snapshot.get("meter", {}).get("voltage")
     current = snapshot.get("meter", {}).get("current")
     power = snapshot.get("meter", {}).get("power")
-    status_code = snapshot.get("status", {}).get("error_code")
+    
+    status_code = snapshot.get("status", {}).get("vendor_error") or snapshot.get("status", {}).get("error_code")
+    if status_code and str(status_code) not in ("NoError", "1000"):
+        error_code = status_code
 
     result["evidence"] = {
         "status": status,
