@@ -153,8 +153,14 @@ class AppointmentTools(llm.ToolContext):
             self.remember_details, self.book_calcom, self.cancel_calcom,
             self.check_charger_status, self.check_wallet_balance,
             self.start_charging_session, self.stop_charging_session,
+            self.troubleshoot_charger,
+            self.get_charging_session_details,
         ]
-        force_include = ["start_charging_session", "stop_charging_session", "check_wallet_balance", "check_charger_status"]
+        force_include = [
+            "start_charging_session", "stop_charging_session", 
+            "check_wallet_balance", "check_charger_status",
+            "troubleshoot_charger", "get_charging_session_details"
+        ]
         if not enabled:
             return all_methods
         name_map = {m.__name__: m for m in all_methods}
@@ -586,3 +592,229 @@ class AppointmentTools(llm.ToolContext):
         except Exception as e:
             logger.error(f"Error in stop_charging_session: {e}")
             return f"I encountered an error: {str(e)}"
+
+    @llm.function_tool
+    async def troubleshoot_charger(
+        self,
+        charger_identifier: str,
+        issue_summary: Optional[str] = None
+    ) -> str:
+        """
+        Diagnose charging issues and get troubleshooting steps for a charger.
+        
+        charger_identifier: The name, ID, or location of the charger (e.g., 'PTC Arcade' or 'CB1671').
+        issue_summary: A brief description of the issue faced by the customer (e.g. 'fails to start' or 'error 104').
+        """
+        print(f"[*] TOOL CALL: troubleshoot_charger('{charger_identifier}', '{issue_summary}')")
+        
+        try:
+            from data.troubleshoot import troubleshoot
+        except ImportError as e:
+            logger.error(f"Failed to import troubleshoot: {e}")
+            return "EV troubleshooting features are currently offline."
+
+        try:
+            loop = asyncio.get_event_loop()
+            result = await loop.run_in_executor(
+                None,
+                lambda: troubleshoot(
+                    charger_name=charger_identifier,
+                    charger_identity=charger_identifier,
+                    issue_summary=issue_summary,
+                    phone=self.phone_number
+                )
+            )
+            
+            if not result or not isinstance(result, dict):
+                return "I couldn't perform the diagnosis. Please make sure the charger identifier is correct."
+            
+            status = result.get("status")
+            if status == "error":
+                return f"Error diagnosing charger: {result.get('message', 'Unknown error')}"
+            
+            if status in ("need_selection", "multiple"):
+                options = ", ".join([o.get("label", o.get("identity", "")) for o in result.get("options", [])])
+                return f"I found multiple chargers matching that description. Did you mean: {options}?"
+            
+            charger_type = result.get("charger_type", "AC")
+            charger_details = result.get("charger_details", {})
+            snapshot = result.get("latest_snapshot", {})
+            error_details = result.get("error_code_details")
+            analysis = result.get("analysis", {})
+            matched_as = result.get("matched_as")
+            
+            c_name = charger_details.get("name") or charger_details.get("chargerName") or charger_identifier
+            oem_name = "OEM Charger"
+            if isinstance(charger_details.get("oem"), dict):
+                oem_name = charger_details["oem"].get("oemName", "OEM Charger")
+            elif result.get("vendor_id"):
+                oem_name = result.get("vendor_id")
+            
+            match_msg = f" (matched as {matched_as})" if matched_as else ""
+            
+            summary = analysis.get("summary") or "General charging issue"
+            interpretation = analysis.get("interpretation") or "There might be a communication or hardware issue."
+            next_steps = analysis.get("next_steps", [])
+            
+            response_parts = []
+            response_parts.append(f"I have successfully diagnosed charger {c_name}{match_msg}, which is a {charger_type} charger manufactured by {oem_name}.")
+            
+            if snapshot:
+                conn_status = snapshot.get("status", {}).get("connector_status") or snapshot.get("status", {}).get("status")
+                if conn_status:
+                    response_parts.append(f"The charger's current status is reported as {conn_status}.")
+            
+            response_parts.append(f"Diagnosis: {summary}.")
+            response_parts.append(f"Explanation: {interpretation}")
+            
+            if error_details:
+                # Mapped error details from ErrorCode
+                if isinstance(error_details, list) and len(error_details) > 0:
+                    err_info = error_details[0]
+                else:
+                    err_info = error_details
+                
+                if isinstance(err_info, dict):
+                    err_code = err_info.get("code") or err_info.get("error_code")
+                    err_desc = err_info.get("description") or err_info.get("name")
+                    err_res = err_info.get("resolution") or err_info.get("remedy") or err_info.get("detail")
+                    if err_code and err_code != "NoError":
+                        response_parts.append(f"The active error code is {err_code}, described as: {err_desc}.")
+                        if err_res:
+                            response_parts.append(f"Vendor recommended solution: {err_res}")
+            
+            if next_steps:
+                response_parts.append("Here are the recommended steps to resolve this:")
+                for idx, step in enumerate(next_steps, 1):
+                    response_parts.append(f"{idx}. {step}")
+            else:
+                response_parts.append("Please instruct the customer to re-plug the connector and verify if their vehicle starts charging. If the issue persists, a manual reset may be required.")
+            
+            spoken_text = " ".join(response_parts)
+            return spoken_text
+            
+        except Exception as e:
+            logger.error(f"Error in troubleshoot_charger: {e}")
+            return f"I encountered an error while trying to diagnose the charger: {str(e)}"
+
+    @llm.function_tool
+    async def get_charging_session_details(self, charger_identifier: str) -> str:
+        """Get live charging session metrics for an EV charger, including state of charge (SoC), power, energy consumed, current (amperes), and voltage. charger_identifier: ID or Name."""
+        print(f"[*] TOOL CALL: get_charging_session_details('{charger_identifier}')")
+        if not _EV_TOOLS_AVAILABLE:
+            return "EV charging features are currently offline."
+        
+        try:
+            loop = asyncio.get_event_loop()
+            
+            # Resolve the charger
+            resolved = await loop.run_in_executor(None, resolve_charger, charger_identifier)
+            print(f"[*] Resolved charger for metrics: {resolved}")
+            
+            if resolved["status"] == "not_found":
+                return f"I couldn't find a charger matching '{charger_identifier}'. Could you please verify the name?"
+            
+            if resolved["status"] == "multiple":
+                options = ", ".join([o["label"] for o in resolved["options"]])
+                return f"I found multiple chargers. Did you mean: {options}?"
+            
+            identity = resolved["charger"]["identity"]
+            
+            # Dynamically import troubleshooter helpers
+            import sys
+            sys.path.append(os.path.join(os.path.dirname(__file__), "data"))
+            import importlib
+            
+            try:
+                troubleshoot_mod = importlib.import_module("data.troubleshoot")
+            except ImportError:
+                troubleshoot_mod = importlib.import_module("troubleshoot")
+                
+            fetch_logs_tiered = getattr(troubleshoot_mod, "fetch_logs_tiered")
+            extract_latest_snapshot = getattr(troubleshoot_mod, "extract_latest_snapshot")
+            
+            # Fetch details and raw logs
+            details = await loop.run_in_executor(None, fetch_chargepoint_details, identity)
+            raw_logs = await loop.run_in_executor(None, fetch_logs_tiered, identity)
+            
+            if not details:
+                return "I resolved the charger but could not retrieve its configurations."
+                
+            snapshot = extract_latest_snapshot(raw_logs, details)
+            print(f"[*] Session Details Snapshot: {snapshot}")
+            
+            status = snapshot.get("status", {}).get("value") or details.get("status", "Unknown")
+            meter = snapshot.get("meter", {})
+            
+            soc = meter.get("soc")
+            voltage = meter.get("voltage")
+            current = meter.get("current")
+            power = meter.get("power")
+            energy = meter.get("energy")
+            
+            response_parts = []
+            name = details.get("chargerName", charger_identifier)
+            
+            response_parts.append(f"Here are the live charging session details for {name}.")
+            
+            # Format and normalize values
+            soc_str = f"{soc}%" if soc is not None else "Not available"
+            
+            if voltage is not None:
+                try:
+                    volts = float(voltage)
+                    volt_str = f"{volts:.1f} Volts"
+                except ValueError:
+                    volt_str = f"{voltage} V"
+            else:
+                volt_str = "Not available"
+                
+            if current is not None:
+                try:
+                    amps = float(current)
+                    amp_str = f"{amps:.1f} Amperes"
+                except ValueError:
+                    amp_str = f"{current} A"
+            else:
+                amp_str = "Not available"
+                
+            if power is not None:
+                try:
+                    pwatts = float(power)
+                    if pwatts > 1000:
+                        pwatts_kw = pwatts / 1000.0
+                        power_str = f"{pwatts_kw:.2f} Kilowatts"
+                    else:
+                        power_str = f"{pwatts:.1f} Watts"
+                except ValueError:
+                    power_str = f"{power} kW"
+            else:
+                power_str = "Not available"
+                
+            if energy is not None:
+                try:
+                    ewatts = float(energy)
+                    # Energy is usually represented in Wh or kWh in OCPP meter values. Let's describe it.
+                    if ewatts > 1000:
+                        ewatts_kwh = ewatts / 1000.0
+                        energy_str = f"{ewatts_kwh:.2f} Kilowatt-hours"
+                    else:
+                        energy_str = f"{ewatts:.1f} Watt-hours"
+                except ValueError:
+                    energy_str = f"{energy} kWh"
+            else:
+                energy_str = "Not available"
+                
+            response_parts.append(f"Current Charger Status: {status}.")
+            response_parts.append(f"State of Charge (SoC): {soc_str}.")
+            response_parts.append(f"Power delivery: {power_str}.")
+            response_parts.append(f"Energy consumed in this session: {energy_str}.")
+            response_parts.append(f"Voltage: {volt_str}.")
+            response_parts.append(f"Current draw: {amp_str}.")
+            
+            spoken_text = " ".join(response_parts)
+            return spoken_text
+            
+        except Exception as e:
+            logger.error(f"Error in get_charging_session_details: {e}")
+            return f"I encountered an error while trying to fetch the charging session details: {str(e)}"
