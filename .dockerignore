@@ -3,7 +3,6 @@ node_modules
 swaram-dashboard/node_modules
 swaram-dashboard/.next
 .git
-scratch
 *.pyc
 __pycache__
 .env.example
