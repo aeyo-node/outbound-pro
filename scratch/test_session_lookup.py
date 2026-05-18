@@ -78,6 +78,12 @@ async def run_test():
 
     # 5. Test Troubleshoot Charger
     print("\n[*] 3. Testing troubleshoot_charger tool with empty/None argument...")
+    from data.troubleshoot import troubleshoot
+    raw_res = troubleshoot(charger_identity="185599798823820", phone=test_phone)
+    print("\n[DEBUG] Raw Troubleshoot Result:")
+    import pprint
+    pprint.pprint(raw_res)
+    
     trouble_msg = await tools.troubleshoot_charger(None, "session has an active issue")
     print("\n🗣️ Spoken Output from Troubleshooter:")
     print("-" * 60)
