@@ -22,7 +22,7 @@ if workspace_dir not in sys.path:
     sys.path.append(workspace_dir)
 
 from tools import AppointmentTools
-from db import db
+from db import _adb
 
 async def run_test():
     print("=" * 60)
@@ -36,8 +36,9 @@ async def run_test():
     
     try:
         from db import log_transaction
+        db_client = await _adb()
         clean_phone = "8086477654"
-        res = await db.table("transactions").select("*").or_(f"phone.eq.{clean_phone},phone.eq.+91{clean_phone}").execute()
+        res = await db_client.table("transactions").select("*").or_(f"phone.eq.{clean_phone},phone.eq.+91{clean_phone}").execute()
         if not res.data or len(res.data) == 0:
             print("[*] Mock transaction not found. Inserting mock transaction record into Supabase transactions table...")
             await log_transaction(
