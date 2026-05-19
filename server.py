@@ -169,23 +169,27 @@ async def init_demo_data():
         from db import _adb
         db_client = await _adb()
         
+        # Clear existing agent profiles and contacts to reset to new Malayalam domains
+        try:
+            await db_client.table("agent_profiles").delete().neq("id", "").execute()
+            await db_client.table("contacts").delete().neq("id", "").execute()
+        except Exception as del_err:
+            logger.warning(f"Error resetting tables: {del_err}")
+        
         # 1. Insert Agent Profiles
         inserted_profiles = 0
         for name, prompt in INDUSTRY_PROMPTS.items():
-            # Check if exists
-            res = await db_client.table("agent_profiles").select("id").eq("name", name).execute()
-            if not res.data:
-                await db_client.table("agent_profiles").insert({
-                    "id": str(uuid.uuid4()),
-                    "name": name,
-                    "voice": "Aoede",
-                    "model": "models/gemini-2.0-flash-exp",
-                    "system_prompt": prompt,
-                    "enabled_tools": "[]",
-                    "is_default": False,
-                    "created_at": datetime.now().isoformat()
-                }).execute()
-                inserted_profiles += 1
+            await db_client.table("agent_profiles").insert({
+                "id": str(uuid.uuid4()),
+                "name": name,
+                "voice": "Aoede",
+                "model": "models/gemini-2.0-flash-exp",
+                "system_prompt": prompt,
+                "enabled_tools": "[]",
+                "is_default": False,
+                "created_at": datetime.now().isoformat()
+            }).execute()
+            inserted_profiles += 1
                 
         # 2. Insert Demo CRM Leads
         demo_leads = [
@@ -197,17 +201,14 @@ async def init_demo_data():
         ]
         inserted_leads = 0
         for lead in demo_leads:
-            # Check if exists by phone
-            res = await db_client.table("contacts").select("id").eq("phone", lead["phone"]).execute()
-            if not res.data:
-                await db_client.table("contacts").insert({
-                    "id": str(uuid.uuid4()),
-                    "name": lead["name"],
-                    "phone": lead["phone"],
-                    "email": lead["email"],
-                    "created_at": datetime.now().isoformat()
-                }).execute()
-                inserted_leads += 1
+            await db_client.table("contacts").insert({
+                "id": str(uuid.uuid4()),
+                "name": lead["name"],
+                "phone": lead["phone"],
+                "email": lead["email"],
+                "created_at": datetime.now().isoformat()
+            }).execute()
+            inserted_leads += 1
                 
         return JSONResponse({"status": "success", "inserted_profiles": inserted_profiles, "inserted_leads": inserted_leads})
     except Exception as e:

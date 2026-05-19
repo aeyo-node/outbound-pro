@@ -1,36 +1,27 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Phone, ArrowRight, Mic, BarChart3, Users, Zap, Shield, Clock, ChevronRight, Headset, Play, Volume2, Building2, Car, Heart, GraduationCap, Truck, Landmark, ShoppingBag, Plane, Globe } from "lucide-react";
+import { Phone, ArrowRight, Mic, BarChart3, Users, Zap, Shield, Clock, ChevronRight, Headset, Play, Building2, Car, Heart, GraduationCap, Landmark } from "lucide-react";
 
 const API_BASE = "";  // Use proxy from next.config.ts
 
 const ANIMATED_LANGUAGES = [
-  "മലയാളം", "हिन्दी", "ಕನ್ನಡ", "తెలుగు", "मराठी",
-  "தமிழ்", "বাংলা", "ગુજરાતી", "English", "ਪੰਜਾਬੀ"
+  "മലയാളം", "Malayalam"
 ];
 
 const LANGUAGES = [
   { code: "ml", name: "Malayalam", native: "മലയാളം" },
-  { code: "hi", name: "Hindi", native: "हिन्दी" },
-  { code: "kn", name: "Kannada", native: "ಕನ್ನಡ" },
-  { code: "te", name: "Telugu", native: "తెలుగు" },
-  { code: "mr", name: "Marathi", native: "मराठी" },
-  { code: "ta", name: "Tamil", native: "தமிழ்" },
-  { code: "bn", name: "Bengali", native: "বাংলা" },
-  { code: "gu", name: "Gujarati", native: "ગુજરાતી" },
-  { code: "en", name: "English", native: "English" },
 ];
 
 const USE_CASES = [
-  { icon: Landmark, title: "Banking & Finance", service: "Banking & Finance", desc: "EMI collections, loan inquiries, fraud alerts, balance checks, and lead qualification — all automated.", items: ["EMI Collection Calls", "Loan Status Updates", "Fraud Alert Verification", "Account Balance Inquiry"] },
-  { icon: Car, title: "Automobile", service: "Automobile", desc: "Test drive bookings, service reminders, insurance renewals, and roadside assistance handling.", items: ["Test Drive Scheduling", "Service Appointment Booking", "Insurance & Warranty Calls", "Post-Service Feedback"] },
-  { icon: Heart, title: "Healthcare", service: "Healthcare", desc: "Appointment booking, prescription refills, lab result updates, and post-treatment follow-ups.", items: ["Appointment Reminders", "Lab Report Notifications", "Prescription Refill Alerts", "Patient Follow-up Calls"] },
-  { icon: GraduationCap, title: "EdTech", service: "EdTech", desc: "Course enrollment, class reminders, student query resolution, and counselor routing.", items: ["Enrollment Assistance", "Class Schedule Reminders", "Fee Payment Reminders", "Lead Qualification"] },
-  { icon: ShoppingBag, title: "Retail & E-commerce", service: "Retail & E-commerce", desc: "Order tracking, return processing, promotional offers, and personalized shopping assistance.", items: ["Order Status Updates", "Return & Refund Processing", "Promotional Campaigns", "Customer Support"] },
-  { icon: Truck, title: "Logistics", service: "Logistics", desc: "Delivery updates, pickup scheduling, driver coordination, and customer notification at scale.", items: ["Delivery Notifications", "Pickup Scheduling", "Real-time Tracking Calls", "Feedback Collection"] },
-  { icon: Plane, title: "Travel & Hospitality", service: "Travel & Hospitality", desc: "Booking confirmations, itinerary updates, check-in reminders, and multilingual guest support.", items: ["Booking Confirmations", "Flight/Hotel Updates", "Cancellation Handling", "Guest Support"] },
-  { icon: Building2, title: "Government", service: "Government", desc: "Citizen notifications, appointment scheduling, survey collection, and public service updates.", items: ["Citizen Notifications", "Scheme Awareness Calls", "Appointment Scheduling", "Survey & Feedback"] },
+  { icon: Building2, title: "Real Estate", service: "Real Estate", desc: "Automate property inquiries, site visit bookings, and customer follow-ups in fluent Malayalam.", items: ["Site Visit Bookings", "Property Inquiries", "Pricing & Availability", "Broker Follow-up Calls"] },
+  { icon: Heart, title: "Clinics", service: "Clinics", desc: "Manage patient appointments, reminders, and clinic details with an empathetic Malayalam-speaking receptionist.", items: ["Doctor Appointment Booking", "Clinic Timing Queries", "Vaccination Reminders", "Feedback Collection"] },
+  { icon: Car, title: "Vehicle Dealerships", service: "Vehicle Dealerships", desc: "Schedule test drives, service bookings, and insurance reminders seamlessly with outbound calling.", items: ["Test Drive Scheduling", "Car Service Appointments", "Insurance Renewals", "Post-Service Feedback"] },
+  { icon: Shield, title: "Insurance", service: "Insurance", desc: "Automate policy renewals, premium payment reminders, and claim status updates in Malayalam.", items: ["Policy Renewal Calls", "Payment Reminders", "Claim Status Inquiries", "Policy Info Details"] },
+  { icon: Users, title: "Consultancies", service: "Consultancies", desc: "Qualify leads for study abroad, job placements, or visa consultancies with automated Malayalam voice calls.", items: ["Visa Consultation Bookings", "Study Abroad Inquiries", "Job Placement Follow-ups", "Document Verification Alerts"] },
+  { icon: GraduationCap, title: "Training Centres", service: "Training Centres", desc: "Handle student course inquiries, batch timings, admission updates, and fee reminders automatically.", items: ["Course Admission Inquiries", "Batch Schedule Updates", "Fee Payment Reminders", "Student Attendance Alerts"] },
+  { icon: Landmark, title: "Finance / Loans", service: "Finance / Loans", desc: "Automate loan eligibility checks, gold loan renewals, and gold/personal loan EMI collections.", items: ["EMI Payment Reminders", "Gold Loan Renewals", "Loan Eligibility Checks", "Interest Payment Alerts"] },
+  { icon: Zap, title: "Home Services", service: "Home Services", desc: "Book AC servicing, appliance repairs, plumbing, and electrician service visits hands-free.", items: ["AC Service Bookings", "Plumber/Electrician Scheduling", "Service Technician Dispatch", "Quality Feedback Surveys"] },
 ];
 
 const STATS = [
@@ -68,22 +59,7 @@ function AnimatedLang() {
   );
 }
 
-/* ─── Waveform Visualizer ──────────────────────────────────── */
-function WaveformVisualizer({ active }: { active: boolean }) {
-  return (
-    <div className="flex items-center gap-[3px] h-8">
-      {Array.from({ length: 24 }).map((_, i) => (
-        <div key={i} className="waveform-bar" style={{
-          animationDelay: `${i * 0.08}s`,
-          opacity: active ? 1 : 0.2,
-          height: active ? undefined : "4px",
-        }} />
-      ))}
-    </div>
-  );
-}
-
-/* ─── Call Dispatcher (shared by Voice section + Use Cases) ── */
+/* ─── Call Dispatcher (shared by Use Cases) ── */
 async function dispatchCall(phone: string, serviceType: string): Promise<{ ok: boolean; msg: string }> {
   const formatted = phone.startsWith("+") ? phone : `+91${phone.replace(/\D/g, "")}`;
   if (formatted.length < 12) return { ok: false, msg: "Please enter a valid 10-digit Indian phone number" };
@@ -124,7 +100,6 @@ function Navbar() {
         </div>
         <div className="hidden md:flex items-center gap-8">
           <a href="#features" className="text-sm text-gray-400 hover:text-white transition-colors">Features</a>
-          <a href="#voice" className="text-sm text-gray-400 hover:text-white transition-colors">Voice Experience</a>
           <a href="#usecases" className="text-sm text-gray-400 hover:text-white transition-colors">Use Cases</a>
           <a href="#languages" className="text-sm text-gray-400 hover:text-white transition-colors">Languages</a>
         </div>
@@ -155,12 +130,12 @@ function HeroSection() {
         </h1>
 
         <p className="text-lg md:text-xl text-gray-400 max-w-2xl mx-auto mb-10 animate-fade-up delay-200 leading-relaxed">
-          Enterprise-grade AI voice agents fluent in Malayalam, Hindi, Kannada, Telugu, Marathi, and more. 
+          Enterprise-grade AI voice agents speaking strictly in Malayalam. 
           Automate 10,000+ concurrent calls. Zero wait time. Human-like conversations.
         </p>
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-fade-up delay-300">
-          <a href="#voice" className="cta-btn text-base">
+          <a href="#usecases" className="cta-btn text-base">
             <Mic className="w-5 h-5" /> Try Live Demo
           </a>
           <a href="/login" className="cta-btn-outline text-base">
@@ -184,7 +159,7 @@ function HeroSection() {
 /* ─── Features ─────────────────────────────────────────────── */
 function FeaturesSection() {
   const features = [
-    { icon: Globe, title: "10+ Indian Languages", desc: "Auto-switch languages mid-call. Malayalam, Hindi, Kannada, Telugu, Marathi — your agent adapts instantly." },
+    { icon: Landmark, title: "Malayalam Outbound Calls", desc: "Speak directly to your target audience. Our voice agents are trained in natural Malayalam dialects and phone etiquette." },
     { icon: Zap, title: "Powered by Swaram AI", desc: "Swaram's proprietary STT, TTS, and LLM engine for natural, context-aware conversations that handle open-ended queries." },
     { icon: BarChart3, title: "Real-Time Analytics", desc: "Live dashboard with call outcomes, duration tracking, booking rates, and campaign performance metrics." },
     { icon: Users, title: "Campaign Automation", desc: "Bulk outbound campaigns with scheduling, contact management, and per-call delay configuration." },
@@ -215,108 +190,14 @@ function FeaturesSection() {
   );
 }
 
-/* ─── Voice Experience (main demo) ─────────────────────────── */
-function VoiceExperienceSection() {
-  const [phone, setPhone] = useState("");
-  const [selectedLang, setSelectedLang] = useState("ml");
-  const [callState, setCallState] = useState<"idle" | "calling" | "connected">("idle");
-  const [callStatus, setCallStatus] = useState("");
-
-  const handleCall = async () => {
-    setCallState("calling");
-    setCallStatus("Initiating call...");
-    const result = await dispatchCall(phone, "Voice AI Demo");
-    if (result.ok) {
-      setCallState("connected");
-      setCallStatus(result.msg);
-      setTimeout(() => { setCallState("idle"); setCallStatus(""); }, 30000);
-    } else {
-      setCallState("idle");
-      setCallStatus(result.msg);
-    }
-  };
-
-  return (
-    <section id="voice" className="py-32 px-6 relative">
-      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#FFD166]/[0.02] to-transparent" />
-      <div className="max-w-7xl mx-auto relative z-10">
-        <div className="text-center mb-16">
-          <h2 className="text-4xl md:text-5xl font-bold mb-4">Experience <span className="text-gradient">Swaram Live</span></h2>
-          <p className="text-gray-500 max-w-xl mx-auto">Enter your phone number. Pick a language. Our AI agent calls you in seconds.</p>
-        </div>
-
-        <div className="max-w-2xl mx-auto">
-          <div className="glass-card p-8 mb-8">
-            <div className="flex items-center gap-4 mb-6">
-              <div className="relative">
-                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#FFD166] to-[#FF9F1C] flex items-center justify-center">
-                  <Headset className="w-8 h-8 text-black" />
-                </div>
-                <div className="absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full bg-green-400 border-2 border-[#0A0A0A]" />
-              </div>
-              <div>
-                <h3 className="text-xl font-semibold">Susanna</h3>
-                <p className="text-sm text-gray-500">Swaram AI Voice Agent • Online</p>
-              </div>
-            </div>
-
-            <WaveformVisualizer active={callState === "connected"} />
-
-            <div className="mt-6 mb-6">
-              <p className="text-xs text-gray-500 uppercase tracking-widest mb-3">Select Language</p>
-              <div className="flex flex-wrap gap-2">
-                {LANGUAGES.map((lang) => (
-                  <button key={lang.code} onClick={() => setSelectedLang(lang.code)}
-                    className={`lang-pill ${selectedLang === lang.code ? "active" : ""}`}>
-                    {lang.native}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="flex gap-3">
-              <div className="flex-1 flex items-center gap-2 bg-white/5 border border-white/10 rounded-full px-5 py-3 focus-within:border-[#FFD166]/40 transition-colors">
-                <span className="text-gray-500 text-sm">+91</span>
-                <input type="tel" placeholder="Enter your phone number" value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  className="bg-transparent outline-none text-white placeholder-gray-400 flex-1 text-sm"
-                  maxLength={10} />
-              </div>
-              <button onClick={handleCall} disabled={callState === "calling"}
-                className={`cta-btn !rounded-full !px-6 ${callState === "calling" ? "opacity-60 cursor-wait" : ""}`}>
-                {callState === "calling" ? (
-                  <div className="w-5 h-5 border-2 border-black/30 border-t-black rounded-full animate-spin" />
-                ) : callState === "connected" ? (
-                  <Volume2 className="w-5 h-5" />
-                ) : (
-                  <Phone className="w-5 h-5" />
-                )}
-              </button>
-            </div>
-
-            {callStatus && (
-              <p className={`text-sm mt-4 ${callState === "connected" ? "text-green-400" : "text-red-400"}`}>
-                {callStatus}
-              </p>
-            )}
-          </div>
-          <p className="text-center text-xs text-gray-600">
-            By clicking call, you agree to receive a demo call from our AI agent. Standard call charges may apply.
-          </p>
-        </div>
-      </div>
-    </section>
-  );
-}
-
 /* ─── Languages ────────────────────────────────────────────── */
 function LanguagesSection() {
   return (
     <section id="languages" className="py-32 px-6">
       <div className="max-w-7xl mx-auto text-center">
-        <h2 className="text-4xl md:text-5xl font-bold mb-4">Every language. <span className="text-gradient">Every dialect.</span></h2>
-        <p className="text-gray-500 max-w-xl mx-auto mb-16">Real-time language switching mid-call. Your customers speak naturally — our agent follows.</p>
-        <div className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-9 gap-4">
+        <h2 className="text-4xl md:text-5xl font-bold mb-4">Empower your brand in <span className="text-gradient">Malayalam.</span></h2>
+        <p className="text-gray-500 max-w-xl mx-auto mb-16">Designed to help local businesses scale. Engage with customers in fluent, local slang and natural cadence.</p>
+        <div className="grid grid-cols-1 max-w-xs mx-auto gap-4">
           {LANGUAGES.map((lang) => (
             <div key={lang.code} className="glass-card p-6 flex flex-col items-center gap-3 group">
               <span className="text-2xl font-bold text-gradient">{lang.native.charAt(0)}</span>
@@ -432,7 +313,7 @@ function CTASection() {
             <h2 className="text-4xl md:text-5xl font-bold mb-4">Ready to automate<br /><span className="text-gradient">your voice operations?</span></h2>
             <p className="text-gray-400 max-w-lg mx-auto mb-8">Join enterprises across India using Swaram to handle thousands of calls daily in every language.</p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <a href="#voice" className="cta-btn text-base"><Mic className="w-5 h-5" /> Try Live Demo</a>
+              <a href="#usecases" className="cta-btn text-base"><Mic className="w-5 h-5" /> Try Live Demo</a>
               <a href="/login" className="cta-btn-outline text-base">Access Dashboard <ArrowRight className="w-4 h-4" /></a>
             </div>
           </div>
@@ -454,7 +335,6 @@ function Footer() {
         </div>
         <div className="flex items-center gap-6 text-sm text-gray-500">
           <a href="#features" className="hover:text-white transition-colors">Features</a>
-          <a href="#voice" className="hover:text-white transition-colors">Demo</a>
           <a href="#usecases" className="hover:text-white transition-colors">Industries</a>
           <a href="/login" className="hover:text-white transition-colors">Dashboard</a>
         </div>
@@ -476,7 +356,6 @@ export default function LandingPage() {
       <Navbar />
       <HeroSection />
       <FeaturesSection />
-      <VoiceExperienceSection />
       <LanguagesSection />
       <UseCasesSection />
       <CTASection />

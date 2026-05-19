@@ -390,8 +390,8 @@ async def entrypoint(ctx: agents.JobContext) -> None:
 
     # ── Greeting ─────────────────────────────────────────────────────────────
     greeting = (
-        f"The call just connected. Greet the lead warmly and ask if you're speaking with {lead_name}. Use Malayalam."
-        if phone_number else "Greet the caller warmly and ask how you can help. Use Malayalam."
+        f"The call just connected. Speak strictly in Malayalam. Start the call by greeting the lead and using the greeting defined in your system prompt for {service_type}."
+        if phone_number else f"Speak strictly in Malayalam. Greet the caller warmly and help them with {service_type}."
     )
     try:
         # Access the agent's chat context. RealtimeSession (session.llm) context is separate
