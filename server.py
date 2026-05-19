@@ -238,6 +238,16 @@ async def api_dispatch_call(req: CallRequest):
             effective_model = profile.get("model")
             effective_tools = profile.get("enabled_tools")
 
+    if not effective_voice:
+        if req.service_type in ["Vehicle Dealerships", "Finance / Loans"]:
+            effective_voice = "Charon"
+        elif req.service_type in ["Consultancies", "Home Services"]:
+            effective_voice = "Fenrir"
+        elif req.service_type in ["Real Estate", "Insurance", "EV Charging & Support"]:
+            effective_voice = "Aoede"
+        else:
+            effective_voice = "Kore"
+
     from prompts import build_prompt
     effective_prompt = build_prompt(req.lead_name, req.business_name, req.service_type, effective_prompt)
 
