@@ -130,7 +130,7 @@ except ImportError:
 
 # ── Session factory ──────────────────────────────────────────────────────────
 
-def _build_session(tools: list, system_prompt: str) -> AgentSession:
+def _build_session(tools: list, system_prompt: str, voice_override: Optional[str] = None) -> AgentSession:
     """
     Build AgentSession with Gemini Live realtime.
 
@@ -142,7 +142,7 @@ def _build_session(tools: list, system_prompt: str) -> AgentSession:
     ⚠️  EndSensitivity MUST use END_SENSITIVITY_LOW (full string — not .LOW)
     """
     gemini_model = os.getenv("GEMINI_MODEL", "models/gemini-2.0-flash-exp")
-    gemini_voice = os.getenv("GEMINI_TTS_VOICE", "Aoede")
+    gemini_voice = voice_override or os.getenv("GEMINI_TTS_VOICE", "Aoede")
     use_realtime = os.getenv("USE_GEMINI_REALTIME", "true").lower() != "false"
 
     RealtimeClass = _google_realtime or (_google_beta_realtime if use_realtime else None)
@@ -333,7 +333,7 @@ async def entrypoint(ctx: agents.JobContext) -> None:
     active_tools = tool_ctx.build_tool_list(enabled_tools)
     await _log("info", f"Active tools: {[t.__name__ for t in active_tools]}")
 
-    session = _build_session(tools=active_tools, system_prompt=system_prompt)
+    session = _build_session(tools=active_tools, system_prompt=system_prompt, voice_override=voice_override)
 
     # Use RoomOptions if available (non-deprecated), else fall back
     # NEVER use close_on_disconnect=True with SIP

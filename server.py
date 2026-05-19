@@ -182,7 +182,14 @@ async def init_demo_data():
         # 1. Insert Agent Profiles
         inserted_profiles = 0
         for name, prompt in INDUSTRY_PROMPTS.items():
-            voice = "Puck" if name in ["Vehicle Dealerships", "Consultancies", "Finance / Loans", "Home Services"] else "Aoede"
+            if name in ["Vehicle Dealerships", "Finance / Loans"]:
+                voice = "Charon"
+            elif name in ["Consultancies", "Home Services"]:
+                voice = "Fenrir"
+            elif name in ["Real Estate", "Insurance", "EV Charging & Support"]:
+                voice = "Aoede"
+            else:
+                voice = "Kore"
             await db_client.table("agent_profiles").insert({
                 "id": str(uuid.uuid4()),
                 "name": name,
