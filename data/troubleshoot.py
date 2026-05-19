@@ -85,7 +85,7 @@ def load_local_charger(identity):
 def load_ac_error_codes():
     path = os.path.join(
         os.path.dirname(__file__),
-        "..", "data", "ErrorCode",
+        "..", "data", "ErrorCode", "ErrorCode",
         "AC CHARGER ERROR CODE.json"
     )
 
@@ -421,6 +421,13 @@ def lookup_error_code(code, vendor_id=None, oem_name=None, charger_type=None):
         
     code_str = str(code).strip()
 
+    # Prioritize generic AC error lookup for AC chargers (as per developer instructions)
+    if charger_type == "AC":
+        ac_result = get_error_details(code_str)
+        if ac_result and ac_result.get("name") != "Unknown":
+            ac_result["source"] = "ac_generic"
+            return ac_result
+
     # STEP 1: Vendor-specific lookup
     if vendor_id:
         result = get_vendor_error_details(code_str, vendor_id)
@@ -435,8 +442,8 @@ def lookup_error_code(code, vendor_id=None, oem_name=None, charger_type=None):
             result["source"] = f"oem:{oem_name}"
             return result
 
-    # STEP 3: Domain fallback
-    if charger_type == "AC" or not charger_type:
+    # STEP 3: Domain fallback (for non-AC or when AC direct match was unknown)
+    if charger_type != "AC":
         ac_result = get_error_details(code_str)
         if ac_result and ac_result.get("name") != "Unknown":
             ac_result["source"] = "ac_generic"

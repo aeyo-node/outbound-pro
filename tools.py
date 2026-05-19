@@ -303,8 +303,11 @@ class AppointmentTools(llm.ToolContext):
             
             result = f"Status for {name}: " + ". ".join(status_summary)
 
-            if needs_troubleshooting:
-                print(f"[*] Abnormal status detected for {name}. Triggering automated live log diagnosis...")
+            is_charging = any(evse.get("connectorStatus", evse.get("status")) in ("Charging", "Preparing") for evse in evses)
+            
+            if needs_troubleshooting or is_charging:
+                trigger_reason = "Charging metrics" if is_charging else "Status check diagnosis"
+                print(f"[*] Triggering live log retrieval for {name} ({trigger_reason})...")
                 try:
                     from data.troubleshoot import troubleshoot
                     diag = await loop.run_in_executor(
@@ -312,38 +315,97 @@ class AppointmentTools(llm.ToolContext):
                         lambda: troubleshoot(
                             charger_name=identity,
                             charger_identity=identity,
-                            issue_summary="Status check diagnosis",
+                            issue_summary=trigger_reason,
                             phone=self.phone_number
                         )
                     )
                     if diag and diag.get("status") == "success":
-                        analysis = diag.get("analysis", {})
-                        summary = analysis.get("summary")
-                        interpretation = analysis.get("interpretation")
-                        error_details = diag.get("error_code_details")
+                        snapshot = diag.get("latest_snapshot", {})
+                        meter = snapshot.get("meter", {})
                         
-                        diag_msg = f"\nAutomated Log Diagnosis: {summary}. Explanation: {interpretation}"
-                        if error_details:
-                            if isinstance(error_details, list) and len(error_details) > 0:
-                                err_info = error_details[0]
-                            else:
-                                err_info = error_details
-                            if isinstance(err_info, dict):
-                                err_code = err_info.get("code") or err_info.get("error_code")
-                                err_desc = err_info.get("description") or err_info.get("name")
-                                err_res = err_info.get("resolution") or err_info.get("remedy")
-                                if err_code and err_code != "NoError":
-                                    diag_msg += f" (Active error code: {err_code} - {err_desc}."
-                                    if err_res:
-                                        diag_msg += f" Recommended solution: {err_res})"
-                                    else:
-                                        diag_msg += ")"
+                        # Format meter values if available
+                        if meter:
+                            meter_parts = []
+                            
+                            # Voltage
+                            v = meter.get("voltage")
+                            if v is not None:
+                                try:
+                                    v_val = float(v)
+                                    meter_parts.append(f"voltage is {v_val:.1f} V")
+                                except ValueError:
+                                    pass
+                            
+                            # Current
+                            c = meter.get("current")
+                            if c is not None:
+                                try:
+                                    c_val = float(c)
+                                    meter_parts.append(f"current is {c_val:.1f} A")
+                                except ValueError:
+                                    pass
+                                    
+                            # Power
+                            p = meter.get("power")
+                            if p is not None:
+                                try:
+                                    p_val = float(p)
+                                    if p_val > 100:  # Value in Watts
+                                        meter_parts.append(f"power is {p_val / 1000.0:.2f} kW")
+                                    else:  # Value in kW
+                                        meter_parts.append(f"power is {p_val:.2f} kW")
+                                except ValueError:
+                                    pass
+                                    
+                            # SoC
+                            soc = meter.get("soc")
+                            if soc is not None:
+                                try:
+                                    soc_val = float(soc)
+                                    meter_parts.append(f"State of Charge is {soc_val:.0f}%")
+                                except ValueError:
+                                    pass
+                                    
+                            # Energy
+                            e = meter.get("energy")
+                            if e is not None:
+                                try:
+                                    e_val = float(e)
+                                    meter_parts.append(f"energy consumed is {e_val:.2f} kWh")
+                                except ValueError:
+                                    pass
+                            
+                            if meter_parts:
+                                result += f". Live charging metrics show: " + ", ".join(meter_parts) + "."
                         
-                        next_steps = analysis.get("next_steps", [])
-                        if next_steps:
-                            diag_msg += " Recommended steps: " + ", ".join(next_steps)
-                        
-                        result += f". {diag_msg}"
+                        if needs_troubleshooting:
+                            analysis = diag.get("analysis", {})
+                            summary = analysis.get("summary")
+                            interpretation = analysis.get("interpretation")
+                            error_details = diag.get("error_code_details")
+                            
+                            diag_msg = f"Automated Log Diagnosis: {summary}. Explanation: {interpretation}"
+                            if error_details:
+                                if isinstance(error_details, list) and len(error_details) > 0:
+                                    err_info = error_details[0]
+                                else:
+                                    err_info = error_details
+                                if isinstance(err_info, dict):
+                                    err_code = err_info.get("code") or err_info.get("error_code")
+                                    err_desc = err_info.get("description") or err_info.get("name")
+                                    err_res = err_info.get("resolution") or err_info.get("remedy")
+                                    if err_code and err_code != "NoError":
+                                        diag_msg += f" (Active error code: {err_code} - {err_desc}."
+                                        if err_res:
+                                            diag_msg += f" Recommended solution: {err_res})"
+                                        else:
+                                            diag_msg += ")"
+                            
+                            next_steps = analysis.get("next_steps", [])
+                            if next_steps:
+                                diag_msg += " Recommended steps: " + ", ".join(next_steps)
+                            
+                            result += f". {diag_msg}"
                 except Exception as ex:
                     print(f"[-] Automated diagnosis failed: {ex}")
             
@@ -812,9 +874,65 @@ class AppointmentTools(llm.ToolContext):
             response_parts.append(f"I have successfully diagnosed charger {c_name}{match_msg}, which is a {charger_type} charger manufactured by {oem_name}.")
             
             if snapshot:
-                conn_status = snapshot.get("status", {}).get("connector_status") or snapshot.get("status", {}).get("status")
+                conn_status = snapshot.get("status", {}).get("connector_status") or snapshot.get("status", {}).get("status") or snapshot.get("status", {}).get("value")
                 if conn_status:
                     response_parts.append(f"The charger's current status is reported as {conn_status}.")
+                
+                # Fetch meter values from snapshot
+                meter = snapshot.get("meter", {})
+                if meter:
+                    meter_parts = []
+                    
+                    # Voltage
+                    v = meter.get("voltage")
+                    if v is not None:
+                        try:
+                            v_val = float(v)
+                            meter_parts.append(f"voltage is {v_val:.1f} V")
+                        except ValueError:
+                            pass
+                    
+                    # Current
+                    c = meter.get("current")
+                    if c is not None:
+                        try:
+                            c_val = float(c)
+                            meter_parts.append(f"current is {c_val:.1f} A")
+                        except ValueError:
+                            pass
+                            
+                    # Power
+                    p = meter.get("power")
+                    if p is not None:
+                        try:
+                            p_val = float(p)
+                            if p_val > 100:  # Value in Watts
+                                meter_parts.append(f"power is {p_val / 1000.0:.2f} kW")
+                            else:  # Value in kW
+                                meter_parts.append(f"power is {p_val:.2f} kW")
+                        except ValueError:
+                            pass
+                            
+                    # SoC
+                    soc = meter.get("soc")
+                    if soc is not None:
+                        try:
+                            soc_val = float(soc)
+                            meter_parts.append(f"State of Charge is {soc_val:.0f}%")
+                        except ValueError:
+                            pass
+                            
+                    # Energy
+                    e = meter.get("energy")
+                    if e is not None:
+                        try:
+                            e_val = float(e)
+                            meter_parts.append(f"energy consumed is {e_val:.2f} kWh")
+                        except ValueError:
+                            pass
+                    
+                    if meter_parts:
+                        response_parts.append("Live charging metrics show: " + ", ".join(meter_parts) + ".")
             
             response_parts.append(f"Diagnosis: {summary}.")
             response_parts.append(f"Explanation: {interpretation}")
