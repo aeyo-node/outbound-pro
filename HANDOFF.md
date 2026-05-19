@@ -1,123 +1,24 @@
-# PROJECT HANDOFF: OutboundAI Production Stability & Intelligence
+# Swaram Outbound Pro - AI Voice Agent Refactoring
 
-This document provides a comprehensive overview of the current state of the OutboundAI system, implemented fixes, and technical architecture for any developer or AI assistant picking up the project.
+## Changes Made
+1. **Removed Cal.com Dependency:**
+   - Removed `check_calcom_availability`, `book_calcom`, and `cancel_calcom` from `tools.py`.
+   - Removed generic `check_availability` and `book_appointment` from `tools.py` to avoid any confusion or fallback loops.
+   
+2. **Implemented Email-Based Booking System:**
+   - Created `email_booking_details` in `tools.py`, an interactive tool that collects `name`, `phone`, `preferred_date`, and `service_type` and logs it as an appointment to the database, simulating sending an email to `admin@swaram.io`.
+   - Updated `build_tool_list` to register `email_booking_details` for live voice interactions.
+   - Restructured all 9 agent industry prompts in `prompts.py` with a strict `_EMAIL_BOOKING_WORKFLOW` to guide the AI into capturing correct information and utilizing the new `email_booking_details` tool.
 
----
+3. **Restored Agent Profiles & Fixed Database Seed Script:**
+   - Identified a critical crash in `/api/init_demo_data` where:
+     - `is_default` was mistakenly set to the boolean `False`, which failed to insert due to the Supabase column expecting an integer value. Changed this to `0`.
+     - The script was attempting to wipe and populate a `contacts` table which does not exist (`contact_memory` exists instead). Removed `contacts` operations.
+   - Successfully ran the fixed endpoint (`/api/init_demo_data`) and verified that 9 fresh industry-specific Agent Profiles have been restored in the dashboard with the updated email booking system prompts.
 
-## 🚀 Deployment Overview
-- **Infrastructure:** AWS EC2 (Ubuntu). **Recommended Instance: t3.medium** (4GB RAM) for low-latency AI performance.
-- **Architecture:** Dockerized FastAPI Backend + LiveKit Python Agent (Worker).
-- **SIP Provider:** Vobiz (SIP Trunk) via LiveKit SIP.
-- **AI Model:** Gemini 2.0 Flash Exp (Native Audio/Multimodal).
-- **Database:** Supabase (PostgreSQL + Realtime).
-- **Persistent Data:** Logs and local SQLite DB are persisted in `/data` volume.
+## Status
+- **Agent Profiles:** 9 profiles restored and visible.
+- **Booking Flow:** The agent will no longer attempt to invoke Cal.com methods. It will correctly use the `email_booking_details` tool and state that details are sent via email to `admin@swaram.io`.
 
----
-
-## 🛠 Features Implemented & Working
-
-### 1. Inbound & Outbound Voice Intelligence
-- **Multilingual Support:** Native Malayalam, Hindi, and English code-switching. The agent (Susanna) is instructed to match the lead's language naturally.
-- **Auto-Summaries & Labeling:** AI generates a detailed conversation summary and labels leads as `[HOT]`, `[WARM]`, or `[COLD]` upon call termination.
-- **Contact History Lookup:** At the start of every call, the AI uses `lookup_contact` to read previous interaction notes, ensuring continuity.
-- **Booking & Verification:** Strict verification of Name and Phone Number before calling `book_appointment`.
-
-### 2. Performance & Reliability Fixes
-- **Instant Connection (Warm Start):** Configured `num_idle_processes=1` to keep an agent process ready in RAM.
-- **20s Delay Fix (IPv4 Patch):** Implemented a network patch in `agent.py` to force IPv4 connections, bypassing the 20-second AWS/Google IPv6 timeout.
-- **Force Hangup:** Updated `end_call` tool to explicitly remove SIP participants from the room, ensuring the phone line actually cuts when the AI is done.
-- **Per-Call Prompt Refresh:** The agent now pulls the latest "Global Prompt" from the database at the start of **every** call.
-
-### 3. Dashboard Features
-- **Batch Campaigns:** CSV upload with automatic header detection and smart parsing.
-- **System Logs Tab:** Real-time, color-coded log feed from the server for easy debugging.
-- **Interactive UI:** IST timezone formatting, live call stats, and result analytics.
-
----
-
-## 🔑 Technical Core (Key Files)
-- `agent.py`: The heart of the voice logic. Handles SIP events, Gemini Live sessions, and prompt building.
-- `tools.py`: AI-callable functions (Booking, SMS, Cal.com, Summaries, Transfer).
-- `prompts.py`: Master system instructions. Now uses **Susanna** as the global identity.
-- `server.py`: API endpoints for campaigns, settings, and log streaming.
-- `db.py`: Supabase integration layer.
-- `ui/index.html`: The production dashboard.
-
----
-
-## ⚠️ Critical Operational Notes
-
-### 1. Deployment Workflow (CRITICAL)
-Always follow this 3-step deployment to ensure code changes actually take effect:
-1. **Push from Windows:** `git add -A`, `git commit`, `git push`.
-2. **Pull on Server:** `git pull origin main`.
-3. **FORCE REBUILD:** `sudo docker compose up -d --build`. 
-   *Note: If changes don't appear, use `sudo docker compose build --no-cache` to force a clean slate.*
-
-### 2. Environment Variables
-Ensure the following are set in the server's `.env` or Supabase `settings` table:
-- `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET`
-- `GOOGLE_API_KEY` (Gemini)
-- `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`
-- `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_PHONE_NUMBER` (for SMS)
-
-### 3. Browser & UI
-- If the dashboard stats or logs look "stale," perform a **Hard Refresh** (`Ctrl + Shift + R`).
-- The **System Prompt** edited in the UI is "Global" and applies to all calls.
-
----
-
-## 📅 Roadmap / Pending Tasks
-- **Inbound Caller ID:** Currently recognizes numbers; could be enhanced to greet repeat callers by name more aggressively.
-- **Dashboard Security:** Add a simple login layer to the `/` dashboard.
-- **Call Recording UI:** Add a direct link to play recordings from the Call Logs table.
-
----
-
-## 💎 Economics (Cost Analysis)
-*   **Total Estimated Cost:** ~$0.06 – $0.07 per minute (~₹5.00 – ₹6.00 INR).
-*   **Breakdown:**
-    *   **LiveKit Cloud:** ~$0.05/min (SIP + Audio Orchestration).
-    *   **Gemini 2.0 Flash:** ~$0.005/min (Native Audio processing).
-    *   **Vobiz SIP:** ~$0.005 - $0.01/min (Standard Indian carrier rates).
-*   **Saving Tip:** Since Gemini 2.0 handles audio natively, we skip external TTS/STT costs (saving ~$0.20/min).
-
----
-
-## 🛠 Recent Core Improvements
-- **Prompt Case Fix:** Resolved a mismatch where the UI saved to `system_prompt` (lowercase) but the agent looked for `SYSTEM_PROMPT`. The agent now checks both.
-- **Full Mobile Responsiveness:** The dashboard now includes a hamburger menu, responsive grid layouts for charts, and horizontal table scrolling for phones.
-- **Susanna Identity:** The default agent identity is now hardcoded as "Susanna" in `prompts.py` to ensure consistency during fallback.
-
----
-
-## ⚡ EV Charging Control Integration (Completed)
-
-Successfully integrated remote EV charging controls into the Susanna AI voice agent. This enables users to check charger status, verify wallet balance, and start/stop charging sessions via voice commands.
-
-### 1. Key Changes & Backend Logic
-- **`auth_key.py`**: Refactored to remove sensitive logging and implement `/data` volume persistence for token caching in Docker.
-- **`chargepoints.py`**: Added configuration guards for `BASE_LS` and standardized data paths for chargers.
-- **`RemoteStart.py`**: Optimized imports and logic to support direct, high-speed function calling by the voice agent.
-
-### 2. Voice Agent Tools (`tools.py`)
-Implemented 4 production-ready tools in the `AppointmentTools` context:
-- `check_charger_status(charger_identifier)`: Returns real-time availability of connectors (e.g., "Connector 1 is Available").
-- `check_wallet_balance()`: Automatically identifies the user by their phone number and returns the balance in INR.
-- `start_charging(charger_identifier)`: Resolves the charger name/location, checks for a positive balance, and initiates charging with OTP bypass for seamless voice UX.
-- `stop_charging(charger_identifier)`: Identifies the active session, verifies the mobile number matches, and stops the transaction safely.
-
-### 3. Dashboard Integration
-- **Selectable Tools**: Updated `ui/index.html` so that all 4 EV tools are now visible and selectable in the **Agent Profiles** tool configuration grid.
-
-### 4. Implementation Details
-- **Architecture**: Direct import strategy (Agent -> Logic) used to ensure <500ms tool execution latency.
-- **Security**: Caller ID is used as the primary identifier; only the user who started a session (or is linked to the charger) can stop it.
-- **Persistence**: Charger caches and auth tokens are stored in the persistent Docker volume `/data`.
-
-### 5. Next Steps for Maintenance
-1. **Tool Activation**: When creating or editing an agent profile in the dashboard, ensure the EV tools are checked.
-2. **Rebuild**: Any changes to the underlying `api-call/` logic require a `sudo docker compose up -d --build` to be reflected in the agent.
-
----
-*End of Document*
+## Next Steps
+- **Test a Call:** Test an outbound or inbound call on any profile. Ask the agent to schedule an appointment. Verify that the agent calls `email_booking_details`, the dashboard shows an active invocation, and the call seamlessly logs it.

@@ -176,43 +176,26 @@ async def init_demo_data():
         # Clear existing agent profiles and contacts to reset to new Malayalam domains
         try:
             await db_client.table("agent_profiles").delete().neq("id", "").execute()
-            await db_client.table("contacts").delete().neq("id", "").execute()
         except Exception as del_err:
             logger.warning(f"Error resetting tables: {del_err}")
         
         # 1. Insert Agent Profiles
         inserted_profiles = 0
         for name, prompt in INDUSTRY_PROMPTS.items():
+            voice = "Puck" if name in ["Vehicle Dealerships", "Consultancies", "Finance / Loans", "Home Services"] else "Aoede"
             await db_client.table("agent_profiles").insert({
                 "id": str(uuid.uuid4()),
                 "name": name,
-                "voice": "Aoede",
+                "voice": voice,
                 "model": "models/gemini-2.0-flash-exp",
                 "system_prompt": prompt,
                 "enabled_tools": "[]",
-                "is_default": False,
+                "is_default": 0,
                 "created_at": datetime.now().isoformat()
             }).execute()
             inserted_profiles += 1
                 
-        # 2. Insert Demo CRM Leads
-        demo_leads = [
-            {"name": "Ananya Sharma", "phone": "+919876543210", "email": "ananya.s@example.com"},
-            {"name": "Rahul Verma", "phone": "+918765432109", "email": "rahul.v@example.com"},
-            {"name": "Sneha Krishnan", "phone": "+917654321098", "email": "sneha.k@example.com"},
-            {"name": "Vikram Singh", "phone": "+916543210987", "email": "vikram.s@example.com"},
-            {"name": "Priya Patel", "phone": "+915432109876", "email": "priya.p@example.com"}
-        ]
         inserted_leads = 0
-        for lead in demo_leads:
-            await db_client.table("contacts").insert({
-                "id": str(uuid.uuid4()),
-                "name": lead["name"],
-                "phone": lead["phone"],
-                "email": lead["email"],
-                "created_at": datetime.now().isoformat()
-            }).execute()
-            inserted_leads += 1
                 
         return JSONResponse({"status": "success", "inserted_profiles": inserted_profiles, "inserted_leads": inserted_leads})
     except Exception as e:
