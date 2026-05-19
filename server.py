@@ -71,6 +71,10 @@ except ImportError:
 
 app = FastAPI(title="OutboundAI Dashboard", version="1.0.0")
 
+from fastapi.staticfiles import StaticFiles
+app.mount("/static", StaticFiles(directory="data"), name="static")
+
+
 
 @app.on_event("startup")
 async def _startup():
@@ -1085,3 +1089,113 @@ async def api_init_demo_data():
     except Exception as e:
         logger.error("Failed to init demo data: %s", e)
         return {"status": "error", "message": str(e)}
+
+
+@app.get("/api/temp-parse-pdf")
+async def temp_parse_pdf():
+    try:
+        import sys
+        import subprocess
+        
+        try:
+            import pypdf
+        except ImportError:
+            logger.info("pypdf not found, installing via pip...")
+            res = subprocess.run(
+                [sys.executable, "-m", "pip", "install", "pypdf", "--trusted-host", "pypi.org", "--trusted-host", "files.pythonhosted.org", "--trusted-host", "pypi.python.org"],
+                capture_output=True,
+                text=True
+            )
+            if res.returncode != 0:
+                return {"status": "error", "message": f"pip install failed:\nstdout: {res.stdout}\nstderr: {res.stderr}"}
+            import pypdf
+            
+        pdf_path = "data/ErrorCode/most common ev charging issues and troubleshoots.pdf"
+        if not os.path.exists(pdf_path):
+            return {"status": "error", "message": f"File not found: {pdf_path}"}
+            
+        reader = pypdf.PdfReader(pdf_path)
+        text_content = ""
+        for i, page in enumerate(reader.pages):
+            text_content += f"\n--- PAGE {i+1} ---\n"
+            text_content += page.extract_text()
+            
+        out_path = "data/ErrorCode/most_common_issues.txt"
+        with open(out_path, "w", encoding="utf-8") as f:
+            f.write(text_content)
+            
+        return {"status": "success", "file": out_path, "preview": text_content[:1000]}
+    except Exception as e:
+        logger.error("Failed to parse PDF: %s", e)
+        return {"status": "error", "message": str(e)}
+
+
+@app.get("/api/test-calcom")
+async def test_calcom():
+    """Test Cal.com API v2 connectivity — fetches event types for the configured account."""
+    import httpx
+    try:
+        api_key = os.getenv("CALCOM_API_KEY", "cal_live_47e56e649fffbff64e6799370962ce75")
+        username = os.getenv("CALCOM_USERNAME", "chris-thomas-4ulokx")
+        headers_v2 = {
+            "Authorization": f"Bearer {api_key}",
+            "cal-api-version": "2024-06-14",
+        }
+        from datetime import datetime as _dt2, timedelta as _td2
+        today = _dt2.now().strftime("%Y-%m-%d")
+        tomorrow = (_dt2.now() + _td2(days=1)).strftime("%Y-%m-%d")
+
+        async with httpx.AsyncClient(timeout=15) as client:
+            et_res = await client.get("https://api.cal.com/v2/event-types", headers=headers_v2)
+            av_res = await client.get(
+                "https://api.cal.com/v2/slots/available",
+                headers={**headers_v2, "cal-api-version": "2024-09-04"},
+                params={"startTime": f"{today}T00:00:00.000Z", "endTime": f"{tomorrow}T00:00:00.000Z",
+                        "username": username, "timeZone": "Asia/Kolkata"}
+            )
+
+        # Safely parse — Cal.com may return list or dict
+        et_raw = et_res.text
+        av_raw = av_res.text
+        try:
+            import json as _json
+            et_json = _json.loads(et_raw)
+        except Exception:
+            et_json = {"raw": et_raw[:500]}
+        try:
+            import json as _json
+            av_json = _json.loads(av_raw)
+        except Exception:
+            av_json = {"raw": av_raw[:500]}
+
+        # Extract event type list (handle list or dict wrapper)
+        et_list = []
+        try:
+            data = et_json if not isinstance(et_json, dict) else et_json.get("data", et_json)
+            if isinstance(data, dict):
+                data = data.get("eventTypes", [])
+            if isinstance(data, list):
+                for et in data:
+                    if isinstance(et, dict):
+                        et_list.append({"id": et.get("id"), "title": et.get("title"),
+                                        "slug": et.get("slug"), "duration": et.get("length") or et.get("duration")})
+        except Exception as pe:
+            et_list = [{"parse_error": str(pe)}]
+
+        return {
+            "api_status": "connected" if et_res.status_code == 200 else "error",
+            "event_types": et_list,
+            "event_types_http": et_res.status_code,
+            "availability_http": av_res.status_code,
+            "availability_preview": av_raw[:1000],
+            "tip": "Copy an 'id' from event_types and set it as CALCOM_EVENT_TYPE_ID in your .env or Settings page."
+        }
+    except Exception as e:
+        import traceback
+        return {"status": "error", "message": str(e), "trace": traceback.format_exc()[-500:]}
+
+
+
+
+
+

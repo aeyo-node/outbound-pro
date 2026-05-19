@@ -6,7 +6,7 @@ import sys
 import json
 import httpx
 from typing import Optional, Dict, Any, List
-from livekit import agents
+from livekit import agents, api
 from livekit.agents import llm
 from db import (
     log_error, log_call, insert_appointment, check_slot, 
@@ -150,7 +150,7 @@ class AppointmentTools(llm.ToolContext):
         all_methods = [
             self.check_availability, self.book_appointment, self.end_call,
             self.transfer_to_human, self.send_sms_confirmation, self.lookup_contact,
-            self.remember_details, self.book_calcom, self.cancel_calcom,
+            self.remember_details, self.check_calcom_availability, self.book_calcom, self.cancel_calcom,
             self.check_charger_status, self.check_wallet_balance,
             self.start_charging_session, self.stop_charging_session,
             self.troubleshoot_charger,
@@ -615,59 +615,126 @@ class AppointmentTools(llm.ToolContext):
             logger.warning("Memory compression failed: %s", exc)
 
     @llm.function_tool
+    async def check_calcom_availability(self, date: str) -> str:
+        """
+        Check available appointment slots on Cal.com for a given date.
+        date: YYYY-MM-DD format (e.g. 2025-06-15)
+        Returns a list of available time slots.
+        """
+        api_key = os.getenv("CALCOM_API_KEY", "")
+        username = os.getenv("CALCOM_USERNAME", "chris-thomas-4ulokx")
+        event_type_id = os.getenv("CALCOM_EVENT_TYPE_ID", "")
+        timezone = os.getenv("CALCOM_TIMEZONE", "Asia/Kolkata")
+        if not api_key:
+            return "Cal.com not configured. Cannot check availability."
+        try:
+            import httpx
+            from datetime import datetime as _dt, timedelta as _td
+            start_dt = _dt.strptime(date, "%Y-%m-%d")
+            end_dt = start_dt + _td(days=1)
+            params = {
+                "startTime": start_dt.strftime("%Y-%m-%dT00:00:00.000Z"),
+                "endTime": end_dt.strftime("%Y-%m-%dT00:00:00.000Z"),
+                "username": username,
+                "timeZone": timezone,
+            }
+            if event_type_id:
+                params["eventTypeId"] = event_type_id
+            headers = {
+                "Authorization": f"Bearer {api_key}",
+                "cal-api-version": "2024-09-04",
+            }
+            async with httpx.AsyncClient(timeout=15) as client:
+                resp = await client.get(
+                    "https://api.cal.com/v2/slots/available",
+                    headers=headers, params=params,
+                )
+            data = resp.json()
+            if resp.status_code != 200:
+                raise ValueError(data.get("message") or str(data))
+            slots = data.get("data", {}).get("slots", {})
+            day_slots = slots.get(date, [])
+            if not day_slots:
+                return f"No available slots found for {date}."
+            times = [s.get("time", "")[:16].replace("T", " ") for s in day_slots]
+            return f"Available slots on {date}: " + ", ".join(times)
+        except Exception as exc:
+            return f"Availability check failed: {exc}"
+
+    @llm.function_tool
     async def book_calcom(self, name: str, email: str, date: str, start_time: str, notes: str = "") -> str:
         """
-        Book in Cal.com calendar after book_appointment succeeds.
-        name: full name | email: lead's email | date: YYYY-MM-DD | start_time: HH:MM | notes: optional
+        Book an appointment in Cal.com calendar.
+        name: full name | email: lead's email | date: YYYY-MM-DD | start_time: HH:MM (24h) | notes: optional
+        Always call check_calcom_availability first to confirm the slot is free.
         """
         api_key = os.getenv("CALCOM_API_KEY", "")
         event_type_id = os.getenv("CALCOM_EVENT_TYPE_ID", "")
+        username = os.getenv("CALCOM_USERNAME", "chris-thomas-4ulokx")
         timezone = os.getenv("CALCOM_TIMEZONE", "Asia/Kolkata")
         if not api_key or not event_type_id:
-            return "Cal.com not configured — skipping. Add CALCOM_API_KEY and CALCOM_EVENT_TYPE_ID."
+            return "Cal.com not fully configured — CALCOM_API_KEY and CALCOM_EVENT_TYPE_ID are required."
         try:
             from datetime import datetime as _dt
+            import httpx
+            # Parse local time and build ISO UTC string
             start_dt = _dt.strptime(f"{date} {start_time}", "%Y-%m-%d %H:%M")
             start_iso = start_dt.strftime("%Y-%m-%dT%H:%M:%S.000Z")
-            import httpx
+            headers = {
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+                "cal-api-version": "2024-08-13",
+            }
+            payload = {
+                "eventTypeId": int(event_type_id),
+                "start": start_iso,
+                "attendee": {
+                    "name": name,
+                    "email": email,
+                    "timeZone": timezone,
+                    "language": "ml",
+                    "phoneNumber": self.phone_number or "",
+                },
+                "metadata": {"source": "SwaramAI", "notes": notes},
+            }
             async with httpx.AsyncClient(timeout=15) as client:
                 resp = await client.post(
-                    "https://api.cal.com/v1/bookings",
-                    headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-                    json={
-                        "eventTypeId": int(event_type_id), "start": start_iso, "timeZone": timezone,
-                        "responses": {"name": name, "email": email, "notes": notes},
-                        "metadata": {"source": "OutboundAI"}, "language": "en",
-                    },
+                    "https://api.cal.com/v2/bookings",
+                    headers=headers, json=payload,
                 )
             data = resp.json()
             if resp.status_code not in (200, 201):
                 raise ValueError(data.get("message") or str(data))
-            uid = data.get("uid", "")
-            return f"Cal.com booked. UID: {uid}"
+            uid = data.get("data", {}).get("uid", data.get("uid", ""))
+            return f"Appointment booked successfully. Booking reference: {uid}"
         except Exception as exc:
-            return f"Cal.com booking failed: {exc}"
+            return f"Booking failed: {exc}"
 
     @llm.function_tool
     async def cancel_calcom(self, booking_uid: str, reason: str = "") -> str:
         """
         Cancel a Cal.com booking by UID.
-        booking_uid: from book_calcom | reason: optional
+        booking_uid: from book_calcom | reason: optional cancellation reason
         """
         api_key = os.getenv("CALCOM_API_KEY", "")
         if not api_key:
             return "Cal.com not configured."
         try:
             import httpx
+            headers = {
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+                "cal-api-version": "2024-08-13",
+            }
             async with httpx.AsyncClient(timeout=15) as client:
-                resp = await client.delete(
-                    f"https://api.cal.com/v1/bookings/{booking_uid}",
-                    headers={"Authorization": f"Bearer {api_key}"},
-                    params={"reason": reason} if reason else {},
+                resp = await client.post(
+                    f"https://api.cal.com/v2/bookings/{booking_uid}/cancel",
+                    headers=headers,
+                    json={"reason": reason} if reason else {},
                 )
             if resp.status_code not in (200, 204):
-                raise ValueError(f"HTTP {resp.status_code}")
-            return f"Cancelled Cal.com booking {booking_uid}."
+                raise ValueError(f"HTTP {resp.status_code}: {resp.text}")
+            return f"Appointment cancelled. Booking reference: {booking_uid}"
         except Exception as exc:
             return f"Cancellation failed: {exc}"
 

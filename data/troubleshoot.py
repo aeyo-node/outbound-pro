@@ -452,10 +452,153 @@ def lookup_error_code(code, vendor_id=None, oem_name=None, charger_type=None):
     return None
 
 
+def get_status_history(raw_logs, protocol):
+    history = []
+    if not raw_logs:
+        return history
+    for entry in raw_logs:
+        if protocol in ("OCPP", "OCPP_OVER_MQTT"):
+            log_detail = entry.get("logs", {})
+            cp_req = log_detail.get("cp_req", {})
+            if protocol == "OCPP_OVER_MQTT" and isinstance(cp_req, list):
+                for i, item in enumerate(cp_req):
+                    if item == "StatusNotification" and i + 1 < len(cp_req):
+                        p = cp_req[i + 1]
+                        if isinstance(p, dict) and p.get("status"):
+                            history.append((p.get("status"), log_detail.get("time")))
+            elif protocol == "OCPP" and isinstance(cp_req, dict):
+                if cp_req.get("method") == "StatusNotification":
+                    p = cp_req.get("value", {})
+                    if p.get("status"):
+                        history.append((p.get("status"), p.get("timestamp") or log_detail.get("time")))
+        else: # MQTT
+            msg = entry.get("message")
+            if isinstance(msg, str):
+                try: msg = json.loads(msg)
+                except: msg = {}
+            elif not msg:
+                msg = entry
+            if isinstance(msg, dict) and ("STATUS" in msg or "status" in msg):
+                history.append((msg.get("status") or msg.get("STATUS"), entry.get("time")))
+    return history
+
+def apply_pdf_troubleshooting_rules(charger_data, snapshot, raw_logs, charger_type):
+    protocol = detect_log_protocol(raw_logs)
+    history = get_status_history(raw_logs, protocol)
+    chron_history = list(reversed(history))
+    
+    # Extract SoC
+    soc_val = None
+    soc = snapshot.get("meter", {}).get("soc")
+    if soc is not None:
+        try:
+            soc_val = float(soc)
+        except ValueError:
+            pass
+            
+    # Extract Voltage
+    voltage_val = None
+    voltage = snapshot.get("meter", {}).get("voltage")
+    if voltage is not None:
+        try:
+            voltage_val = float(voltage)
+        except ValueError:
+            pass
+
+    status = snapshot.get("status", {}).get("value")
+    
+    # 1. Check Low SoC DC Charging Issue
+    if charger_type == "DC" and soc_val is not None and soc_val < 15.0:
+        if status in ("Faulted", "Finishing", "SuspendedEVSE", "Unavailable"):
+            return {
+                "summary": "Low State of Charge (SoC) DC Refusal",
+                "interpretation": f"The vehicle is refusing DC Fast Charging because its State of Charge (SoC) is extremely low ({soc_val}%). DC fast chargers often fail to initialize handshakes when the battery is under 15%.",
+                "next_steps": [
+                    "Move the vehicle slightly forward and backward, then try connecting again.",
+                    "Press and hold the gun firmly into the vehicle charging port and initiate the charging session within 40 seconds.",
+                    "If another connector is available and free on the charger, try charging using the other connector.",
+                    "If the charger supports reset, perform a clear cache and reset operation. Otherwise, turn the machine OFF and ON, then try charging again.",
+                    "If the vehicle is still not charging, charge the battery level by around 10% using an AC charger first, and then retry DC fast charging."
+                ]
+            }
+
+    # 2. Check Handshake Timeout
+    handshake_timeout = False
+    for idx, (stat, t) in enumerate(chron_history):
+        if stat == "Preparing" and idx + 1 < len(chron_history):
+            next_stat, next_t = chron_history[idx + 1]
+            if next_stat in ("Available", "Finished", "SuspendedEVSE", "Faulted"):
+                handshake_timeout = True
+                break
+    if handshake_timeout:
+        return {
+            "summary": "Handshake Timeout Issue",
+            "interpretation": "The charging session timed out during the initial handshake (the charger stayed in 'Preparing' state too long or finished without starting to charge). This is usually due to incorrect plugging sequence or communication failure between the vehicle and charger.",
+            "next_steps": [
+                "Confirm whether the vehicle ignition is OFF, the brake is applied, the hand brake is engaged, and the vehicle is locked using the key.",
+                "Remove the gun from the vehicle and reconnect it properly once again.",
+                "Press and hold the gun firmly into the vehicle charging port and initiate the charging session within 40 seconds.",
+                "If another connector is available, try charging using the other connector.",
+                "If the same issue continues, move the vehicle slightly forward or backward and try charging again.",
+                "If the charger supports reset, perform a charger reset. Otherwise, turn the machine OFF and ON, then try charging again."
+            ]
+        }
+
+    # 3. Check Loose Gun / Loose Connector
+    loose_gun = False
+    transitions = [stat for stat, t in chron_history]
+    avail_prep_count = 0
+    for stat in transitions[-6:]:
+        if stat in ("Available", "Preparing"):
+            avail_prep_count += 1
+        elif stat == "Charging":
+            avail_prep_count = 0
+    if avail_prep_count >= 4:
+        loose_gun = True
+    if loose_gun:
+        return {
+            "summary": "Loose Gun / Loose Connector Issue",
+            "interpretation": "The charger status is continuously alternating between 'Available' and 'Preparing' without entering 'Charging' state, indicating a loose physical connection or failure of the gun locking mechanism.",
+            "next_steps": [
+                "During charging initiation, try removing the gun once. If the gun can be removed easily, the gun is not locked properly.",
+                "Reconnect the cable properly and ensure that the vehicle is locked.",
+                "Press and hold the gun firmly into the vehicle charging port and initiate the charging session within 40 seconds.",
+                "If another connector is free and available, try using it.",
+                "If the machine supports reset, perform a clear cache and reset operation. Otherwise, turn the machine OFF and ON, then try charging again."
+            ]
+        }
+        
+    # 4. Check Voltage / Supply Side Issue
+    if voltage_val is not None and (voltage_val < 180.0 or voltage_val > 265.0):
+        return {
+            "summary": "Supply Side / Voltage Issue",
+            "interpretation": f"Abnormal grid voltage detected ({voltage_val} V). Charging has stopped or failed to start due to unstable power supply.",
+            "next_steps": [
+                "Check the machine display to confirm if a supply error message or red fault indicator is showing.",
+                "Confirm whether 3-phase supply is available and stable in the panel box.",
+                "Note that charging can only resume after the power supply stabilizes. Suggest using a nearby charging station."
+            ]
+        }
+
+    # 5. Check network / disconnect
+    if status == "Disconnected":
+        return {
+            "summary": "Charger Disconnected / Network Issue",
+            "interpretation": "The charger is showing as disconnected and is not communicating with the server. This is typically caused by local mobile signal loss or network card hang.",
+            "next_steps": [
+                "Check whether the machine display is ON.",
+                "If other chargers are available at the station, check whether they are also disconnected (confirming a power outage or wider network failure).",
+                "Turn the machine power OFF from the panel box, wait 10 seconds, and turn it ON again.",
+                "If the network does not reconnect within 10 minutes, guide the customer to another available station."
+            ]
+        }
+
+    return None
+
 # ============================
 # AC ANALYSIS ENGINE
 # ============================
-def analyze_ac_charger(charger_data, snapshot):
+def analyze_ac_charger(charger_data, snapshot, raw_logs=None):
 
     result = {
         "summary": None,
@@ -464,6 +607,24 @@ def analyze_ac_charger(charger_data, snapshot):
         "next_steps": [],
         "escalation": None
     }
+
+    # Apply PDF troubleshooting rules first
+    pdf_diag = apply_pdf_troubleshooting_rules(charger_data, snapshot, raw_logs or [], "AC")
+    if pdf_diag:
+        result["summary"] = pdf_diag["summary"]
+        result["interpretation"] = pdf_diag["interpretation"]
+        result["next_steps"] = pdf_diag["next_steps"]
+        evse = charger_data.get("evses", [{}])[0]
+        result["evidence"] = {
+            "status": snapshot.get("status", {}).get("value"),
+            "available": charger_data.get("available"),
+            "connector_status": evse.get("connectorStatus"),
+            "voltage": snapshot.get("meter", {}).get("voltage"),
+            "current": snapshot.get("meter", {}).get("current"),
+            "power": snapshot.get("meter", {}).get("power"),
+            "error_code": evse.get("connectorErrCode")
+        }
+        return result
 
     evse = charger_data.get("evses", [{}])[0]
 
@@ -572,7 +733,7 @@ def analyze_ac_charger(charger_data, snapshot):
 # ============================
 # DC ANALYSIS ENGINE
 # ============================
-def analyze_dc(charger_data, snapshot):
+def analyze_dc(charger_data, snapshot, raw_logs=None):
 
     if snapshot.get("raw_log_count", 0) == 0:
         return {
@@ -580,6 +741,23 @@ def analyze_dc(charger_data, snapshot):
             "interpretation": "Charger may be offline or not reporting",
             "next_steps": ["Check network", "Restart charger"],
             "escalation": "If persists, escalate"
+        }
+
+    # Apply PDF troubleshooting rules first
+    pdf_diag = apply_pdf_troubleshooting_rules(charger_data, snapshot, raw_logs or [], "DC")
+    if pdf_diag:
+        return {
+            "status": snapshot.get("status", {}).get("value"),
+            "timestamp": snapshot.get("status", {}).get("timestamp"),
+            "vendor_error": snapshot.get("status", {}).get("vendor_error"),
+            "error_code": snapshot.get("status", {}).get("error_code"),
+            "info": snapshot.get("status", {}).get("info"),
+            "connectorId": snapshot.get("status", {}).get("connector_id"),
+            "meter": snapshot.get("meter", {}),
+            "summary": pdf_diag["summary"],
+            "interpretation": pdf_diag["interpretation"],
+            "next_steps": pdf_diag["next_steps"],
+            "escalation": None
         }
 
     status = snapshot.get("status", {}).get("value")
@@ -1069,7 +1247,7 @@ def troubleshoot(
     # ROUTE TO CORRECT ANALYSIS
     # ============================
     if station_type == "DC":
-        analysis = analyze_dc(charger_data, snapshot)
+        analysis = analyze_dc(charger_data, snapshot, raw_logs)
         direct_answers = build_direct_answers(charger_data, snapshot)
         
         return {
@@ -1087,7 +1265,7 @@ def troubleshoot(
         }
     else:
         # AC analysis
-        analysis = analyze_ac_charger(charger_data, snapshot)
+        analysis = analyze_ac_charger(charger_data, snapshot, raw_logs)
 
         # Fallback to AC specifics if missing from snapshot
         evse = charger_data.get("evses", [{}])[0]
