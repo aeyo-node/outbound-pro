@@ -190,28 +190,6 @@ function FeaturesSection() {
   );
 }
 
-/* ─── Languages ────────────────────────────────────────────── */
-function LanguagesSection() {
-  return (
-    <section id="languages" className="py-32 px-6">
-      <div className="max-w-7xl mx-auto text-center">
-        <h2 className="text-4xl md:text-5xl font-bold mb-4">Empower your brand in <span className="text-gradient">Malayalam.</span></h2>
-        <p className="text-gray-500 max-w-xl mx-auto mb-16">Designed to help local businesses scale. Engage with customers in fluent, local slang and natural cadence.</p>
-        <div className="grid grid-cols-1 max-w-xs mx-auto gap-4">
-          {LANGUAGES.map((lang) => (
-            <div key={lang.code} className="glass-card p-6 flex flex-col items-center gap-3 group">
-              <span className="text-2xl font-bold text-gradient">{lang.native.charAt(0)}</span>
-              <div>
-                <p className="text-sm font-medium">{lang.name}</p>
-                <p className="text-xs text-gray-600">{lang.native}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
 
 /* ─── Use Cases (with per-industry call button) ────────────── */
 function UseCasesSection() {
@@ -356,7 +334,6 @@ export default function LandingPage() {
       <Navbar />
       <HeroSection />
       <FeaturesSection />
-      <LanguagesSection />
       <UseCasesSection />
       <CTASection />
       <Footer />

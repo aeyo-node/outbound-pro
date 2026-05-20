@@ -100,6 +100,8 @@ CREATE TABLE IF NOT EXISTS transactions (
     energy_kwh TEXT,
     amount TEXT,
     status TEXT NOT NULL DEFAULT 'completed',
+    call_reason TEXT,
+    rectification_used TEXT,
     created_at TEXT NOT NULL
 );
 ALTER TABLE transactions DISABLE ROW LEVEL SECURITY;

@@ -536,7 +536,46 @@ async def api_get_incoming_calls():
 
 @app.get("/api/appointments")
 async def api_get_appointments():
-    return await get_all_appointments()
+    try:
+        from db import sync_calcom_bookings
+        await sync_calcom_bookings()
+    except Exception as e:
+        print(f"Error syncing Cal.com bookings on API call: {e}")
+        
+    raw_appts = await get_all_appointments()
+    mapped = []
+    from datetime import datetime
+    for appt in raw_appts:
+        c_name = appt.get("name") or "Unknown"
+        c_phone = appt.get("phone") or "—"
+        
+        # Format time to standard ISO-8601
+        a_date = appt.get("date")
+        a_time = appt.get("time")
+        if a_date and a_time:
+            # Handle HH:MM formatting
+            t_str = a_time.strip()
+            if len(t_str) == 5:
+                appt_time_iso = f"{a_date}T{t_str}:00"
+            else:
+                appt_time_iso = f"{a_date}T{t_str}"
+        else:
+            appt_time_iso = appt.get("created_at") or datetime.now().isoformat()
+            
+        status = str(appt.get("status") or "booked").lower()
+        if status == "booked":
+            status = "scheduled"
+            
+        mapped.append({
+            "id": appt.get("id"),
+            "client_name": c_name,
+            "client_phone": c_phone,
+            "appointment_time": appt_time_iso,
+            "status": status,
+            "service": appt.get("service") or "General Meeting",
+            "created_at": appt.get("created_at") or datetime.now().isoformat()
+        })
+    return mapped
 
 
 @app.post("/api/appointments/{id}/cancel")

@@ -511,8 +511,23 @@ async def set_default_agent_profile(profile_id: str) -> None:
 
 # ── Transactions ──────────────────────────────────────────────────────────────
 
-async def log_transaction(charger_identity: str, charger_name: str, user_name: str, phone: str, start_time: str, energy_kwh: str, amount: str) -> None:
+# ── Transactions ──────────────────────────────────────────────────────────────
+
+async def log_transaction(
+    charger_identity: str,
+    charger_name: str,
+    user_name: str,
+    phone: str,
+    start_time: str,
+    energy_kwh: str = "0",
+    amount: str = "0",
+    call_reason: Optional[str] = None,
+    rectification_used: Optional[str] = None,
+    status: str = "completed"
+) -> None:
     db = await _adb()
+    
+    # Try inserting with new call detail columns first
     try:
         await db.table("transactions").insert({
             "id": str(uuid.uuid4()),
@@ -524,11 +539,139 @@ async def log_transaction(charger_identity: str, charger_name: str, user_name: s
             "stop_time": datetime.now().isoformat(),
             "energy_kwh": str(energy_kwh) if energy_kwh is not None else "0",
             "amount": str(amount) if amount is not None else "0",
-            "status": "completed",
+            "status": status,
+            "call_reason": call_reason,
+            "rectification_used": rectification_used,
             "created_at": datetime.now().isoformat()
         }).execute()
+        return
     except Exception as e:
-        print(f"Error logging transaction: {e}")
+        # Fallback if call_reason or rectification_used columns are not in database:
+        # We pack call_reason into user_name, and rectification_used into energy_kwh
+        print(f"Proper transaction logging failed (likely missing columns, attempting fallback): {e}")
+        
+    try:
+        fallback_user = f"{user_name} | Reason: {call_reason}" if call_reason else user_name
+        await db.table("transactions").insert({
+            "id": str(uuid.uuid4()),
+            "charger_identity": charger_identity,
+            "charger_name": charger_name,
+            "user_name": fallback_user,
+            "phone": phone,
+            "start_time": start_time,
+            "stop_time": datetime.now().isoformat(),
+            "energy_kwh": rectification_used or "None",
+            "amount": status or "completed",
+            "status": status or "completed",
+            "created_at": datetime.now().isoformat()
+        }).execute()
+    except Exception as fallback_err:
+        print(f"Fallback transaction logging also failed: {fallback_err}")
+
+
+async def sync_calcom_bookings() -> None:
+    api_key = os.getenv("CALCOM_API_KEY")
+    if not api_key:
+        print("[*] Cal.com Sync: CALCOM_API_KEY is not set.")
+        return
+        
+    print(f"[*] Cal.com Sync: Fetching bookings from Cal.com API v2...")
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "cal-api-version": "2024-09-04",
+        "Content-Type": "application/json"
+    }
+    
+    try:
+        import httpx
+        async with httpx.AsyncClient() as client:
+            resp = await client.get("https://api.cal.com/v2/bookings", headers=headers, timeout=10.0)
+            if resp.status_code != 200:
+                print(f"[-] Cal.com Sync: API returned status {resp.status_code}: {resp.text}")
+                return
+            
+            raw_data = resp.json()
+            bookings = []
+            if isinstance(raw_data, dict):
+                data_field = raw_data.get("data")
+                if isinstance(data_field, dict):
+                    bookings = data_field.get("bookings", [])
+                elif isinstance(data_field, list):
+                    bookings = data_field
+                else:
+                    bookings = raw_data.get("bookings", [])
+            elif isinstance(raw_data, list):
+                bookings = raw_data
+                
+            print(f"[+] Cal.com Sync: Retrieved {len(bookings)} bookings.")
+            
+            db = await _adb()
+            existing_res = await db.table("appointments").select("id, calcom_booking_uid").not_.is_("calcom_booking_uid", "null").execute()
+            existing_map = {row["calcom_booking_uid"]: row["id"] for row in (existing_res.data or [])}
+            
+            for b in bookings:
+                booking_uid = str(b.get("uid") or b.get("id") or "")
+                if not booking_uid:
+                    continue
+                
+                attendees = b.get("attendees", [])
+                client_name = "Cal.com Client"
+                client_phone = "unknown"
+                if attendees and len(attendees) > 0:
+                    att = attendees[0]
+                    client_name = att.get("name") or att.get("email") or client_name
+                    client_phone = att.get("phoneNumber") or att.get("phone") or client_phone
+                
+                client_phone = str(client_phone).strip()
+                
+                start_iso = b.get("start") or b.get("startTime") or ""
+                if not start_iso:
+                    continue
+                
+                try:
+                    dt_part = start_iso.split("T")
+                    b_date = dt_part[0]
+                    b_time = dt_part[1][:5]
+                except Exception:
+                    b_date = datetime.now().strftime("%Y-%m-%d")
+                    b_time = datetime.now().strftime("%H:%M")
+                
+                status = str(b.get("status", "booked")).lower()
+                mapped_status = "booked"
+                if status in ["cancelled", "rejected"]:
+                    mapped_status = "cancelled"
+                
+                event_type_details = b.get("eventType") or {}
+                service_name = b.get("title") or event_type_details.get("title") or "Meeting"
+                
+                if booking_uid in existing_map:
+                    appt_id = existing_map[booking_uid]
+                    await db.table("appointments").update({
+                        "name": client_name,
+                        "phone": client_phone,
+                        "date": b_date,
+                        "time": b_time,
+                        "service": service_name,
+                        "status": mapped_status,
+                    }).eq("id", appt_id).execute()
+                    print(f"[*] Cal.com Sync: Updated booking {booking_uid}")
+                else:
+                    new_id = str(uuid.uuid4())
+                    await db.table("appointments").insert({
+                        "id": new_id,
+                        "name": client_name,
+                        "phone": client_phone,
+                        "date": b_date,
+                        "time": b_time,
+                        "service": service_name,
+                        "status": mapped_status,
+                        "calcom_booking_uid": booking_uid,
+                        "created_at": datetime.now().isoformat()
+                    }).execute()
+                    print(f"[+] Cal.com Sync: Inserted booking {booking_uid}")
+                    
+    except Exception as e:
+        print(f"[-] Cal.com Sync Error: {e}")
 
 async def get_all_transactions(limit: int = 50) -> list:
     db = await _adb()

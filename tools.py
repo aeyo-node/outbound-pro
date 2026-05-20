@@ -1,6 +1,7 @@
 import logging
 import asyncio
 import time
+from datetime import datetime
 import os
 import sys
 import json
@@ -155,11 +156,14 @@ class AppointmentTools(llm.ToolContext):
             self.start_charging_session, self.stop_charging_session,
             self.troubleshoot_charger,
             self.get_charging_session_details,
+            self.check_calcom_availability,
+            self.book_calcom,
         ]
         force_include = [
             "start_charging_session", "stop_charging_session", 
             "check_wallet_balance", "check_charger_status",
-            "troubleshoot_charger", "get_charging_session_details"
+            "troubleshoot_charger", "get_charging_session_details",
+            "check_calcom_availability", "book_calcom"
         ]
         if not enabled:
             return all_methods
@@ -503,6 +507,25 @@ class AppointmentTools(llm.ToolContext):
         if not participant_identity:
             return "Transfer failed: could not identify caller."
         try:
+            try:
+                charger_info = await self._resolve_charger_from_session()
+                charger_id = charger_info["identity"] if charger_info else "General"
+                charger_name = charger_info.get("name") or charger_id
+                asyncio.create_task(log_transaction(
+                    charger_identity=charger_id,
+                    charger_name=charger_name,
+                    user_name=self.lead_name or "Customer",
+                    phone=self.phone_number or "unknown",
+                    start_time=datetime.now().isoformat(),
+                    energy_kwh="0",
+                    amount="0",
+                    call_reason=reason or "Unresolved issue",
+                    rectification_used="Transferred to human agent",
+                    status="transferred_to_human"
+                ))
+            except Exception as dbe:
+                logger.warning(f"Failed to log transfer transaction: {dbe}")
+
             await self.ctx.api.sip.transfer_sip_participant(
                 api.TransferSIPParticipantRequest(
                     room_name=self.ctx.room.name,
@@ -615,6 +638,151 @@ class AppointmentTools(llm.ToolContext):
         return f"Success! Details have been emailed to admin@swaram.io. Our team will contact the customer to confirm."
 
     @llm.function_tool
+    async def check_calcom_availability(self, date_str: str) -> str:
+        """Check available booking slots for a given date. date_str format: YYYY-MM-DD."""
+        print(f"[*] TOOL CALL: check_calcom_availability('{date_str}')")
+        api_key = os.getenv("CALCOM_API_KEY")
+        username = os.getenv("CALCOM_USERNAME")
+        timezone = os.getenv("CALCOM_TIMEZONE", "Asia/Kolkata")
+        
+        if not api_key or not username:
+            return "Cal.com calendar integration is not fully configured in settings."
+            
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "cal-api-version": "2024-09-04",
+            "Content-Type": "application/json"
+        }
+        
+        start_time = f"{date_str}T00:00:00.000Z"
+        end_time = f"{date_str}T23:59:59.000Z"
+        
+        params = {
+            "startTime": start_time,
+            "endTime": end_time,
+            "username": username,
+            "timeZone": timezone
+        }
+        
+        try:
+            import httpx
+            async with httpx.AsyncClient() as client:
+                resp = await client.get("https://api.cal.com/v2/slots/available", headers=headers, params=params, timeout=10.0)
+                if resp.status_code != 200:
+                    return f"Failed to fetch availability from Cal.com. Status code: {resp.status_code}"
+                
+                data = resp.json()
+                slots_data = data.get("data", {})
+                slots_dict = slots_data.get("slots", {})
+                
+                slots_list = []
+                if isinstance(slots_dict, dict):
+                    for d_key, s_items in slots_dict.items():
+                        if isinstance(s_items, list):
+                            slots_list.extend(s_items)
+                elif isinstance(slots_dict, list):
+                    slots_list = slots_dict
+                
+                if not slots_list:
+                    return f"There are no available slots on {date_str}."
+                
+                available_times = []
+                for slot in slots_list:
+                    slot_time = slot.get("time") or slot.get("start")
+                    if slot_time:
+                        try:
+                            t_part = slot_time.split("T")[1][:5]
+                            available_times.append(t_part)
+                        except Exception:
+                            available_times.append(slot_time)
+                
+                available_times = sorted(list(set(available_times)))
+                times_str = ", ".join(available_times)
+                return f"Available slots on {date_str} are: {times_str}."
+        except Exception as e:
+            return f"Error checking Cal.com availability: {str(e)}"
+
+    @llm.function_tool
+    async def book_calcom(self, date_str: str, time_str: str) -> str:
+        """Book an appointment on Cal.com. date_str format: YYYY-MM-DD, time_str format: HH:MM."""
+        print(f"[*] TOOL CALL: book_calcom('{date_str}', '{time_str}')")
+        api_key = os.getenv("CALCOM_API_KEY")
+        event_type_id_str = os.getenv("CALCOM_EVENT_TYPE_ID")
+        timezone = os.getenv("CALCOM_TIMEZONE", "Asia/Kolkata")
+        
+        if not api_key or not event_type_id_str:
+            return "Cal.com is not fully configured in settings."
+            
+        try:
+            event_type_id = int(event_type_id_str)
+        except ValueError:
+            return f"Invalid event type ID: {event_type_id_str}"
+            
+        name = self.lead_name or "Swaram Lead"
+        phone = self.phone_number or "unknown"
+        email = f"{phone.replace('+', '')}@swaram.ai" if phone else "lead@swaram.ai"
+        
+        start_iso = f"{date_str}T{time_str}:00Z"
+        
+        payload = {
+            "eventTypeId": event_type_id,
+            "start": start_iso,
+            "attendee": {
+                "name": name,
+                "email": email,
+                "timeZone": timezone,
+                "phoneNumber": phone
+            },
+            "responses": {
+                "name": name,
+                "email": email,
+                "phone": phone
+            },
+            "timeZone": timezone,
+            "language": "en"
+        }
+        
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "cal-api-version": "2024-09-04",
+            "Content-Type": "application/json"
+        }
+        
+        try:
+            import httpx
+            async with httpx.AsyncClient() as client:
+                resp = await client.post("https://api.cal.com/v2/bookings", headers=headers, json=payload, timeout=15.0)
+                
+                if resp.status_code != 201 and resp.status_code != 200:
+                    wrapped_payload = {"booking": payload}
+                    resp_wrapped = await client.post("https://api.cal.com/v2/bookings", headers=headers, json=wrapped_payload, timeout=15.0)
+                    if resp_wrapped.status_code == 201 or resp_wrapped.status_code == 200:
+                        resp = resp_wrapped
+                
+                if resp.status_code in [200, 201]:
+                    data = resp.json()
+                    booking_data = data.get("data", {}) or data
+                    booking_uid = booking_data.get("uid") or booking_data.get("id")
+                    
+                    try:
+                        from db import insert_appointment
+                        await insert_appointment(
+                            name=name,
+                            phone=phone,
+                            date=date_str,
+                            time=time_str,
+                            service=f"Cal.com booking {booking_uid}"
+                        )
+                    except Exception as db_err:
+                        print(f"[-] Failed to insert appointment locally: {db_err}")
+                        
+                    return f"Successfully booked the appointment for {date_str} at {time_str}."
+                else:
+                    return f"Failed to book appointment on Cal.com. Response: {resp.text}"
+        except Exception as e:
+            return f"Error booking appointment on Cal.com: {str(e)}"
+
+    @llm.function_tool
     async def start_charging_session(
         self, 
         charger_identifier: str, 
@@ -659,6 +827,19 @@ class AppointmentTools(llm.ToolContext):
             message = result.get("message", "")
             
             if status == "success":
+                tx_details = result.get("tx_details", {}) or {}
+                asyncio.create_task(log_transaction(
+                    charger_identity=charger_identifier,
+                    charger_name=tx_details.get("charger_name") or charger_identifier,
+                    user_name=tx_details.get("user") or self.lead_name or "Customer",
+                    phone=tx_details.get("mobile") or phone,
+                    start_time=tx_details.get("start_time") or datetime.now().isoformat(),
+                    energy_kwh="0",
+                    amount="0",
+                    call_reason="Start charging session",
+                    rectification_used="Remote start initiated",
+                    status="success"
+                ))
                 return f"Success! {message}"
             elif status == "multiple":
                 options = ", ".join([o["label"] for o in result.get("options", [])])
@@ -724,7 +905,10 @@ class AppointmentTools(llm.ToolContext):
                         phone=tx_details.get("mobile", phone),
                         start_time=tx_details.get("start_time", ""),
                         energy_kwh=tx_details.get("energy_kwh", "0"),
-                        amount=tx_details.get("amount", "0")
+                        amount=tx_details.get("amount", "0"),
+                        call_reason="Stop charging session",
+                        rectification_used="Remote stop initiated",
+                        status="success"
                     ))
                 return f"Success! {message}"
             elif status == "verify_mobile":
@@ -903,6 +1087,24 @@ class AppointmentTools(llm.ToolContext):
             else:
                 response_parts.append("Please instruct the customer to re-plug the connector and verify if their vehicle starts charging. If the issue persists, a manual reset may be required.")
             
+            # Log this troubleshooting attempt
+            try:
+                rect_text = ", ".join(next_steps[:3]) if next_steps else "Guidance provided"
+                asyncio.create_task(log_transaction(
+                    charger_identity=identity,
+                    charger_name=name,
+                    user_name=self.lead_name or "Customer",
+                    phone=self.phone_number or "unknown",
+                    start_time=datetime.now().isoformat(),
+                    energy_kwh="0",
+                    amount="0",
+                    call_reason=issue_summary or summary or "Diagnostics run",
+                    rectification_used=rect_text,
+                    status="diagnosed"
+                ))
+            except Exception as dbe:
+                logger.warning(f"Failed to log troubleshooting transaction: {dbe}")
+
             spoken_text = " ".join(response_parts)
             return spoken_text
             

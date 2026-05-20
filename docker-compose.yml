@@ -7,7 +7,7 @@ services:
     shm_size: '512m'
     ports:
       - "8000:8000"   # Python backend (FastAPI)
-      - "3000:3000"   # Next.js frontend
+      - "80:3000"     # Next.js frontend (AWS HTTP Port 80)
     env_file:
       - .env
     volumes:
