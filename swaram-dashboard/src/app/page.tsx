@@ -6,19 +6,41 @@ import { Phone, ArrowRight, Mic, BarChart3, Users, Zap, Shield, Clock, ChevronRi
 const API_BASE = "";  // Use proxy from next.config.ts
 
 const ANIMATED_LANGUAGES = [
-  "മലയാളം", "Malayalam"
+  "Swaram",  // Malayalam
+  "Voice",   // English
+  "आवाज़",   // Hindi
+  "குரல்",    // Tamil
+  "స్వരം",    // Telugu
+  "ಧ್ವನಿ",    // Kannada
+  "आवाज",    // Marathi
+  "અવાજ",    // Gujarati
+  "কণ্ঠ",    // Bengali
+  "ਆਵਾਜ਼",   // Punjabi
+  "ସ୍ୱਰ",     // Odia
+  "آواز"     // Urdu
 ];
 
 const LANGUAGES = [
   { code: "ml", name: "Malayalam", native: "മലയാളം" },
+  { code: "hi", name: "Hindi", native: "हिंदी" },
+  { code: "ta", name: "Tamil", native: "தமிழ்" },
+  { code: "te", name: "Telugu", native: "తెలుగు" },
+  { code: "kn", name: "Kannada", native: "ಕನ್ನಡ" },
+  { code: "mr", name: "Marathi", native: "मराठी" },
+  { code: "gu", name: "Gujarati", native: "ગુજરાતી" },
+  { code: "bn", name: "Bengali", native: "বাংলা" },
+  { code: "pa", name: "Punjabi", native: "ਪੰਜਾਬੀ" },
+  { code: "or", name: "Odia", native: "ଓଡ଼ିଆ" },
+  { code: "ur", name: "Urdu", native: "اردو" },
+  { code: "en", name: "English", native: "English" }
 ];
 
 const USE_CASES = [
-  { icon: Building2, title: "Real Estate", service: "Real Estate", desc: "Automate property inquiries, site visit bookings, and customer follow-ups in fluent Malayalam.", items: ["Site Visit Bookings", "Property Inquiries", "Pricing & Availability", "Broker Follow-up Calls"] },
-  { icon: Heart, title: "Clinics", service: "Clinics", desc: "Manage patient appointments, reminders, and clinic details with an empathetic Malayalam-speaking receptionist.", items: ["Doctor Appointment Booking", "Clinic Timing Queries", "Vaccination Reminders", "Feedback Collection"] },
+  { icon: Building2, title: "Real Estate", service: "Real Estate", desc: "Automate property inquiries, site visit bookings, and customer follow-ups in fluent local languages.", items: ["Site Visit Bookings", "Property Inquiries", "Pricing & Availability", "Broker Follow-up Calls"] },
+  { icon: Heart, title: "Clinics", service: "Clinics", desc: "Manage patient appointments, reminders, and clinic details with an empathetic multilingual AI receptionist.", items: ["Doctor Appointment Booking", "Clinic Timing Queries", "Vaccination Reminders", "Feedback Collection"] },
   { icon: Car, title: "Vehicle Dealerships", service: "Vehicle Dealerships", desc: "Schedule test drives, service bookings, and insurance reminders seamlessly with outbound calling.", items: ["Test Drive Scheduling", "Car Service Appointments", "Insurance Renewals", "Post-Service Feedback"] },
-  { icon: Shield, title: "Insurance", service: "Insurance", desc: "Automate policy renewals, premium payment reminders, and claim status updates in Malayalam.", items: ["Policy Renewal Calls", "Payment Reminders", "Claim Status Inquiries", "Policy Info Details"] },
-  { icon: Users, title: "Consultancies", service: "Consultancies", desc: "Qualify leads for study abroad, job placements, or visa consultancies with automated Malayalam voice calls.", items: ["Visa Consultation Bookings", "Study Abroad Inquiries", "Job Placement Follow-ups", "Document Verification Alerts"] },
+  { icon: Shield, title: "Insurance", service: "Insurance", desc: "Automate policy renewals, premium payment reminders, and claim status updates in the customer's native tongue.", items: ["Policy Renewal Calls", "Payment Reminders", "Claim Status Inquiries", "Policy Info Details"] },
+  { icon: Users, title: "Consultancies", service: "Consultancies", desc: "Qualify leads for study abroad, job placements, or visa consultancies with automated multi-lingual voice calls.", items: ["Visa Consultation Bookings", "Study Abroad Inquiries", "Job Placement Follow-ups", "Document Verification Alerts"] },
   { icon: GraduationCap, title: "Training Centres", service: "Training Centres", desc: "Handle student course inquiries, batch timings, admission updates, and fee reminders automatically.", items: ["Course Admission Inquiries", "Batch Schedule Updates", "Fee Payment Reminders", "Student Attendance Alerts"] },
   { icon: Landmark, title: "Finance / Loans", service: "Finance / Loans", desc: "Automate loan eligibility checks, gold loan renewals, and gold/personal loan EMI collections.", items: ["EMI Payment Reminders", "Gold Loan Renewals", "Loan Eligibility Checks", "Interest Payment Alerts"] },
   { icon: Zap, title: "Home Services", service: "Home Services", desc: "Book AC servicing, appliance repairs, plumbing, and electrician service visits hands-free.", items: ["AC Service Bookings", "Plumber/Electrician Scheduling", "Service Technician Dispatch", "Quality Feedback Surveys"] },
@@ -125,12 +147,11 @@ function HeroSection() {
         </div>
 
         <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold tracking-tight leading-[1.1] mb-6 animate-fade-up delay-100">
-          Swaram that speaks<br />
-          <AnimatedLang /> <span className="text-white">for you</span>
+          <AnimatedLang /> <span className="text-white">that speaks<br />for you</span>
         </h1>
 
         <p className="text-lg md:text-xl text-gray-400 max-w-2xl mx-auto mb-10 animate-fade-up delay-200 leading-relaxed">
-          Enterprise-grade AI voice agents speaking strictly in Malayalam. 
+          Enterprise-grade AI voice agents speaking fluently in 12 Indian languages. 
           Automate 10,000+ concurrent calls. Zero wait time. Human-like conversations.
         </p>
 
@@ -159,7 +180,7 @@ function HeroSection() {
 /* ─── Features ─────────────────────────────────────────────── */
 function FeaturesSection() {
   const features = [
-    { icon: Landmark, title: "Malayalam Outbound Calls", desc: "Speak directly to your target audience. Our voice agents are trained in natural Malayalam dialects and phone etiquette." },
+    { icon: Landmark, title: "12 Indian Languages Outbound Calls", desc: "Speak directly to your target audience. Our voice agents are trained in natural dialects and phone etiquette across 12 major Indian languages." },
     { icon: Zap, title: "Powered by Swaram AI", desc: "Swaram's proprietary STT, TTS, and LLM engine for natural, context-aware conversations that handle open-ended queries." },
     { icon: BarChart3, title: "Real-Time Analytics", desc: "Live dashboard with call outcomes, duration tracking, booking rates, and campaign performance metrics." },
     { icon: Users, title: "Campaign Automation", desc: "Bulk outbound campaigns with scheduling, contact management, and per-call delay configuration." },
