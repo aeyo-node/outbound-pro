@@ -6,7 +6,7 @@ import { Phone, ArrowRight, Mic, BarChart3, Users, Zap, Shield, Clock, ChevronRi
 const API_BASE = "";  // Use proxy from next.config.ts
 
 const ANIMATED_LANGUAGES = [
-  "Swaram",  // Malayalam
+  "സ്വരം",  // Malayalam
   "Voice",   // English
   "आवाज़",   // Hindi
   "குரல்",    // Tamil
@@ -69,7 +69,7 @@ function AnimatedLang() {
   }, []);
   return (
     <span
-      className="text-gradient inline-block transition-all"
+      className="text-gradient inline-block transition-all py-3 px-2"
       style={{
         opacity: fade ? 1 : 0,
         transform: fade ? "translateY(0)" : "translateY(8px)",
