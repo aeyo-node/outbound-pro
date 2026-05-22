@@ -628,9 +628,17 @@ class AppointmentTools(llm.ToolContext):
         preferred_date: Preferred date and time (e.g. 2025-06-15 10:00 AM)
         service_type: What they want to book
         """
+        if name and name.strip() and name.lower() not in ["there", "unknown"]:
+            self.lead_name = name.strip()
+        if phone and phone.strip() and phone.lower() not in ["unknown", "none", "—"]:
+            self.phone_number = phone.strip()
+            
+        name = self.lead_name or name or "Swaram Lead"
+        phone = self.phone_number or phone or "unknown"
+        
         # Save locally so it appears in appointments tab
         try:
-            booking_id = await insert_appointment(name, phone or self.phone_number or "unknown", preferred_date.split()[0] if " " in preferred_date else preferred_date, preferred_date.split()[1] if " " in preferred_date else "TBD", service_type)
+            booking_id = await insert_appointment(name, phone, preferred_date.split()[0] if " " in preferred_date else preferred_date, preferred_date.split()[1] if " " in preferred_date else "TBD", service_type)
         except Exception:
             pass
             
@@ -703,9 +711,28 @@ class AppointmentTools(llm.ToolContext):
             return f"Error checking Cal.com availability: {str(e)}"
 
     @llm.function_tool
-    async def book_calcom(self, date_str: str, time_str: str) -> str:
-        """Book an appointment on Cal.com. date_str format: YYYY-MM-DD, time_str format: HH:MM."""
-        print(f"[*] TOOL CALL: book_calcom('{date_str}', '{time_str}')")
+    async def book_calcom(
+        self, 
+        date_str: str, 
+        time_str: str, 
+        name: Optional[str] = None, 
+        phone: Optional[str] = None, 
+        email: Optional[str] = None
+    ) -> str:
+        """
+        Book an appointment on Cal.com. 
+        date_str format: YYYY-MM-DD, time_str format: HH:MM.
+        name: The customer's full name.
+        phone: The customer's 10-digit phone number.
+        email: The customer's email address.
+        """
+        print(f"[*] TOOL CALL: book_calcom('{date_str}', '{time_str}', name={name}, phone={phone}, email={email})")
+        
+        if name and name.strip() and name.lower() not in ["there", "unknown"]:
+            self.lead_name = name.strip()
+        if phone and phone.strip() and phone.lower() not in ["unknown", "none", "—"]:
+            self.phone_number = phone.strip()
+            
         api_key = os.getenv("CALCOM_API_KEY")
         event_type_id_str = os.getenv("CALCOM_EVENT_TYPE_ID")
         timezone = os.getenv("CALCOM_TIMEZONE", "Asia/Kolkata")
@@ -718,9 +745,9 @@ class AppointmentTools(llm.ToolContext):
         except ValueError:
             return f"Invalid event type ID: {event_type_id_str}"
             
-        name = self.lead_name or "Swaram Lead"
-        phone = self.phone_number or "unknown"
-        email = f"{phone.replace('+', '')}@swaram.ai" if phone else "lead@swaram.ai"
+        name = self.lead_name or name or "Swaram Lead"
+        phone = self.phone_number or phone or "unknown"
+        email = email or f"{phone.replace('+', '')}@swaram.ai" if phone else "lead@swaram.ai"
         
         start_iso = f"{date_str}T{time_str}:00Z"
         

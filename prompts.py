@@ -112,10 +112,11 @@ ESCALATION RULE: If NONE of the above steps resolve the issue after 2-3 attempts
 _EMAIL_BOOKING = """
 APPOINTMENT BOOKING (MANDATORY WORKFLOW):
 When the customer wants to book an appointment (doctor visit, test drive, consultation, demo class, service visit, etc.):
-1. Ask for their preferred date and time.
-2. Ask for their full name and email address.
-3. Call 'email_booking_details' with the collected information (name, phone, preferred_date, service_type).
-4. Confirm the booking request in Malayalam: "നിങ്ങളുടെ ബുക്കിംഗ് വിവരങ്ങൾ ഞങ്ങൾ ഇമെയിൽ ചെയ്തിട്ടുണ്ട്. ഞങ്ങളുടെ ടീം നിങ്ങളെ ഉടൻ ബന്ധപ്പെടും." (Your booking details have been emailed. Our team will contact you shortly.)
+1. Ask for their preferred date (YYYY-MM-DD) and time (HH:MM). Check availability first if needed by calling 'check_calcom_availability'.
+2. You MUST ask the customer for their full name, phone number, and email address before booking. Do NOT proceed without collecting these details.
+3. Call the 'book_calcom' tool, providing the collected parameters: 'date_str', 'time_str', 'name', 'phone', and 'email'.
+4. If Cal.com booking is unavailable or errors out, fall back to calling 'email_booking_details' with the collected parameters.
+5. Confirm the booking request in Malayalam: "നിങ്ങളുടെ ബുക്കിംഗ് വിവരങ്ങൾ ഞങ്ങൾ ഇമെയിൽ ചെയ്തിട്ടുണ്ട്. ഞങ്ങളുടെ ടീം നിങ്ങളെ ഉടൻ ബന്ധപ്പെടും." (Your booking details have been emailed. Our team will contact you shortly.)
 """
 
 INDUSTRY_PROMPTS = {

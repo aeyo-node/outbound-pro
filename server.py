@@ -31,7 +31,8 @@ from db import (
     delete_agent_profile, set_default_agent_profile, get_calls_by_phone, get_campaign,
     get_contacts, get_errors, get_logs, get_setting, get_stats, init_db, log_error,
     save_settings, set_setting, update_call_notes, update_campaign_run_stats,
-    update_campaign_status, get_all_transactions, get_incoming_calls, log_incoming_call
+    update_campaign_status, get_all_transactions, get_incoming_calls, log_incoming_call,
+    cleanup_unknown_rows, create_contact
 )
 from prompts import DEFAULT_SYSTEM_PROMPT
 
@@ -78,6 +79,12 @@ app.mount("/static", StaticFiles(directory="data"), name="static")
 
 @app.on_event("startup")
 async def _startup():
+    # Clean stale/unknown/placeholder rows from DB on boot
+    try:
+        await cleanup_unknown_rows()
+        print("[+] Startup: Database cleanup completed.")
+    except Exception as e:
+        print(f"[-] Startup: Database cleanup failed: {e}")
     if _scheduler:
         _scheduler.start()
         await _reschedule_all_campaigns()
@@ -350,7 +357,46 @@ async def api_get_stats():
 
 @app.get("/api/appointments")
 async def api_get_appointments(date: Optional[str] = None):
-    return await get_all_appointments(date_filter=date)
+    try:
+        from db import sync_calcom_bookings
+        await sync_calcom_bookings()
+    except Exception as e:
+        print(f"Error syncing Cal.com bookings on API call: {e}")
+        
+    raw_appts = await get_all_appointments(date_filter=date)
+    mapped = []
+    from datetime import datetime
+    for appt in raw_appts:
+        c_name = appt.get("name") or "Unknown"
+        c_phone = appt.get("phone") or "—"
+        
+        # Format time to standard ISO-8601
+        a_date = appt.get("date")
+        a_time = appt.get("time")
+        if a_date and a_time:
+            # Handle HH:MM formatting
+            t_str = a_time.strip()
+            if len(t_str) == 5:
+                appt_time_iso = f"{a_date}T{t_str}:00"
+            else:
+                appt_time_iso = f"{a_date}T{t_str}"
+        else:
+            appt_time_iso = appt.get("created_at") or datetime.now().isoformat()
+            
+        status = str(appt.get("status") or "booked").lower()
+        if status == "booked":
+            status = "scheduled"
+            
+        mapped.append({
+            "id": appt.get("id"),
+            "client_name": c_name,
+            "client_phone": c_phone,
+            "appointment_time": appt_time_iso,
+            "status": status,
+            "service": appt.get("service") or "General Meeting",
+            "created_at": appt.get("created_at") or datetime.now().isoformat()
+        })
+    return mapped
 
 
 @app.delete("/api/appointments/{appointment_id}")
@@ -358,6 +404,13 @@ async def api_cancel_appointment(appointment_id: str):
     ok = await cancel_appointment(appointment_id)
     if not ok:
         raise HTTPException(404, "Appointment not found or already cancelled")
+    return {"status": "cancelled"}
+
+@app.post("/api/appointments/{appointment_id}/cancel")
+async def api_post_cancel_appointment(appointment_id: str):
+    ok = await cancel_appointment(appointment_id)
+    if not ok:
+        return {"status": "failed"}
     return {"status": "cancelled"}
 
 
@@ -472,20 +525,6 @@ async def api_create_contact(req: dict):
     return {"status": "created", "id": contact_id}
 
 
-# ── Calls ─────────────────────────────────────────────────────────────────────
-
-@app.get("/api/calls")
-async def api_get_calls(page: int = 1, limit: int = 50):
-    return await get_all_calls(page=page, limit=limit)
-
-
-# ── Transactions ──────────────────────────────────────────────────────────────
-
-@app.get("/api/transactions")
-async def api_get_transactions(limit: int = 50):
-    return await get_all_transactions(limit=limit)
-
-
 # ── Campaigns ─────────────────────────────────────────────────────────────────
 
 @app.get("/api/campaigns")
@@ -516,105 +555,6 @@ async def api_create_campaign(req: dict):
 async def api_delete_campaign(id: str):
     success = await delete_campaign(id)
     return {"status": "deleted" if success else "failed"}
-
-
-# ── Stats ─────────────────────────────────────────────────────────────────────
-
-@app.get("/api/stats")
-async def api_get_stats():
-    return await get_stats()
-
-
-# ── Incoming Calls ────────────────────────────────────────────────────────────
-
-@app.get("/api/calls/incoming")
-async def api_get_incoming_calls():
-    return await get_incoming_calls()
-
-
-# ── Appointments ──────────────────────────────────────────────────────────────
-
-@app.get("/api/appointments")
-async def api_get_appointments():
-    try:
-        from db import sync_calcom_bookings
-        await sync_calcom_bookings()
-    except Exception as e:
-        print(f"Error syncing Cal.com bookings on API call: {e}")
-        
-    raw_appts = await get_all_appointments()
-    mapped = []
-    from datetime import datetime
-    for appt in raw_appts:
-        c_name = appt.get("name") or "Unknown"
-        c_phone = appt.get("phone") or "—"
-        
-        # Format time to standard ISO-8601
-        a_date = appt.get("date")
-        a_time = appt.get("time")
-        if a_date and a_time:
-            # Handle HH:MM formatting
-            t_str = a_time.strip()
-            if len(t_str) == 5:
-                appt_time_iso = f"{a_date}T{t_str}:00"
-            else:
-                appt_time_iso = f"{a_date}T{t_str}"
-        else:
-            appt_time_iso = appt.get("created_at") or datetime.now().isoformat()
-            
-        status = str(appt.get("status") or "booked").lower()
-        if status == "booked":
-            status = "scheduled"
-            
-        mapped.append({
-            "id": appt.get("id"),
-            "client_name": c_name,
-            "client_phone": c_phone,
-            "appointment_time": appt_time_iso,
-            "status": status,
-            "service": appt.get("service") or "General Meeting",
-            "created_at": appt.get("created_at") or datetime.now().isoformat()
-        })
-    return mapped
-
-
-@app.post("/api/appointments/{id}/cancel")
-async def api_cancel_appointment(id: str):
-    success = await cancel_appointment(id)
-    return {"status": "cancelled" if success else "failed"}
-
-
-@app.post("/api/call")
-async def api_dispatch_call(req: CallRequest):
-    """Dispatch a single outbound call via LiveKit."""
-    url    = await eff("LIVEKIT_URL")
-    key    = await eff("LIVEKIT_API_KEY")
-    secret = await eff("LIVEKIT_API_SECRET")
-    if not (url and key and secret):
-        raise HTTPException(400, "LiveKit credentials not configured.")
-
-    from livekit import api as lk_api
-    ctx = ssl.create_default_context()
-    ctx.check_hostname = False
-    ctx.verify_mode = ssl.CERT_NONE
-    session = aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=ctx))
-    
-    try:
-        lk = lk_api.LiveKitAPI(url=url, api_key=key, api_secret=secret, session=session)
-        room_name = f"call-{req.phone.replace('+','')}-{random.randint(1000,9999)}"
-        
-        # Get profile if requested
-        profile = None
-        if req.agent_profile_id:
-            profile = await get_agent_profile(req.agent_profile_id)
-
-        success = await _dispatch_one(lk, lk_api, {"phone": req.phone, "lead_name": req.lead_name}, room_name, req.system_prompt, profile)
-        await lk.aclose()
-        if not success:
-            raise HTTPException(500, "Dispatch failed")
-        return {"status": "dispatched", "room": room_name}
-    finally:
-        await session.close()
 
 
 # ── EV Operations ─────────────────────────────────────────────────────────────

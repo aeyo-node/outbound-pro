@@ -239,6 +239,7 @@ async def get_next_available(date: str, time: str) -> str:
 
 
 async def get_all_appointments(date_filter: Optional[str] = None) -> list:
+    await cleanup_unknown_rows()
     db = await _adb()
     query = db.table("appointments").select("*").order("date").order("time")
     if date_filter:
@@ -282,6 +283,7 @@ async def log_call(
 
 
 async def get_all_calls(page: int = 1, limit: int = 20) -> list:
+    await cleanup_unknown_rows()
     db = await _adb()
     offset = (page - 1) * limit
     result = await db.table("call_logs").select("*").order("timestamp", desc=True).range(offset, offset + limit - 1).execute()
@@ -673,7 +675,64 @@ async def sync_calcom_bookings() -> None:
     except Exception as e:
         print(f"[-] Cal.com Sync Error: {e}")
 
+async def cleanup_unknown_rows() -> None:
+    try:
+        db = await _adb()
+        
+        # 1. Clean appointments
+        res = await db.table("appointments").select("id, name, phone").execute()
+        if res.data:
+            to_delete = []
+            for row in res.data:
+                name = str(row.get("name") or "").lower().strip()
+                phone = str(row.get("phone") or "").lower().strip()
+                if (
+                    not name or 
+                    name in ["unknown", "there", "swaram lead", "cal.com client", "cal.com Client"] or 
+                    not phone or 
+                    phone in ["unknown", "—", "none"]
+                ):
+                    to_delete.append(row["id"])
+            for row_id in to_delete:
+                await db.table("appointments").delete().eq("id", row_id).execute()
+                print(f"[x] Cleanup: Deleted invalid/unknown appointment {row_id}")
+                
+        # 2. Clean call_logs
+        res_calls = await db.table("call_logs").select("id, phone_number, lead_name, outcome").execute()
+        if res_calls.data:
+            to_delete_calls = []
+            for row in res_calls.data:
+                phone = str(row.get("phone_number") or "").lower().strip()
+                lead = str(row.get("lead_name") or "").lower().strip()
+                outcome = str(row.get("outcome") or "").lower().strip()
+                if (
+                    not phone or 
+                    phone in ["unknown", "—", "none"] or
+                    lead in ["unknown", "there"] or
+                    outcome in ["unknown"]
+                ):
+                    to_delete_calls.append(row["id"])
+            for row_id in to_delete_calls:
+                await db.table("call_logs").delete().eq("id", row_id).execute()
+                print(f"[x] Cleanup: Deleted invalid/unknown call log {row_id}")
+
+        # 3. Clean incoming_calls
+        res_inc = await db.table("incoming_calls").select("id, phone_number").execute()
+        if res_inc.data:
+            to_delete_inc = []
+            for row in res_inc.data:
+                phone = str(row.get("phone_number") or "").lower().strip()
+                if not phone or phone in ["unknown", "—", "none"]:
+                    to_delete_inc.append(row["id"])
+            for row_id in to_delete_inc:
+                await db.table("incoming_calls").delete().eq("id", row_id).execute()
+                print(f"[x] Cleanup: Deleted invalid/unknown incoming call {row_id}")
+
+    except Exception as e:
+        print(f"[-] Cleanup Error: {e}")
+
 async def get_all_transactions(limit: int = 50) -> list:
+    await cleanup_unknown_rows()
     db = await _adb()
     result = await db.table("transactions").select("*").order("created_at", desc=True).limit(limit).execute()
     return result.data or []
@@ -696,6 +755,8 @@ async def log_incoming_call(phone: str, status: str = "received", duration: int 
     return call_id
 
 async def get_incoming_calls(limit: int = 50) -> list:
+    await cleanup_unknown_rows()
     db = await _adb()
     result = await db.table("incoming_calls").select("*").order("timestamp", desc=True).limit(limit).execute()
     return result.data or []
+
