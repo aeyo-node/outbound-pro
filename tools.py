@@ -651,9 +651,10 @@ class AppointmentTools(llm.ToolContext):
         print(f"[*] TOOL CALL: check_calcom_availability('{date_str}')")
         api_key = os.getenv("CALCOM_API_KEY")
         username = os.getenv("CALCOM_USERNAME")
+        event_type_id = os.getenv("CALCOM_EVENT_TYPE_ID")
         timezone = os.getenv("CALCOM_TIMEZONE", "Asia/Kolkata")
         
-        if not api_key or not username:
+        if not api_key:
             return "Cal.com calendar integration is not fully configured in settings."
             
         headers = {
@@ -666,16 +667,24 @@ class AppointmentTools(llm.ToolContext):
         end_time = f"{date_str}T23:59:59.000Z"
         
         params = {
-            "startTime": start_time,
-            "endTime": end_time,
-            "username": username,
+            "start": start_time,
+            "end": end_time,
             "timeZone": timezone
         }
+        if event_type_id:
+            try:
+                params["eventTypeId"] = int(event_type_id)
+            except ValueError:
+                params["eventTypeId"] = event_type_id
+        elif username:
+            params["username"] = username
+        else:
+            return "Neither eventTypeId nor username is configured in settings."
         
         try:
             import httpx
             async with httpx.AsyncClient() as client:
-                resp = await client.get("https://api.cal.com/v2/slots/available", headers=headers, params=params, timeout=10.0)
+                resp = await client.get("https://api.cal.com/v2/slots", headers=headers, params=params, timeout=10.0)
                 if resp.status_code != 200:
                     return f"Failed to fetch availability from Cal.com. Status code: {resp.status_code}"
                 
@@ -758,20 +767,14 @@ class AppointmentTools(llm.ToolContext):
                 "name": name,
                 "email": email,
                 "timeZone": timezone,
-                "phoneNumber": phone
-            },
-            "responses": {
-                "name": name,
-                "email": email,
-                "phone": phone
-            },
-            "timeZone": timezone,
-            "language": "en"
+                "phoneNumber": phone,
+                "language": "en"
+            }
         }
         
         headers = {
             "Authorization": f"Bearer {api_key}",
-            "cal-api-version": "2024-09-04",
+            "cal-api-version": "2024-08-13",
             "Content-Type": "application/json"
         }
         

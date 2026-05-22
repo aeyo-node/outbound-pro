@@ -580,7 +580,7 @@ async def sync_calcom_bookings() -> None:
     print(f"[*] Cal.com Sync: Fetching bookings from Cal.com API v2...")
     headers = {
         "Authorization": f"Bearer {api_key}",
-        "cal-api-version": "2024-09-04",
+        "cal-api-version": "2024-08-13",
         "Content-Type": "application/json"
     }
     

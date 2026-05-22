@@ -1116,6 +1116,7 @@ async def test_calcom():
     try:
         api_key = os.getenv("CALCOM_API_KEY", "cal_live_47e56e649fffbff64e6799370962ce75")
         username = os.getenv("CALCOM_USERNAME", "chris-thomas-4ulokx")
+        event_type_id = os.getenv("CALCOM_EVENT_TYPE_ID")
         headers_v2 = {
             "Authorization": f"Bearer {api_key}",
             "cal-api-version": "2024-06-14",
@@ -1124,13 +1125,25 @@ async def test_calcom():
         today = _dt2.now().strftime("%Y-%m-%d")
         tomorrow = (_dt2.now() + _td2(days=1)).strftime("%Y-%m-%d")
 
+        params = {
+            "start": f"{today}T00:00:00.000Z",
+            "end": f"{tomorrow}T23:59:59.000Z",
+            "timeZone": "Asia/Kolkata"
+        }
+        if event_type_id:
+            try:
+                params["eventTypeId"] = int(event_type_id)
+            except ValueError:
+                params["eventTypeId"] = event_type_id
+        else:
+            params["username"] = username
+
         async with httpx.AsyncClient(timeout=15) as client:
             et_res = await client.get("https://api.cal.com/v2/event-types", headers=headers_v2)
             av_res = await client.get(
-                "https://api.cal.com/v2/slots/available",
+                "https://api.cal.com/v2/slots",
                 headers={**headers_v2, "cal-api-version": "2024-09-04"},
-                params={"startTime": f"{today}T00:00:00.000Z", "endTime": f"{tomorrow}T00:00:00.000Z",
-                        "username": username, "timeZone": "Asia/Kolkata"}
+                params=params
             )
 
         # Safely parse — Cal.com may return list or dict
