@@ -184,6 +184,7 @@ def _build_session(tools: list, system_prompt: str, voice_override: Optional[str
             realtime_kwargs["session_resumption"]         = _session_resumption_cfg
             realtime_kwargs["context_window_compression"] = _ctx_compression_cfg
 
+        logger.error("FINAL REALTIME MODEL=%s", gemini_model)
         return AgentSession(llm=RealtimeClass(**realtime_kwargs), tools=tools)
 
     # ── Pipeline fallback (Deepgram STT + Gemini LLM + Google TTS) ───────────
