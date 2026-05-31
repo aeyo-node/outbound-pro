@@ -319,6 +319,8 @@ async def api_get_incoming_calls(limit: int = 50):
     return await get_incoming_calls(limit=limit)
 
 @app.post("/api/webhook")
+@app.post("/api/livekit/webhook")
+@app.post("/api/vobiz/webhook")
 async def livekit_webhook(request: Request):
     """Webhook to receive LiveKit events, such as inbound calls."""
     try:
