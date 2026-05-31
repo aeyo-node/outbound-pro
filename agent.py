@@ -142,9 +142,11 @@ def _build_session(tools: list, system_prompt: str, voice_override: Optional[str
     ⚠️  EndSensitivity MUST use END_SENSITIVITY_LOW (full string — not .LOW)
     """
     # Override whatever is in the DB settings to ensure the realtime API works
-    gemini_model = "models/gemini-3.5-flash"
+    gemini_model = "models/gemini-2.5-flash"
     gemini_voice = voice_override or os.getenv("GEMINI_TTS_VOICE", "Aoede")
-    use_realtime = os.getenv("USE_GEMINI_REALTIME", "true").lower() != "false"
+    
+    # Revert to standard realtime since user wants native Gemini Live
+    use_realtime = True
 
     RealtimeClass = _google_realtime or (_google_beta_realtime if use_realtime else None)
 
@@ -192,10 +194,10 @@ def _build_session(tools: list, system_prompt: str, voice_override: Optional[str
         )
     logger.info("SESSION MODE: pipeline (Deepgram STT + Gemini LLM + Google TTS)")
     stt = _deepgram_stt(model="nova-3", language="multi") if _deepgram_stt else None
-    tts = _google_tts() if _google_tts else None
+    tts = _google_tts(voice_name="en-US-Journey-O") if _google_tts else None
     return AgentSession(
         stt=stt,
-        llm=_google_llm(model="gemini-2.0-flash"),
+        llm=_google_llm(model="gemini-3.5-flash"),
         tts=tts,
         vad=silero.VAD.load(),
         tools=tools,

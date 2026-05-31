@@ -8,17 +8,20 @@ load_dotenv(".env")
 api_key = os.getenv("GOOGLE_API_KEY")
 print(f"API Key: {api_key[:12]}...")
 
-# ── Test 1: Basic text generation (proves key is valid) ──────────────────────
-print("\n=== TEST 1: Basic text generation (gemini-2.0-flash) ===")
-url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={api_key}"
-resp = httpx.post(url, json={"contents": [{"parts": [{"text": "Say hello in one word"}]}]}, timeout=15)
-print(f"  Status: {resp.status_code}")
-if resp.status_code == 200:
-    text = resp.json().get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "")
-    print(f"  Response: {text[:100]}")
-    print("  ✅ API key works for regular text generation")
-else:
-    print(f"  ❌ FAILED: {resp.text[:200]}")
+# ── Test 1: Basic text generation (gemini-3.5-flash) ──────────────────────
+print("\n=== TEST 1: Basic text generation (gemini-3.5-flash) ===")
+url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key={api_key}"
+try:
+    resp = httpx.post(url, json={"contents": [{"parts": [{"text": "Say hello in one word"}]}]}, timeout=15)
+    print(f"  Status: {resp.status_code}")
+    if resp.status_code == 200:
+        text = resp.json().get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "")
+        print(f"  Response: {text[:100]}")
+        print("  ✅ API key works for regular text generation")
+    else:
+        print(f"  ❌ FAILED: {resp.text[:200]}")
+except Exception as e:
+    print(f"  ❌ FAILED with exception: {e}")
 
 # ── Test 2: List ALL models supporting bidiGenerateContent ───────────────────
 print("\n=== TEST 2: Models supporting bidiGenerateContent (Live API) ===")
