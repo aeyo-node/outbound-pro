@@ -142,10 +142,9 @@ def _build_session(tools: list, system_prompt: str, voice_override: Optional[str
     ⚠️  EndSensitivity MUST use END_SENSITIVITY_LOW (full string — not .LOW)
     """
     # Override whatever is in the DB settings to ensure the realtime API works
-    gemini_model = "models/gemini-2.5-flash"
+    gemini_model = "models/gemini-3.1-flash-live-preview"
     gemini_voice = voice_override or os.getenv("GEMINI_TTS_VOICE", "Aoede")
     
-    # Revert to standard realtime since user wants native Gemini Live
     use_realtime = True
 
     RealtimeClass = _google_realtime or (_google_beta_realtime if use_realtime else None)
