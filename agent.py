@@ -140,9 +140,8 @@ def _build_session(tools: list, system_prompt: str, voice_override: Optional[str
     3. RealtimeInputConfig(END_SENSITIVITY_LOW)    → 2s VAD silence threshold
 
     ⚠️  EndSensitivity MUST use END_SENSITIVITY_LOW (full string — not .LOW)
-    """
     # Override whatever is in the DB settings to ensure the realtime API works
-    gemini_model = "models/gemini-2.0-flash-exp"
+    gemini_model = "models/gemini-2.0-flash"
     gemini_voice = voice_override or os.getenv("GEMINI_TTS_VOICE", "Aoede")
     use_realtime = os.getenv("USE_GEMINI_REALTIME", "true").lower() != "false"
 
@@ -395,20 +394,15 @@ async def entrypoint(ctx: agents.JobContext) -> None:
         if phone_number else f"Speak strictly in Malayalam. Greet the caller warmly and help them with {service_type}."
     )
     try:
-        # Access the agent's chat context. RealtimeSession (session.llm) context is separate
-        # but AgentSession manages the high-level chat context.
-        if hasattr(session, "agent") and hasattr(session.agent, "chat_ctx"):
-            session.agent.chat_ctx.add_message(role="user", text=f"[SYSTEM: {greeting}]")
+        if hasattr(session, "chat_ctx"):
+            # LiveKit 1.5+ AgentSession context
+            session.chat_ctx.append(role="user", text=f"[SYSTEM: {greeting}]")
+        elif hasattr(session, "agent") and hasattr(session.agent, "chat_ctx"):
+            session.agent.chat_ctx.append(role="user", text=f"[SYSTEM: {greeting}]")
         else:
-            # Fallback for Gemini Live specific session
-            await _log("info", "No chat_ctx on agent - greeting skipped")
+            await _log("warning", "No chat_ctx found on session - greeting may be delayed")
     except Exception as _gr_exc:
         await _log("warning", f"Greeting trigger failed: {_gr_exc}")
-        # Final fallback: just push a message to context if possible
-        try:
-            if hasattr(session, "chat_ctx"):
-                session.chat_ctx.add_message(role="user", text="Hello")
-        except: pass
 
     # ── Keep session alive until SIP participant leaves ───────────────────────
     # Without this the entrypoint returns and the worker spins down.
