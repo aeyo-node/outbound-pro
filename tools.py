@@ -685,12 +685,22 @@ class AppointmentTools(llm.ToolContext):
             import httpx
             async with httpx.AsyncClient() as client:
                 resp = await client.get("https://api.cal.com/v2/slots", headers=headers, params=params, timeout=10.0)
+                print(f"[*] Cal.com slots response: status={resp.status_code}")
                 if resp.status_code != 200:
+                    print(f"[-] Cal.com slots error: {resp.text[:300]}")
                     return f"Failed to fetch availability from Cal.com. Status code: {resp.status_code}"
                 
                 data = resp.json()
                 slots_data = data.get("data", {})
-                slots_dict = slots_data.get("slots", {})
+                
+                # Cal.com v2 2024-09-04 returns dates directly under "data":
+                #   {"data": {"2026-06-16": [{"start": "..."}, ...]}}
+                # Older versions may nest under "data.slots":
+                #   {"data": {"slots": {"2026-06-16": [...]}}}
+                slots_dict = slots_data.get("slots", None)
+                if slots_dict is None:
+                    # Dates are directly under data — filter out non-list values
+                    slots_dict = {k: v for k, v in slots_data.items() if isinstance(v, list)}
                 
                 slots_list = []
                 if isinstance(slots_dict, dict):
@@ -781,7 +791,9 @@ class AppointmentTools(llm.ToolContext):
         try:
             import httpx
             async with httpx.AsyncClient() as client:
+                print(f"[*] Cal.com booking payload: {json.dumps(payload)}")
                 resp = await client.post("https://api.cal.com/v2/bookings", headers=headers, json=payload, timeout=15.0)
+                print(f"[*] Cal.com booking response: status={resp.status_code}, body={resp.text[:300]}")
                 
                 if resp.status_code != 201 and resp.status_code != 200:
                     wrapped_payload = {"booking": payload}
