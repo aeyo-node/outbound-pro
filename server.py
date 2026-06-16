@@ -973,9 +973,9 @@ def _schedule_campaign(campaign_id: str, schedule_type: str, schedule_time: str)
     except (ValueError, AttributeError):
         hour, minute = 9, 0
     if schedule_type == "daily":
-        trigger = CronTrigger(hour=hour, minute=minute)
+        trigger = CronTrigger(hour=hour, minute=minute, timezone="Asia/Kolkata")
     else:
-        trigger = CronTrigger(day_of_week="mon-fri", hour=hour, minute=minute)
+        trigger = CronTrigger(day_of_week="mon-fri", hour=hour, minute=minute, timezone="Asia/Kolkata")
     _scheduler.add_job(
         _run_campaign, trigger=trigger, args=[campaign_id],
         id=job_id, replace_existing=True,
