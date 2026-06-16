@@ -1,7 +1,10 @@
 import os
 import uuid
+import logging
 from datetime import datetime, timedelta
 from typing import Optional
+
+logger = logging.getLogger("outbound-db")
 from collections import defaultdict
 
 # ---------------------------------------------------------------------------
@@ -296,18 +299,20 @@ async def log_call(
     try:
         await db.table("call_logs").insert(row).execute()
     except Exception as e:
-        logger.warning(f"Failed to insert call log with campaign_id. Trying without it. Error: {e}")
-        if "campaign_id" in row:
-            row.pop("campaign_id")
-            try:
-                await db.table("call_logs").insert(row).execute()
-            except Exception as e2:
-                logger.error(f"Failed to insert call log even without campaign_id: {e2}")
-    
-    # Auto-add to CRM contacts if a name is provided
-    if lead_name and lead_name.lower() not in ["there", "unknown"]:
+        logger.warning(f"Failed to insert call log (attempt 1): {e}")
+        # Try stripping optional columns one by one
+        for col in ["campaign_id", "notes", "recording_url"]:
+            if col in row:
+                row.pop(col)
         try:
-            # Check if contact exists
+            await db.table("call_logs").insert(row).execute()
+            logger.info("Call log saved on retry (stripped optional columns)")
+        except Exception as e2:
+            logger.error(f"Failed to insert call log even after stripping columns: {e2}")
+    
+    # Auto-add to CRM contacts if a real name is provided
+    if lead_name and lead_name.lower() not in ["there", "unknown", ""]:
+        try:
             existing = await db.table("contacts").select("id").eq("phone", phone_number).execute()
             if not existing.data:
                 await db.table("contacts").insert({
@@ -316,9 +321,15 @@ async def log_call(
                     "phone": phone_number,
                     "created_at": datetime.now().isoformat()
                 }).execute()
+                logger.info(f"Auto-added contact to CRM: {lead_name} ({phone_number})")
         except Exception as e:
-            print(f"Failed to auto-add contact to CRM: {e}")
+            logger.warning(f"Failed to auto-add contact to CRM: {e}")
 
+
+async def get_campaign_call_logs(campaign_id: str) -> list:
+    db = await _adb()
+    result = await db.table("call_logs").select("*").eq("campaign_id", campaign_id).order("timestamp", desc=True).execute()
+    return result.data or []
 
 async def get_all_calls(page: int = 1, limit: int = 20) -> list:
     await cleanup_unknown_rows()
@@ -727,10 +738,12 @@ async def sync_calcom_bookings() -> None:
         print(f"[-] Cal.com Sync Error: {e}")
 
 async def cleanup_unknown_rows() -> None:
+    """Light cleanup — only delete rows with truly invalid phone numbers.
+    NEVER delete rows based on lead_name because 'there' is the valid default."""
     try:
         db = await _adb()
         
-        # 1. Clean appointments
+        # 1. Clean appointments with truly invalid data
         res = await db.table("appointments").select("id, name, phone").execute()
         if res.data:
             to_delete = []
@@ -738,34 +751,24 @@ async def cleanup_unknown_rows() -> None:
                 name = str(row.get("name") or "").lower().strip()
                 phone = str(row.get("phone") or "").lower().strip()
                 if (
-                    not name or 
-                    name in ["unknown", "there", "swaram lead", "cal.com client", "cal.com Client"] or 
                     not phone or 
-                    phone in ["unknown", "—", "none"]
+                    phone in ["unknown", "—", "none"] or
+                    (not name or name in ["unknown"])
                 ):
                     to_delete.append(row["id"])
             for row_id in to_delete:
                 await db.table("appointments").delete().eq("id", row_id).execute()
-                print(f"[x] Cleanup: Deleted invalid/unknown appointment {row_id}")
                 
-        # 2. Clean call_logs
-        res_calls = await db.table("call_logs").select("id, phone_number, lead_name, outcome").execute()
+        # 2. Clean call_logs — ONLY delete truly broken rows (no phone number)
+        res_calls = await db.table("call_logs").select("id, phone_number").execute()
         if res_calls.data:
             to_delete_calls = []
             for row in res_calls.data:
                 phone = str(row.get("phone_number") or "").lower().strip()
-                lead = str(row.get("lead_name") or "").lower().strip()
-                outcome = str(row.get("outcome") or "").lower().strip()
-                if (
-                    not phone or 
-                    phone in ["unknown", "—", "none"] or
-                    lead in ["unknown", "there"] or
-                    outcome in ["unknown"]
-                ):
+                if not phone or phone in ["unknown", "—", "none"]:
                     to_delete_calls.append(row["id"])
             for row_id in to_delete_calls:
                 await db.table("call_logs").delete().eq("id", row_id).execute()
-                print(f"[x] Cleanup: Deleted invalid/unknown call log {row_id}")
 
         # 3. Clean incoming_calls
         res_inc = await db.table("incoming_calls").select("id, phone_number").execute()
@@ -777,10 +780,9 @@ async def cleanup_unknown_rows() -> None:
                     to_delete_inc.append(row["id"])
             for row_id in to_delete_inc:
                 await db.table("incoming_calls").delete().eq("id", row_id).execute()
-                print(f"[x] Cleanup: Deleted invalid/unknown incoming call {row_id}")
 
     except Exception as e:
-        print(f"[-] Cleanup Error: {e}")
+        logger.warning(f"Cleanup error (non-fatal): {e}")
 
 async def get_all_transactions(limit: int = 50) -> list:
     await cleanup_unknown_rows()
