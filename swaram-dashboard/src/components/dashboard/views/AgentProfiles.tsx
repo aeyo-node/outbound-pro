@@ -489,6 +489,15 @@ export function AgentProfiles() {
                 </div>
               )}
 
+              {!editingProfile && (
+                <div className="pt-6 border-t border-white/10">
+                  <div className="bg-[#FFD166]/10 border border-[#FFD166]/20 rounded-xl p-4 text-center">
+                    <h4 className="text-sm font-semibold text-[#FFD166] mb-1">Knowledge Base Resources</h4>
+                    <p className="text-xs text-[#FFD166]/80">You must save the profile first before you can upload documents or add links.</p>
+                  </div>
+                </div>
+              )}
+
               <div className="pt-6 border-t border-white/10 flex justify-end gap-3">
                 <button 
                   type="button"

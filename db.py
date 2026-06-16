@@ -291,6 +291,21 @@ async def log_call(
     if notes:
         row["notes"] = notes
     await db.table("call_logs").insert(row).execute()
+    
+    # Auto-add to CRM contacts if a name is provided
+    if lead_name and lead_name.lower() not in ["there", "unknown"]:
+        try:
+            # Check if contact exists
+            existing = await db.table("contacts").select("id").eq("phone", phone_number).execute()
+            if not existing.data:
+                await db.table("contacts").insert({
+                    "id": str(uuid.uuid4()),
+                    "name": lead_name,
+                    "phone": phone_number,
+                    "created_at": datetime.now().isoformat()
+                }).execute()
+        except Exception as e:
+            print(f"Failed to auto-add contact to CRM: {e}")
 
 
 async def get_all_calls(page: int = 1, limit: int = 20) -> list:
