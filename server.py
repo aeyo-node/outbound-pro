@@ -8,6 +8,7 @@ import random
 import ssl
 import certifi
 import aiohttp
+import urllib.parse
 from pathlib import Path
 from typing import Optional
 
@@ -300,8 +301,18 @@ async def api_dispatch_call(req: CallRequest):
 # ── Calls ─────────────────────────────────────────────────────────────────────
 
 @app.get("/api/calls")
-async def api_get_calls(page: int = 1, limit: int = 20):
-    return await get_all_calls(page=page, limit=limit)
+async def api_get_all_calls(page: int = 1, limit: int = 20) -> list:
+    return await get_all_calls(page, limit)
+
+@app.get("/api/calls/phone/{phone}")
+async def api_get_calls_by_phone(phone: str) -> list:
+    db = await _adb()
+    # Decode URL-encoded + symbol if necessary
+    decoded_phone = urllib.parse.unquote(phone)
+    if not decoded_phone.startswith('+'):
+        decoded_phone = '+' + decoded_phone.lstrip(' ')
+    result = await db.table("call_logs").select("*").eq("phone_number", decoded_phone).order("timestamp", desc=True).execute()
+    return result.data or []
 
 
 @app.patch("/api/calls/{call_id}/notes")

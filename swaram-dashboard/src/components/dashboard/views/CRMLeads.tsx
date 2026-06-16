@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Users, Search, Mail, Phone, CalendarDays, Plus, X, Loader2, Save, PhoneOutgoing } from "lucide-react";
+import { Users, Search, Mail, Phone, CalendarDays, Plus, X, Loader2, Save, PhoneOutgoing, Info, Clock, AlignLeft } from "lucide-react";
 
 const API = "/api";
 
@@ -11,6 +11,11 @@ export function CRMLeads() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   
+  // Details Modal State
+  const [selectedLead, setSelectedLead] = useState<any>(null);
+  const [leadLogs, setLeadLogs] = useState<any[]>([]);
+  const [loadingLogs, setLoadingLogs] = useState(false);
+
   // Form state
   const [formData, setFormData] = useState({
     name: "",
@@ -55,6 +60,22 @@ export function CRMLeads() {
       console.error(err);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const openDetails = async (lead: any) => {
+    setSelectedLead(lead);
+    setLoadingLogs(true);
+    try {
+      // Encode phone number for the URL
+      const encodedPhone = encodeURIComponent(lead.phone);
+      const res = await fetch(`${API}/calls/phone/${encodedPhone}`);
+      const data = await res.json();
+      setLeadLogs(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingLogs(false);
     }
   };
 
@@ -179,20 +200,30 @@ export function CRMLeads() {
                     </div>
                   </td>
                   <td className="px-6 py-4 text-right">
-                    <button 
-                      onClick={async () => {
-                        const res = await fetch(`${API}/call`, {
-                          method: "POST",
-                          headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({ phone: c.phone, lead_name: c.name })
-                        });
-                        if (res.ok) alert("Call initiated!");
-                      }}
-                      className="p-2 bg-[#FFD166]/10 hover:bg-[#FFD166]/20 text-[#FFD166] rounded-lg transition-colors"
-                      title="Call Lead"
-                    >
-                      <PhoneOutgoing className="w-4 h-4" />
-                    </button>
+                    <div className="flex justify-end gap-2">
+                      <button 
+                        onClick={() => openDetails(c)}
+                        className="p-2 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white rounded-lg transition-colors flex items-center gap-1.5"
+                        title="View Details & Notes"
+                      >
+                        <Info className="w-4 h-4" />
+                        <span className="text-xs font-medium">Details</span>
+                      </button>
+                      <button 
+                        onClick={async () => {
+                          const res = await fetch(`${API}/call`, {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ phone: c.phone, lead_name: c.name })
+                          });
+                          if (res.ok) alert("Call initiated!");
+                        }}
+                        className="p-2 bg-[#FFD166]/10 hover:bg-[#FFD166]/20 text-[#FFD166] rounded-lg transition-colors"
+                        title="Call Lead"
+                      >
+                        <PhoneOutgoing className="w-4 h-4" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -201,7 +232,97 @@ export function CRMLeads() {
         </div>
       </div>
 
-      {/* Modal */}
+      {/* Details Modal */}
+      {selectedLead && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="bg-[#1C1C1E] border border-white/10 rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl max-h-[85vh] flex flex-col">
+            <div className="p-6 border-b border-white/10 flex items-center justify-between bg-white/[0.02]">
+              <div>
+                <h3 className="text-xl font-medium text-white">{selectedLead.name || "Unknown"}</h3>
+                <p className="text-sm text-gray-400">{selectedLead.phone}</p>
+              </div>
+              <button onClick={() => setSelectedLead(null)} className="text-gray-400 hover:text-white">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            
+            <div className="p-6 overflow-y-auto space-y-6 flex-1">
+              {/* Profile Details */}
+              <div className="bg-[#0A0A0A] border border-white/10 rounded-xl p-4 grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Email Address</p>
+                  <p className="text-sm text-gray-300">{selectedLead.email || "—"}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Added On</p>
+                  <p className="text-sm text-gray-300">{formatTimestamp(selectedLead.created_at)}</p>
+                </div>
+              </div>
+
+              {/* Call History & Notes */}
+              <div>
+                <h4 className="text-sm font-medium text-white border-b border-white/10 pb-2 mb-4">Call History & Notes</h4>
+                {loadingLogs ? (
+                  <div className="flex justify-center items-center py-6">
+                    <Loader2 className="w-5 h-5 animate-spin text-gray-500" />
+                  </div>
+                ) : leadLogs.length === 0 ? (
+                  <p className="text-sm text-gray-500 text-center py-4 bg-white/[0.02] rounded-xl border border-white/5">
+                    No call logs found for this lead.
+                  </p>
+                ) : (
+                  <div className="space-y-4">
+                    {leadLogs.map((log, idx) => (
+                      <div key={idx} className="bg-white/[0.02] border border-white/5 rounded-xl p-4 space-y-3 hover:bg-white/[0.04] transition-colors">
+                        <div className="flex justify-between items-center pb-3 border-b border-white/5">
+                          <div className="flex items-center gap-3">
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border ${
+                              log.outcome === "completed" || log.outcome === "booked" ? "bg-green-500/10 text-green-400 border-green-500/20" : 
+                              log.outcome === "failed" ? "bg-red-500/10 text-red-400 border-red-500/20" :
+                              "bg-gray-500/10 text-gray-400 border-gray-500/20"
+                            }`}>
+                              {(log.outcome || "unknown").replace(/_/g, " ")}
+                            </span>
+                            <span className="text-xs text-gray-400 flex items-center gap-1">
+                              <Clock className="w-3 h-3" /> {log.duration_seconds || 0}s
+                            </span>
+                          </div>
+                          <span className="text-xs text-gray-500">
+                            {formatTimestamp(log.timestamp || log.created_at)}
+                          </span>
+                        </div>
+                        
+                        {log.notes ? (
+                          <div className="pt-1">
+                            <p className="text-xs font-semibold text-gray-400 uppercase mb-1.5 flex items-center gap-1.5">
+                              <AlignLeft className="w-3.5 h-3.5" /> Call Notes
+                            </p>
+                            <p className="text-sm text-gray-300 leading-relaxed bg-[#0A0A0A] p-3 rounded-lg border border-white/5">
+                              {log.notes}
+                            </p>
+                          </div>
+                        ) : (
+                          <p className="text-xs text-gray-600 italic">No notes recorded for this call.</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="p-4 border-t border-white/10 flex justify-end">
+              <button 
+                onClick={() => setSelectedLead(null)}
+                className="bg-white/5 hover:bg-white/10 text-white font-medium py-2 px-6 rounded-xl transition-all"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Lead Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-300">
           <div className="bg-[#1C1C1E] border border-white/10 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl">

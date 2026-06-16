@@ -1,13 +1,14 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { PhoneOutgoing, Search, Clock, AlignLeft } from "lucide-react";
+import { PhoneOutgoing, Search, Clock, AlignLeft, X } from "lucide-react";
 
 const API = "/api";
 
 export function OutboundCalls() {
   const [calls, setCalls] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedNote, setSelectedNote] = useState<string | null>(null);
 
   const fetchCalls = async () => {
     try {
@@ -119,7 +120,10 @@ export function OutboundCalls() {
                   </td>
                   <td className="px-6 py-4 text-right">
                     {c.notes ? (
-                      <button className="p-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-gray-400 transition-colors inline-flex" title={c.notes}>
+                      <button 
+                        onClick={() => setSelectedNote(c.notes)}
+                        className="p-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-gray-400 hover:text-white transition-colors inline-flex" 
+                      >
                         <AlignLeft className="w-4 h-4" />
                       </button>
                     ) : (
@@ -132,6 +136,31 @@ export function OutboundCalls() {
           </table>
         </div>
       </div>
+
+      {/* Notes Modal */}
+      {selectedNote && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="bg-[#1C1C1E] border border-white/10 rounded-2xl w-full max-w-md overflow-hidden shadow-2xl">
+            <div className="p-5 border-b border-white/10 flex items-center justify-between">
+              <h3 className="text-lg font-medium text-white">Call Notes</h3>
+              <button onClick={() => setSelectedNote(null)} className="text-gray-400 hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-5">
+              <p className="text-gray-300 text-sm whitespace-pre-wrap">{selectedNote}</p>
+            </div>
+            <div className="p-5 border-t border-white/10 bg-white/[0.02] flex justify-end">
+              <button 
+                onClick={() => setSelectedNote(null)}
+                className="bg-white/5 hover:bg-white/10 text-white font-medium py-2 px-6 rounded-xl text-sm transition-all"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
