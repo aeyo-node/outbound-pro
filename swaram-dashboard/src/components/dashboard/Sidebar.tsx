@@ -23,10 +23,8 @@ export function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
     { id: "crm", label: "CRM / Leads", icon: Users },
     { id: "outbound", label: "Outbound Calls", icon: PhoneOutgoing },
     { id: "incoming", label: "Incoming Calls", icon: PhoneIncoming },
-    { id: "ev_transactions", label: "EV Transactions", icon: Zap },
-    { id: "appointments", label: "Appointments", icon: CalendarDays },
+    { id: "appointments", label: "Demo Booked", icon: CalendarDays },
     { id: "agent_profiles", label: "Agent Profiles", icon: UserSquare2 },
-    { id: "live_ops", label: "Live Operations", icon: Zap },
   ];
 
   const generalItems: { id: TabId; label: string; icon: React.ElementType }[] = [

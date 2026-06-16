@@ -44,16 +44,14 @@ export default function AppDashboard() {
 
   const renderView = () => {
     switch (activeTab) {
-      case "overview": return <Overview />;
+      case "overview": return <Overview setActiveTab={setActiveTab} />;
       case "single_call": return <SingleCall />;
       case "campaigns": return <Campaigns />;
       case "crm": return <CRMLeads />;
       case "outbound": return <OutboundCalls />;
       case "incoming": return <IncomingCalls />;
-      case "ev_transactions": return <EVTransactions />;
       case "appointments": return <Appointments />;
       case "agent_profiles": return <AgentProfiles />;
-      case "live_ops": return <EVStations />;
       case "system_prompt": return <SystemPrompt />;
       case "settings": return <Settings />;
       default:

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { UserSquare2, Plus, Star, Trash2, Edit2, Bot, X, Loader2, Save } from "lucide-react";
+import { UserSquare2, Plus, Star, Trash2, Edit2, Bot, X, Loader2, Save, Upload, Link as LinkIcon, FileText } from "lucide-react";
 
 const API = "/api";
 
@@ -11,6 +11,12 @@ export function AgentProfiles() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProfile, setEditingProfile] = useState<any>(null);
   const [saving, setSaving] = useState(false);
+  
+  // Document knowledge base states
+  const [docsList, setDocsList] = useState<{ documents: any[]; links: any[] }>({ documents: [], links: [] });
+  const [fetchingDocs, setFetchingDocs] = useState(false);
+  const [linkUrl, setLinkUrl] = useState("");
+  const [linkDesc, setLinkDesc] = useState("");
   
   // Form state
   const [formData, setFormData] = useState({
@@ -51,6 +57,98 @@ export function AgentProfiles() {
     setIsModalOpen(true);
   };
 
+  const fetchDocs = async (profileId: string) => {
+    setFetchingDocs(true);
+    try {
+      const res = await fetch(`${API}/profiles/${profileId}/documents`);
+      const data = await res.json();
+      if (data && (Array.isArray(data.documents) || Array.isArray(data.links))) {
+        setDocsList(data);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setFetchingDocs(false);
+    }
+  };
+
+  const handleDocUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !editingProfile) return;
+    
+    const uploadForm = new FormData();
+    uploadForm.append("file", file);
+    
+    setFetchingDocs(true);
+    try {
+      const res = await fetch(`${API}/profiles/${editingProfile.id}/documents`, {
+        method: "POST",
+        body: uploadForm
+      });
+      if (res.ok) {
+        fetchDocs(editingProfile.id);
+      }
+    } catch (err) {
+      console.error(err);
+      setFetchingDocs(false);
+    }
+  };
+
+  const handleAddLink = async () => {
+    if (!linkUrl || !editingProfile) return;
+    
+    setFetchingDocs(true);
+    try {
+      const res = await fetch(`${API}/profiles/${editingProfile.id}/links`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: linkUrl, description: linkDesc })
+      });
+      if (res.ok) {
+        setLinkUrl("");
+        setLinkDesc("");
+        fetchDocs(editingProfile.id);
+      }
+    } catch (err) {
+      console.error(err);
+      setFetchingDocs(false);
+    }
+  };
+
+  const handleDeleteDoc = async (filename: string) => {
+    if (!editingProfile || !confirm(`Delete file "${filename}"?`)) return;
+    
+    setFetchingDocs(true);
+    try {
+      const res = await fetch(`${API}/profiles/${editingProfile.id}/documents/${encodeURIComponent(filename)}`, {
+        method: "DELETE"
+      });
+      if (res.ok) {
+        fetchDocs(editingProfile.id);
+      }
+    } catch (err) {
+      console.error(err);
+      setFetchingDocs(false);
+    }
+  };
+
+  const handleDeleteLink = async (url: string) => {
+    if (!editingProfile || !confirm(`Remove link "${url}"?`)) return;
+    
+    setFetchingDocs(true);
+    try {
+      const res = await fetch(`${API}/profiles/${editingProfile.id}/links?url=${encodeURIComponent(url)}`, {
+        method: "DELETE"
+      });
+      if (res.ok) {
+        fetchDocs(editingProfile.id);
+      }
+    } catch (err) {
+      console.error(err);
+      setFetchingDocs(false);
+    }
+  };
+
   const handleOpenEdit = (p: any) => {
     setEditingProfile(p);
     setFormData({
@@ -61,6 +159,10 @@ export function AgentProfiles() {
       enabled_tools: p.enabled_tools || "[]",
       is_default: !!p.is_default
     });
+    setDocsList({ documents: [], links: [] });
+    setLinkUrl("");
+    setLinkDesc("");
+    fetchDocs(p.id);
     setIsModalOpen(true);
   };
 
@@ -280,6 +382,112 @@ export function AgentProfiles() {
                 />
                 <label htmlFor="is_default" className="text-sm text-gray-300">Set as default agent profile</label>
               </div>
+
+              {editingProfile && (
+                <div className="pt-6 border-t border-white/10 space-y-4">
+                  <div>
+                    <h4 className="text-sm font-semibold text-white mb-1">Knowledge Base Resources</h4>
+                    <p className="text-xs text-gray-500">Provide reference documentation, links, or context for the voice agent.</p>
+                  </div>
+
+                  {/* Document upload and link form */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* File Upload */}
+                    <div className="border border-dashed border-white/10 rounded-xl p-4 flex flex-col items-center justify-center bg-[#0A0A0A] text-center space-y-2">
+                      <Upload className="w-6 h-6 text-gray-500" />
+                      <span className="text-[11px] text-gray-300">Upload Reference Document (PDF/Text)</span>
+                      <label className="bg-white/5 hover:bg-white/10 border border-white/10 text-white font-medium py-1.5 px-3 rounded-lg text-xs cursor-pointer transition-colors">
+                        Select File
+                        <input 
+                          type="file"
+                          accept=".pdf,.txt"
+                          onChange={handleDocUpload}
+                          className="hidden"
+                        />
+                      </label>
+                    </div>
+
+                    {/* Link upload */}
+                    <div className="border border-white/10 rounded-xl p-4 bg-[#0A0A0A] flex flex-col justify-between space-y-3">
+                      <div className="space-y-1.5">
+                        <span className="text-xs font-medium text-gray-300 flex items-center gap-1.5"><LinkIcon className="w-3.5 h-3.5" /> Add External / Video Link</span>
+                        <input 
+                          type="text" 
+                          placeholder="https://youtube.com/... or Doc URL" 
+                          value={linkUrl}
+                          onChange={e => setLinkUrl(e.target.value)}
+                          className="w-full bg-[#1C1C1E] border border-white/5 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-[#FFD166]/50"
+                        />
+                        <input 
+                          type="text" 
+                          placeholder="Link Description (e.g. Tutorial Video)" 
+                          value={linkDesc}
+                          onChange={e => setLinkDesc(e.target.value)}
+                          className="w-full bg-[#1C1C1E] border border-white/5 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-[#FFD166]/50"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleAddLink}
+                        className="w-full py-1.5 bg-[#FFD166] text-black font-semibold text-xs rounded-lg transition-colors"
+                      >
+                        Add Link
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* List of uploaded resources */}
+                  {fetchingDocs ? (
+                    <div className="flex justify-center py-4">
+                      <div className="w-4 h-4 border border-white/10 border-t-[#FFD166] rounded-full animate-spin" />
+                    </div>
+                  ) : (docsList.documents.length > 0 || docsList.links.length > 0) ? (
+                    <div className="space-y-2">
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Uploaded Resources</p>
+                      
+                      <div className="max-h-[160px] overflow-y-auto space-y-1.5">
+                        {docsList.documents.map((doc: any, idx: number) => (
+                          <div key={idx} className="flex items-center justify-between p-2.5 bg-[#0A0A0A] border border-white/5 rounded-lg">
+                            <div className="flex items-center gap-2">
+                              <FileText className="w-4 h-4 text-[#FFD166]" />
+                              <span className="text-xs text-white truncate max-w-[250px]">{doc.name}</span>
+                              <span className="text-[10px] text-gray-500">({(doc.size / 1024).toFixed(1)} KB)</span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteDoc(doc.name)}
+                              className="p-1.5 hover:bg-red-500/10 rounded text-gray-500 hover:text-red-400 transition-colors"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        ))}
+
+                        {docsList.links.map((link: any, idx: number) => (
+                          <div key={idx} className="flex items-center justify-between p-2.5 bg-[#0A0A0A] border border-white/5 rounded-lg">
+                            <div className="flex items-center gap-2">
+                              <LinkIcon className="w-4 h-4 text-blue-400" />
+                              <div className="flex flex-col">
+                                <a href={link.url} target="_blank" rel="noopener noreferrer" className="text-xs text-white hover:underline truncate max-w-[200px]">{link.url}</a>
+                                {link.description && <span className="text-[10px] text-gray-500 truncate max-w-[200px]">{link.description}</span>}
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteLink(link.url)}
+                              className="p-1.5 hover:bg-red-500/10 rounded text-gray-500 hover:text-red-400 transition-colors"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-gray-500 text-center py-2">No documents or links uploaded yet.</p>
+                  )}
+                </div>
+              )}
 
               <div className="pt-6 border-t border-white/10 flex justify-end gap-3">
                 <button 

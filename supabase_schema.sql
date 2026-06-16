@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS appointments (
     time TEXT NOT NULL,
     service TEXT NOT NULL,
     status TEXT NOT NULL DEFAULT 'booked',
+    whatsapp_number TEXT,
     created_at TEXT NOT NULL
 );
 
@@ -124,3 +125,6 @@ CREATE TABLE IF NOT EXISTS contacts (
     created_at TEXT NOT NULL
 );
 ALTER TABLE contacts DISABLE ROW LEVEL SECURITY;
+
+ALTER TABLE appointments ADD COLUMN IF NOT EXISTS whatsapp_number TEXT;
+

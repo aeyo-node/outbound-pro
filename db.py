@@ -202,15 +202,26 @@ async def clear_errors() -> None:
 
 # ── Appointments ──────────────────────────────────────────────────────────────
 
-async def insert_appointment(name: str, phone: str, date: str, time: str, service: str) -> str:
+async def insert_appointment(name: str, phone: str, date: str, time: str, service: str, whatsapp_number: Optional[str] = None) -> str:
     full_id = str(uuid.uuid4())
     booking_id = full_id[:8].upper()
     db = await _adb()
-    await db.table("appointments").insert({
+    payload = {
         "id": full_id, "name": name, "phone": phone,
         "date": date, "time": time, "service": service,
         "status": "booked", "created_at": datetime.now().isoformat(),
-    }).execute()
+    }
+    if whatsapp_number:
+        payload["whatsapp_number"] = whatsapp_number
+    try:
+        await db.table("appointments").insert(payload).execute()
+    except Exception as e:
+        if whatsapp_number:
+            print(f"⚠️ Insert failed: {e}. Retrying without whatsapp_number...")
+            payload.pop("whatsapp_number", None)
+            await db.table("appointments").insert(payload).execute()
+        else:
+            raise e
     return booking_id
 
 
@@ -504,6 +515,13 @@ async def delete_agent_profile(profile_id: str) -> bool:
     db = await _adb()
     result = await db.table("agent_profiles").delete().eq("id", profile_id).execute()
     return len(result.data or []) > 0
+
+
+async def get_default_agent_profile() -> Optional[dict]:
+    db = await _adb()
+    result = await db.table("agent_profiles").select("*").eq("is_default", 1).execute()
+    data = result.data or []
+    return data[0] if data else None
 
 
 async def set_default_agent_profile(profile_id: str) -> None:

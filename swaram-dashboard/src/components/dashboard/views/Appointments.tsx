@@ -47,8 +47,8 @@ export function Appointments() {
     <div className="animate-in fade-in duration-500">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
         <div>
-          <h2 className="text-2xl font-medium text-white mb-2">Appointments</h2>
-          <p className="text-gray-400 text-sm">Review meetings and appointments scheduled by the AI agent.</p>
+          <h2 className="text-2xl font-medium text-white mb-2">Demo Booked</h2>
+          <p className="text-gray-400 text-sm">Review website and app product demos scheduled by the AI agent.</p>
         </div>
       </div>
 
@@ -58,7 +58,7 @@ export function Appointments() {
             <Search className="w-4 h-4 text-gray-500" />
             <input 
               type="text" 
-              placeholder="Search appointments..." 
+              placeholder="Search demos..." 
               className="bg-transparent border-none outline-none text-sm text-white placeholder-gray-500 w-full"
             />
           </div>
@@ -70,6 +70,8 @@ export function Appointments() {
               <tr className="border-b border-white/5 bg-white/[0.02]">
                 <th className="px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Scheduled Time</th>
                 <th className="px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Client Info</th>
+                <th className="px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">WhatsApp</th>
+                <th className="px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Notes</th>
                 <th className="px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Status</th>
                 <th className="px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Booked On</th>
                 <th className="px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider text-right">Actions</th>
@@ -78,21 +80,21 @@ export function Appointments() {
             <tbody className="divide-y divide-white/5">
               {loading ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-8 text-center text-gray-500 text-sm">
+                  <td colSpan={6} className="px-6 py-8 text-center text-gray-500 text-sm">
                     <div className="flex justify-center items-center gap-2">
                       <div className="w-4 h-4 border-2 border-white/10 border-t-[#FFD166] rounded-full animate-spin" />
-                      Loading appointments...
+                      Loading demos...
                     </div>
                   </td>
                 </tr>
               ) : appointments.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-12 text-center text-gray-500">
+                  <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
                     <div className="flex flex-col items-center justify-center">
                       <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center mb-3">
                         <CalendarDays className="w-5 h-5 text-gray-400" />
                       </div>
-                      <p className="text-sm">No appointments scheduled.</p>
+                      <p className="text-sm">No demos booked.</p>
                     </div>
                   </td>
                 </tr>
@@ -112,6 +114,14 @@ export function Appointments() {
                       <span className="text-[11px] text-gray-500">{a.client_phone}</span>
                     </div>
                   </td>
+                  <td className="px-6 py-4 text-sm text-gray-300">
+                    {a.whatsapp_number || "—"}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-400">
+                    <div className="max-w-[200px] truncate" title={a.service || "—"}>
+                      {a.service || "—"}
+                    </div>
+                  </td>
                   <td className="px-6 py-4">
                     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border ${
                       a.status === "scheduled" ? "bg-green-500/10 text-green-400 border-green-500/20" : 
@@ -125,7 +135,7 @@ export function Appointments() {
                   </td>
                   <td className="px-6 py-4 text-right">
                     {a.status === "scheduled" && (
-                      <button onClick={() => handleCancel(a.id)} className="p-2 hover:bg-red-500/10 rounded-lg text-gray-400 hover:text-red-400 transition-colors" title="Cancel Appointment">
+                      <button onClick={() => handleCancel(a.id)} className="p-2 hover:bg-red-500/10 rounded-lg text-gray-400 hover:text-red-400 transition-colors" title="Cancel Demo">
                         <Trash2 className="w-4 h-4" />
                       </button>
                     )}

@@ -9,21 +9,25 @@ import { CheckCircle2, Phone, PhoneIncoming, Zap, IndianRupee, Activity, ArrowUp
 
 const API = "/api";
 
-export function Overview() {
+interface OverviewProps {
+  setActiveTab?: (tab: any) => void;
+}
+
+export function Overview({ setActiveTab }: OverviewProps) {
   const [stats, setStats] = useState<any>(null);
-  const [transactions, setTransactions] = useState<any[]>([]);
+  const [demos, setDemos] = useState<any[]>([]);
   const [incomingCalls, setIncomingCalls] = useState<any[]>([]);
 
   useEffect(() => {
     const load = async () => {
       try {
-        const [statsRes, txRes, icRes] = await Promise.all([
+        const [statsRes, demoRes, icRes] = await Promise.all([
           fetch(`${API}/stats`).then(r => r.json()).catch(() => null),
-          fetch(`${API}/transactions?limit=5`).then(r => r.json()).catch(() => []),
+          fetch(`${API}/appointments?limit=5`).then(r => r.json()).catch(() => []),
           fetch(`${API}/incoming_calls?limit=5`).then(r => r.json()).catch(() => []),
         ]);
         if (statsRes) setStats(statsRes);
-        if (Array.isArray(txRes)) setTransactions(txRes);
+        if (Array.isArray(demoRes)) setDemos(demoRes);
         if (Array.isArray(icRes)) setIncomingCalls(icRes);
       } catch (err) {
         console.error("Dashboard fetch error:", err);
@@ -74,8 +78,9 @@ export function Overview() {
     <div className="flex flex-col gap-6 animate-in fade-in duration-500">
       
       {/* Top Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         
+        {/* Card 1: Total Calls */}
         <div className="bg-gradient-to-br from-[#1C1C1E] to-[#0A0A0A] border border-white/10 rounded-2xl p-6 relative overflow-hidden group">
           <div className="absolute inset-0 bg-[#FFD166]/5 opacity-0 group-hover:opacity-100 transition-opacity" />
           <div className="flex justify-between items-start mb-4 relative z-10">
@@ -92,23 +97,25 @@ export function Overview() {
           </div>
         </div>
 
-        <div className="bg-[#1C1C1E] border border-white/10 rounded-2xl p-6 relative overflow-hidden group">
-           <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-           <div className="flex justify-between items-start mb-4 relative z-10">
+        {/* Card 2: Demo Booked */}
+        <div onClick={() => setActiveTab?.("appointments")} className="bg-[#1C1C1E] border border-white/10 rounded-2xl p-6 relative overflow-hidden group cursor-pointer hover:border-[#FFD166]/30 transition-colors">
+          <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+          <div className="flex justify-between items-start mb-4 relative z-10">
             <div>
-              <p className="text-gray-400 text-sm font-medium mb-1">Appointments</p>
+              <p className="text-gray-400 text-sm font-medium mb-1">Demo Booked</p>
               <h3 className="text-4xl font-light text-white">{stats.booked}</h3>
             </div>
             <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white border border-white/10">
-              <CheckCircle2 className="w-5 h-5" />
+              <CheckCircle2 className="w-5 h-5 text-green-400" />
             </div>
           </div>
           <p className="text-xs text-gray-500 relative z-10">Successfully booked</p>
         </div>
 
+        {/* Card 3: Booking Rate */}
         <div className="bg-[#1C1C1E] border border-white/10 rounded-2xl p-6 relative overflow-hidden group">
-           <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-           <div className="flex justify-between items-start mb-4 relative z-10">
+          <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+          <div className="flex justify-between items-start mb-4 relative z-10">
             <div>
               <p className="text-gray-400 text-sm font-medium mb-1">Booking Rate</p>
               <h3 className="text-4xl font-light text-white">{bookingRate}%</h3>
@@ -233,31 +240,37 @@ export function Overview() {
       {/* Bottom Grid: Tables */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         
-        {/* EV Transactions */}
+        {/* Recent Demos Booked */}
         <div className="bg-[#1C1C1E] border border-white/10 rounded-2xl p-6">
           <div className="flex items-center justify-between mb-5">
-            <h3 className="text-white font-medium text-lg">EV Transactions</h3>
-            <button className="text-xs text-[#FFD166] hover:underline">View All</button>
+            <h3 className="text-white font-medium text-lg">Recent Demos Booked</h3>
+            <button onClick={() => setActiveTab?.("appointments")} className="text-xs text-[#FFD166] hover:underline">View All</button>
           </div>
           <div className="space-y-1">
-            {transactions.length === 0 ? (
+            {demos.length === 0 ? (
               <div className="text-center py-10 bg-white/[0.02] rounded-xl border border-dashed border-white/10">
-                <p className="text-sm text-gray-500">No recent transactions</p>
+                <p className="text-sm text-gray-500">No recent demos booked</p>
               </div>
-            ) : transactions.map((tx: any, i: number) => (
+            ) : demos.map((d: any, i: number) => (
               <div key={i} className="flex items-center justify-between py-3 px-4 hover:bg-white/5 rounded-xl transition-colors border border-transparent hover:border-white/5">
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-green-500/10 flex items-center justify-center border border-green-500/20">
-                    <Zap className="w-4 h-4 text-green-400" />
+                  <div className="w-8 h-8 rounded-full bg-[#FFD166]/10 flex items-center justify-center border border-[#FFD166]/20">
+                    <CheckCircle2 className="w-4 h-4 text-[#FFD166]" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-white">{tx.charger_name || tx.charger_identity || "Charger"}</p>
-                    <p className="text-[11px] text-gray-400">{tx.user_name || "User"} • {tx.energy_kwh || 0} kWh</p>
+                    <p className="text-sm font-medium text-white">{d.client_name || "Unknown Lead"}</p>
+                    <p className="text-[11px] text-gray-400">
+                      {d.service || "Free Demo"} • {d.client_phone} {d.whatsapp_number ? `• WA: ${d.whatsapp_number}` : ""}
+                    </p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="text-sm font-medium text-white flex items-center justify-end gap-0.5"><IndianRupee className="w-3 h-3" />{tx.amount || "0"}</p>
-                  <p className="text-[11px] text-gray-500">{formatTimestamp(tx.created_at)}</p>
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border ${
+                    d.status === "scheduled" ? "bg-green-500/10 text-green-400 border-green-500/20" : "bg-red-500/10 text-red-400 border-red-500/20"
+                  }`}>
+                    {d.status || "booked"}
+                  </span>
+                  <p className="text-[11px] text-gray-500 mt-1">{formatTimestamp(d.appointment_time)}</p>
                 </div>
               </div>
             ))}
@@ -268,7 +281,7 @@ export function Overview() {
         <div className="bg-[#1C1C1E] border border-white/10 rounded-2xl p-6">
           <div className="flex items-center justify-between mb-5">
             <h3 className="text-white font-medium text-lg">Incoming Calls</h3>
-            <button className="text-xs text-[#FFD166] hover:underline">View All</button>
+            <button onClick={() => setActiveTab?.("incoming")} className="text-xs text-[#FFD166] hover:underline">View All</button>
           </div>
           <div className="space-y-1">
             {incomingCalls.length === 0 ? (

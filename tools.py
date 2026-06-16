@@ -131,14 +131,17 @@ class MCPClient:
 class AppointmentTools(llm.ToolContext):
     """All function tools available to the appointment-booking agent."""
 
-    def __init__(self, ctx: agents.JobContext, phone_number: Optional[str] = None, lead_name: Optional[str] = None):
+    def __init__(self, ctx: agents.JobContext, phone_number: Optional[str] = None, lead_name: Optional[str] = None, agent_profile_id: Optional[str] = None):
         self.ctx = ctx
         self.phone_number = phone_number
         self.lead_name = lead_name
+        self.whatsapp_number: Optional[str] = None
+        self.agent_profile_id = agent_profile_id
         self._call_start_time = time.time()
         self._sip_domain = os.getenv("VOBIZ_SIP_DOMAIN", "")
         self.recording_url: Optional[str] = None
         self._call_logged = False
+        self._kb_cache: Optional[str] = None
         self.mcp = MCPClient(
             endpoint="https://mcpserver.cs-api.chargemod.com/sse",
             username="myuser",
@@ -158,12 +161,15 @@ class AppointmentTools(llm.ToolContext):
             self.get_charging_session_details,
             self.check_calcom_availability,
             self.book_calcom,
+            self.collect_whatsapp_number,
+            self.query_knowledge_base,
         ]
         force_include = [
             "start_charging_session", "stop_charging_session", 
             "check_wallet_balance", "check_charger_status",
             "troubleshoot_charger", "get_charging_session_details",
-            "check_calcom_availability", "book_calcom"
+            "check_calcom_availability", "book_calcom",
+            "collect_whatsapp_number", "query_knowledge_base"
         ]
         if not enabled:
             return all_methods
@@ -813,7 +819,8 @@ class AppointmentTools(llm.ToolContext):
                             phone=phone,
                             date=date_str,
                             time=time_str,
-                            service=f"Cal.com booking {booking_uid}"
+                            service=f"Cal.com booking {booking_uid}",
+                            whatsapp_number=self.whatsapp_number
                         )
                     except Exception as db_err:
                         print(f"[-] Failed to insert appointment locally: {db_err}")
@@ -823,6 +830,76 @@ class AppointmentTools(llm.ToolContext):
                     return f"Failed to book appointment on Cal.com. Response: {resp.text}"
         except Exception as e:
             return f"Error booking appointment on Cal.com: {str(e)}"
+
+    @llm.function_tool
+    async def collect_whatsapp_number(self, whatsapp_number: str) -> str:
+        """
+        Store the customer's WhatsApp number for follow-up messages.
+        Use this whenever the customer shares their WhatsApp number during the call.
+        whatsapp_number: The WhatsApp phone number (e.g. +919876543210)
+        """
+        print(f"[*] TOOL CALL: collect_whatsapp_number('{whatsapp_number}')")
+        cleaned = whatsapp_number.strip().replace(" ", "").replace("-", "")
+        if not cleaned.startswith("+"):
+            if len(cleaned) == 10:
+                cleaned = "+91" + cleaned
+            else:
+                cleaned = "+" + cleaned
+        self.whatsapp_number = cleaned
+        return f"WhatsApp number {cleaned} saved. I'll include it in the booking details."
+
+    @llm.function_tool
+    async def query_knowledge_base(self, question: str) -> str:
+        """
+        Search the agent's knowledge base documents for relevant information.
+        Use this when you need to answer specific questions about the company's services,
+        pricing, capabilities, portfolio, or any other business details that the customer asks about.
+        question: The question or topic to search for in the knowledge base.
+        """
+        print(f"[*] TOOL CALL: query_knowledge_base('{question}')")
+        
+        if not self.agent_profile_id:
+            return "No knowledge base configured for this agent profile."
+        
+        # Load and cache KB content
+        if self._kb_cache is None:
+            self._kb_cache = ""
+            doc_dir = os.path.join("data", "agent_docs", self.agent_profile_id)
+            
+            if os.path.exists(doc_dir):
+                # Read all text files (including extracted PDF text)
+                for f in sorted(os.listdir(doc_dir)):
+                    filepath = os.path.join(doc_dir, f)
+                    if f == "links.json":
+                        continue
+                    if os.path.isfile(filepath) and (f.endswith(".txt") or f.endswith(".md")):
+                        try:
+                            with open(filepath, "r", encoding="utf-8", errors="ignore") as fh:
+                                content = fh.read()
+                                self._kb_cache += f"\n--- Document: {f.replace('.txt', '')} ---\n{content}\n"
+                        except Exception as e:
+                            print(f"[-] Error reading KB file {f}: {e}")
+                
+                # Read links
+                links_file = os.path.join(doc_dir, "links.json")
+                if os.path.exists(links_file):
+                    try:
+                        import json as _json
+                        with open(links_file, "r") as lf:
+                            links = _json.load(lf)
+                            if links:
+                                self._kb_cache += "\n--- Reference Links ---\n"
+                                for link in links:
+                                    self._kb_cache += f"- {link.get('description', 'Link')}: {link.get('url', '')}\n"
+                    except Exception:
+                        pass
+        
+        if not self._kb_cache:
+            return "Knowledge base is empty. No documents have been uploaded for this agent profile."
+        
+        # Return the relevant KB content (truncated to a reasonable size for the model)
+        kb_text = self._kb_cache[:8000]
+        return f"Here is the relevant knowledge base content to help answer about '{question}':\n\n{kb_text}"
 
     @llm.function_tool
     async def start_charging_session(

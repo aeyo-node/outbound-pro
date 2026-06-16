@@ -11,7 +11,6 @@ export function TopNav() {
     "Calls",
     "Campaigns",
     "CRM",
-    "Transactions",
     "Settings",
   ];
 

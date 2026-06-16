@@ -145,7 +145,8 @@ def _build_session(tools: list, system_prompt: str, voice_override: Optional[str
     gemini_model = "models/gemini-3.1-flash-live-preview"
     gemini_voice = voice_override or os.getenv("GEMINI_TTS_VOICE", "Aoede")
     
-    use_realtime = True
+    # FORCED PIPELINE: Google explicitly denied WebSocket access to your project
+    use_realtime = False
 
     RealtimeClass = _google_realtime or (_google_beta_realtime if use_realtime else None)
 
@@ -232,6 +233,7 @@ async def entrypoint(ctx: agents.JobContext) -> None:
     voice_override: Optional[str] = None
     model_override: Optional[str] = None
     tools_override: Optional[str] = None
+    agent_profile_id: Optional[str] = None
 
     if ctx.job.metadata:
         try:
@@ -244,6 +246,7 @@ async def entrypoint(ctx: agents.JobContext) -> None:
             voice_override = data.get("voice_override")
             model_override = data.get("model_override")
             tools_override = data.get("tools_override")
+            agent_profile_id = data.get("agent_profile_id")
         except (json.JSONDecodeError, AttributeError):
             await _log("warning", "Invalid JSON in job metadata")
 
@@ -270,6 +273,15 @@ async def entrypoint(ctx: agents.JobContext) -> None:
             except Exception:
                 pass
 
+    if not agent_profile_id:
+        from db import get_default_agent_profile
+        try:
+            default_prof = await get_default_agent_profile()
+            if default_prof:
+                agent_profile_id = default_prof.get("id")
+        except Exception:
+            pass
+
     system_prompt = build_prompt(
         lead_name=lead_name, business_name=business_name,
         service_type=service_type, custom_prompt=custom_prompt,
@@ -278,7 +290,7 @@ async def entrypoint(ctx: agents.JobContext) -> None:
     if not phone_number:
         system_prompt += "\n\nNOTE: This is an INBOUND call. The user called YOU. Do not ask 'Am I speaking with...'. Instead, greet them warmly and ask how you can help."
     
-    tool_ctx = AppointmentTools(ctx, phone_number, lead_name)
+    tool_ctx = AppointmentTools(ctx, phone_number, lead_name, agent_profile_id=agent_profile_id)
 
     if voice_override:
         os.environ["GEMINI_TTS_VOICE"] = voice_override

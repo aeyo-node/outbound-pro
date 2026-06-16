@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Optional
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, Query, Request
+from fastapi import FastAPI, HTTPException, Query, Request, UploadFile, File, Form
 from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel
 
@@ -269,6 +269,7 @@ async def api_dispatch_call(req: CallRequest):
     if effective_voice:  metadata["voice_override"]  = effective_voice
     if effective_model:  metadata["model_override"]  = effective_model
     if effective_tools:  metadata["tools_override"]  = effective_tools
+    if req.agent_profile_id: metadata["agent_profile_id"] = req.agent_profile_id
 
     try:
         from livekit import api as lk_api
@@ -396,6 +397,7 @@ async def api_get_appointments(date: Optional[str] = None):
             "appointment_time": appt_time_iso,
             "status": status,
             "service": appt.get("service") or "General Meeting",
+            "whatsapp_number": appt.get("whatsapp_number") or "",
             "created_at": appt.get("created_at") or datetime.now().isoformat()
         })
     return mapped
@@ -508,6 +510,134 @@ async def api_delete_profile(profile_id: str):
 async def api_set_default_profile(profile_id: str):
     await set_default_agent_profile(profile_id)
     return {"status": "default_set"}
+
+
+# ── Profile Documents / Knowledge Base ──────────────────────────────────────────
+
+@app.get("/api/profiles/{profile_id}/documents")
+async def api_get_profile_documents(profile_id: str):
+    import os
+    import json
+    doc_dir = os.path.join("data", "agent_docs", profile_id)
+    if not os.path.exists(doc_dir):
+        return {"documents": [], "links": []}
+    
+    files = []
+    links = []
+    
+    # Read files
+    for f in os.listdir(doc_dir):
+        if f == "links.json" or f.endswith(".txt"):
+            continue
+        filepath = os.path.join(doc_dir, f)
+        if os.path.isfile(filepath):
+            files.append({
+                "name": f,
+                "size": os.path.getsize(filepath)
+            })
+            
+    # Read links
+    links_file = os.path.join(doc_dir, "links.json")
+    if os.path.exists(links_file):
+        try:
+            with open(links_file, "r") as lf:
+                links = json.load(lf)
+        except Exception:
+            pass
+            
+    return {"documents": files, "links": links}
+
+
+@app.post("/api/profiles/{profile_id}/documents")
+async def api_upload_profile_document(profile_id: str, file: UploadFile = File(...)):
+    import os
+    import shutil
+    doc_dir = os.path.join("data", "agent_docs", profile_id)
+    os.makedirs(doc_dir, exist_ok=True)
+    
+    filepath = os.path.join(doc_dir, file.filename)
+    with open(filepath, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+        
+    # If PDF, extract text for retrieval
+    if file.filename.lower().endswith(".pdf"):
+        try:
+            import pypdf
+            reader = pypdf.PdfReader(filepath)
+            text = ""
+            for page in reader.pages:
+                text += (page.extract_text() or "") + "\n"
+            
+            txt_filepath = filepath + ".txt"
+            with open(txt_filepath, "w", encoding="utf-8") as tf:
+                tf.write(text)
+        except Exception as e:
+            logger.warning("Failed to extract PDF text: %s", e)
+            
+    return {"status": "success", "filename": file.filename}
+
+
+@app.post("/api/profiles/{profile_id}/links")
+async def api_add_profile_link(profile_id: str, req: dict):
+    import os
+    import json
+    url = req.get("url")
+    desc = req.get("description", "")
+    if not url:
+        raise HTTPException(400, "URL is required")
+        
+    doc_dir = os.path.join("data", "agent_docs", profile_id)
+    os.makedirs(doc_dir, exist_ok=True)
+    
+    links_file = os.path.join(doc_dir, "links.json")
+    links = []
+    if os.path.exists(links_file):
+        try:
+            with open(links_file, "r") as lf:
+                links = json.load(lf)
+        except Exception:
+            pass
+            
+    links.append({"url": url, "description": desc})
+    
+    with open(links_file, "w") as lf:
+        json.dump(links, lf)
+        
+    return {"status": "success", "links": links}
+
+
+@app.delete("/api/profiles/{profile_id}/documents/{filename}")
+async def api_delete_profile_document(profile_id: str, filename: str):
+    import os
+    doc_dir = os.path.join("data", "agent_docs", profile_id)
+    filepath = os.path.join(doc_dir, filename)
+    if os.path.exists(filepath):
+        os.remove(filepath)
+        # Also remove extracted text file if exists
+        txt_path = filepath + ".txt"
+        if os.path.exists(txt_path):
+            os.remove(txt_path)
+        return {"status": "deleted"}
+    return {"status": "not_found"}
+
+
+@app.delete("/api/profiles/{profile_id}/links")
+async def api_delete_profile_link(profile_id: str, url: str):
+    import os
+    import json
+    doc_dir = os.path.join("data", "agent_docs", profile_id)
+    links_file = os.path.join(doc_dir, "links.json")
+    if os.path.exists(links_file):
+        try:
+            with open(links_file, "r") as lf:
+                links = json.load(lf)
+            new_links = [l for l in links if l.get("url") != url]
+            with open(links_file, "w") as lf:
+                json.dump(new_links, lf)
+            return {"status": "deleted", "links": new_links}
+        except Exception as e:
+            raise HTTPException(500, str(e))
+    return {"status": "not_found"}
 
 
 # ── CRM / Contacts ────────────────────────────────────────────────────────────
@@ -755,6 +885,7 @@ async def _dispatch_one(lk, lk_api, contact: dict, room_name: str,
             if profile.get("voice"):         metadata["voice_override"]  = profile["voice"]
             if profile.get("model"):         metadata["model_override"]  = profile["model"]
             if profile.get("enabled_tools"): metadata["tools_override"]  = profile["enabled_tools"]
+            if profile.get("id"):            metadata["agent_profile_id"] = profile["id"]
         await lk.agent_dispatch.create_dispatch(
             lk_api.CreateAgentDispatchRequest(
                 agent_name="outbound-caller",
