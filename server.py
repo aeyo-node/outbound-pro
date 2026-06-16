@@ -956,7 +956,7 @@ async def _reschedule_all_campaigns() -> None:
     try:
         campaigns = await get_all_campaigns()
         for c in campaigns:
-            if c.get("status") == "active" and c.get("schedule_type") in ("daily", "weekdays"):
+            if c.get("status") == "active" and c.get("schedule_type") in ("once", "daily", "weekdays"):
                 _schedule_campaign(c["id"], c["schedule_type"], c.get("schedule_time", "09:00"))
     except Exception as exc:
         logger.warning("Could not reschedule campaigns: %s", exc)
@@ -991,11 +991,23 @@ def _schedule_campaign(campaign_id: str, schedule_type: str, schedule_time: str)
             target += datetime.timedelta(days=1)
         trigger = DateTrigger(run_date=target)
 
+    def _run_campaign_sync(cid):
+        """Sync wrapper so APScheduler can invoke our async function."""
+        import asyncio as _aio
+        try:
+            loop = _aio.get_running_loop()
+        except RuntimeError:
+            loop = None
+        if loop and loop.is_running():
+            _aio.ensure_future(_run_campaign(cid))
+        else:
+            _aio.run(_run_campaign(cid))
+
     _scheduler.add_job(
-        _run_campaign, trigger=trigger, args=[campaign_id],
+        _run_campaign_sync, trigger=trigger, args=[campaign_id],
         id=job_id, replace_existing=True,
     )
-    logger.info("Scheduled campaign %s (%s at %02d:%02d)", campaign_id, schedule_type, hour, minute)
+    logger.info("Scheduled campaign %s (%s at %02d:%02d IST) — next fire: %s", campaign_id, schedule_type, hour, minute, trigger)
 
 
 @app.post("/api/campaigns")
@@ -1013,10 +1025,7 @@ async def api_create_campaign(req: CampaignRequest):
     )
     campaign = await get_campaign(campaign_id)
 
-    if req.schedule_type == "once":
-        asyncio.create_task(_run_campaign(campaign_id))
-    else:
-        _schedule_campaign(campaign_id, req.schedule_type, req.schedule_time)
+    _schedule_campaign(campaign_id, req.schedule_type, req.schedule_time)
 
     return {"status": "created", "campaign_id": campaign_id, "campaign": campaign}
 
