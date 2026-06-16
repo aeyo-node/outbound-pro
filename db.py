@@ -310,20 +310,20 @@ async def log_call(
         except Exception as e2:
             logger.error(f"Failed to insert call log even after stripping columns: {e2}")
     
-    # Auto-add to CRM contacts if a real name is provided
-    if lead_name and lead_name.lower() not in ["there", "unknown", ""]:
-        try:
-            existing = await db.table("contacts").select("id").eq("phone", phone_number).execute()
-            if not existing.data:
-                await db.table("contacts").insert({
-                    "id": str(uuid.uuid4()),
-                    "name": lead_name,
-                    "phone": phone_number,
-                    "created_at": datetime.now().isoformat()
-                }).execute()
-                logger.info(f"Auto-added contact to CRM: {lead_name} ({phone_number})")
-        except Exception as e:
-            logger.warning(f"Failed to auto-add contact to CRM: {e}")
+    # Auto-add to CRM contacts
+    display_name = lead_name if lead_name and lead_name.lower() not in ["there", "unknown", ""] else f"Lead {phone_number}"
+    try:
+        existing = await db.table("contacts").select("id").eq("phone", phone_number).execute()
+        if not existing.data:
+            await db.table("contacts").insert({
+                "id": str(uuid.uuid4()),
+                "name": display_name,
+                "phone": phone_number,
+                "created_at": datetime.now().isoformat()
+            }).execute()
+            logger.info(f"Auto-added contact to CRM: {display_name} ({phone_number})")
+    except Exception as e:
+        logger.warning(f"Failed to auto-add contact to CRM: {e}")
 
 
 async def get_campaign_call_logs(campaign_id: str) -> list:
@@ -472,7 +472,7 @@ async def update_campaign_run_stats(campaign_id: str, dispatched: int, failed: i
     db = await _adb()
     await db.table("campaigns").update({
         "last_run_at": datetime.now().isoformat(),
-        "total_dispatched": dispatched, "total_failed": failed, "status": "dispatched",
+        "total_dispatched": dispatched, "total_failed": failed, "status": "completed",
     }).eq("id", campaign_id).execute()
 
 

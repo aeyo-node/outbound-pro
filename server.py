@@ -936,6 +936,8 @@ async def _run_campaign(campaign_id: str) -> None:
     ctx.verify_mode = ssl.CERT_NONE
     session = aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=ctx))
 
+    max_concurrent = int(await get_setting("MAX_CONCURRENT_CALLS", "2"))
+    
     ok_count = fail_count = 0
     try:
         lk = lk_api_module.LiveKitAPI(url=url, api_key=key, api_secret=secret, session=session)
@@ -944,6 +946,18 @@ async def _run_campaign(campaign_id: str) -> None:
             if not phone.startswith("+"):
                 fail_count += 1
                 continue
+                
+            # Wait if we hit the concurrent call limit
+            while True:
+                try:
+                    rooms_resp = await lk.room.list_rooms(lk_api_module.ListRoomsRequest())
+                    active_outbound = [r for r in rooms_resp.rooms if r.name.startswith("camp-")]
+                    if len(active_outbound) < max_concurrent:
+                        break
+                except Exception as e:
+                    logger.warning("Failed to list active rooms for concurrency check: %s", e)
+                await asyncio.sleep(2)
+
             room_name = f"camp-{campaign_id[:8]}-{phone.replace('+','')}-{random.randint(100,999)}"
             success = await _dispatch_one(lk, lk_api_module, contact, room_name, prompt, profile, campaign_id=campaign_id)
             if success:

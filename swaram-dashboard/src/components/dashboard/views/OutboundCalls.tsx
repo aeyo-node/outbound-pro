@@ -115,7 +115,7 @@ export function OutboundCalls() {
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <span className="text-xs text-gray-400">{formatTimestamp(c.created_at)}</span>
+                    <span className="text-xs text-gray-400">{formatTimestamp(c.timestamp || c.created_at)}</span>
                   </td>
                   <td className="px-6 py-4 text-right">
                     {c.notes ? (

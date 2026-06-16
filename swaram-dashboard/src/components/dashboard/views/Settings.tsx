@@ -266,6 +266,20 @@ export function Settings() {
                   className="w-full bg-[#0A0A0A] border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#FFD166]/50 transition-colors"
                 />
               </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-400">Max Concurrent Calls (Batch Size)</label>
+                <input 
+                  type="number" 
+                  min="1"
+                  max="100"
+                  name="MAX_CONCURRENT_CALLS"
+                  value={settings.MAX_CONCURRENT_CALLS || "2"}
+                  onChange={handleChange}
+                  placeholder="2"
+                  className="w-full bg-[#0A0A0A] border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#FFD166]/50 transition-colors"
+                />
+                <p className="text-xs text-gray-500 mt-1">Limits simultaneous SIP calls to prevent carrier rejection.</p>
+              </div>
             </div>
           </div>
 
