@@ -79,10 +79,10 @@ export function Campaigns() {
   };
 
   const downloadExampleCsv = () => {
-    const csvContent = "business name,phone number,industry\n" +
-                       "Apex Web Agency,+919876543210,Web Design\n" +
-                       "Lubi Manufacturing,+918765432109,SEO & Marketing\n" +
-                       "Swaram AI Systems,+917654321098,E-commerce Development";
+    const csvContent = "business name,phone number,industry,place,lead name\n" +
+                       "Apex Web Agency,+919876543210,Web Design,Ernakulam,Rahul\n" +
+                       "Swaram Clinics,+918765432109,Healthcare,Kochi,Priya\n" +
+                       "Lubi Manufacturing,+917654321098,Real Estate,Thrissur,Arjun";
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -117,31 +117,54 @@ export function Campaigns() {
           return;
         }
         
-        // Parse headers
-        const headers = lines[0].split(',').map(h => h.trim().replace(/^["']|["']$/g, '').toLowerCase());
+        // Parse headers — support both comma and tab separated
+        const rawHeader = lines[0];
+        const delimiter = rawHeader.includes('\t') ? '\t' : ',';
+        const headers = rawHeader.split(delimiter).map(h => h.trim().replace(/^["']|["']$/g, '').toLowerCase());
         
+        // Smart CSV row splitter — handles quoted values with commas inside
+        const splitRow = (line: string): string[] => {
+          if (delimiter === '\t') return line.split('\t').map(v => v.trim().replace(/^["']|["']$/g, ''));
+          const result: string[] = [];
+          let current = '';
+          let inQuotes = false;
+          for (let ci = 0; ci < line.length; ci++) {
+            const ch = line[ci];
+            if (ch === '"') {
+              inQuotes = !inQuotes;
+            } else if (ch === ',' && !inQuotes) {
+              result.push(current.trim().replace(/^"|"$/g, ''));
+              current = '';
+            } else {
+              current += ch;
+            }
+          }
+          result.push(current.trim().replace(/^"|"$/g, ''));
+          return result;
+        };
+
         const findIndex = (names: string[]) => 
-          headers.findIndex(h => names.some(name => h === name || h.replace(/\s+/g, '') === name.replace(/\s+/g, '')));
+          headers.findIndex(h => names.some(name => h === name || h.replace(/\s+/g, '_') === name.replace(/\s+/g, '_') || h.replace(/\s+/g, '') === name.replace(/\s+/g, '')));
         
-        const phoneIdx = findIndex(['phone number', 'phone_number', 'phone', 'mobile']);
-        const businessIdx = findIndex(['business name', 'business_name', 'business', 'company']);
-        const industryIdx = findIndex(['industry', 'service_type', 'service', 'sector', 'category']);
-        const placeIdx = findIndex(['place', 'city', 'location', 'address', 'area', 'town']);
-        const nameIdx = findIndex(['name', 'lead_name', 'contact_name', 'lead name', 'contact name']);
+        const phoneIdx = findIndex(['phone number', 'phone_number', 'phone', 'mobile', 'contact', 'contact number']);
+        const businessIdx = findIndex(['business name', 'business_name', 'business', 'company', 'company name']);
+        const industryIdx = findIndex(['industry', 'service_type', 'service', 'sector', 'category', 'type']);
+        const placeIdx = findIndex(['place', 'city', 'location', 'address', 'area', 'town', 'region', 'district']);
+        const nameIdx = findIndex(['name', 'lead_name', 'contact_name', 'lead name', 'contact name', 'full name', 'fullname']);
         
         if (phoneIdx === -1) {
-          setCsvError("Could not find a 'phone number' or 'phone' column in the CSV.");
+          setCsvError("Could not find a phone column. Expected header: 'phone number', 'phone', or 'mobile'.");
           return;
         }
         
         const parsed: any[] = [];
         for (let i = 1; i < lines.length; i++) {
-          const row = lines[i].split(',').map(val => val.trim().replace(/^["']|["']$/g, ''));
+          const row = splitRow(lines[i]);
           const phoneVal = row[phoneIdx] || '';
-          const businessVal = businessIdx !== -1 ? row[businessIdx] : '';
-          const industryVal = industryIdx !== -1 ? row[industryIdx] : '';
-          const placeVal = placeIdx !== -1 ? row[placeIdx] : '';
-          const nameVal = nameIdx !== -1 ? row[nameIdx] : '';
+          const businessVal = businessIdx !== -1 ? (row[businessIdx] || '') : '';
+          const industryVal = industryIdx !== -1 ? (row[industryIdx] || '') : '';
+          const placeVal = placeIdx !== -1 ? (row[placeIdx] || '') : '';
+          const nameVal = nameIdx !== -1 ? (row[nameIdx] || '') : '';
           
           if (phoneVal) {
             let cleanedPhone = phoneVal.replace(/[\s\-\(\)]/g, '');
@@ -156,7 +179,7 @@ export function Campaigns() {
             parsed.push({
               phone: cleanedPhone,
               business_name: businessVal || "our company",
-              industry: industryVal || "Free Demo",
+              industry: industryVal || "",
               place: placeVal || "",
               lead_name: nameVal || "there"
             });
@@ -561,7 +584,7 @@ export function Campaigns() {
                             {csvFileName || "Upload contacts CSV file"}
                           </p>
                           <p className="text-xs text-gray-500">
-                            {csvContacts.length > 0 ? `${csvContacts.length} valid contacts loaded` : "Accepts columns: business name, phone number, industry"}
+                            {csvContacts.length > 0 ? `${csvContacts.length} valid contacts loaded` : "Accepts columns: business name, phone number, industry, place, lead name"}
                           </p>
                         </div>
                       </div>
@@ -601,6 +624,7 @@ export function Campaigns() {
                                 <th className="px-4 py-2 text-gray-400 font-medium">Business Name</th>
                                 <th className="px-4 py-2 text-gray-400 font-medium">Phone</th>
                                 <th className="px-4 py-2 text-gray-400 font-medium">Industry</th>
+                                <th className="px-4 py-2 text-gray-400 font-medium">Place</th>
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-white/5 text-gray-300">
@@ -608,7 +632,8 @@ export function Campaigns() {
                                 <tr key={idx} className="hover:bg-white/[0.01]">
                                   <td className="px-4 py-2 truncate max-w-[150px]">{item.business_name}</td>
                                   <td className="px-4 py-2 font-mono">{item.phone}</td>
-                                  <td className="px-4 py-2 truncate max-w-[120px]">{item.service_type}</td>
+                                  <td className="px-4 py-2 truncate max-w-[120px]">{item.industry}</td>
+                                  <td className="px-4 py-2 truncate max-w-[120px]">{item.place}</td>
                                 </tr>
                               ))}
                             </tbody>
