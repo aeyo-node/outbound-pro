@@ -968,14 +968,29 @@ def _schedule_campaign(campaign_id: str, schedule_type: str, schedule_time: str)
     job_id = f"campaign_{campaign_id}"
     if _scheduler.get_job(job_id):
         _scheduler.remove_job(job_id)
+    from apscheduler.triggers.date import DateTrigger
+    import datetime
+    import pytz
+    
     try:
         hour, minute = map(int, schedule_time.split(":"))
     except (ValueError, AttributeError):
         hour, minute = 9, 0
+
+    tz = pytz.timezone("Asia/Kolkata")
+    
     if schedule_type == "daily":
-        trigger = CronTrigger(hour=hour, minute=minute, timezone="Asia/Kolkata")
+        trigger = CronTrigger(hour=hour, minute=minute, timezone=tz)
+    elif schedule_type == "weekdays":
+        trigger = CronTrigger(day_of_week="mon-fri", hour=hour, minute=minute, timezone=tz)
     else:
-        trigger = CronTrigger(day_of_week="mon-fri", hour=hour, minute=minute, timezone="Asia/Kolkata")
+        # "once"
+        now = datetime.datetime.now(tz)
+        target = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
+        if target < now:
+            target += datetime.timedelta(days=1)
+        trigger = DateTrigger(run_date=target)
+
     _scheduler.add_job(
         _run_campaign, trigger=trigger, args=[campaign_id],
         id=job_id, replace_existing=True,
