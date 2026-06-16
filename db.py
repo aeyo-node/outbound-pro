@@ -293,7 +293,16 @@ async def log_call(
         row["notes"] = notes
     if campaign_id:
         row["campaign_id"] = campaign_id
-    await db.table("call_logs").insert(row).execute()
+    try:
+        await db.table("call_logs").insert(row).execute()
+    except Exception as e:
+        logger.warning(f"Failed to insert call log with campaign_id. Trying without it. Error: {e}")
+        if "campaign_id" in row:
+            row.pop("campaign_id")
+            try:
+                await db.table("call_logs").insert(row).execute()
+            except Exception as e2:
+                logger.error(f"Failed to insert call log even without campaign_id: {e2}")
     
     # Auto-add to CRM contacts if a name is provided
     if lead_name and lead_name.lower() not in ["there", "unknown"]:

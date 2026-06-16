@@ -1057,12 +1057,29 @@ async def api_run_campaign_now(campaign_id: str):
 
 @app.get("/api/campaigns/{campaign_id}/logs")
 async def api_get_campaign_logs(campaign_id: str):
+    from db import get_campaign_call_logs, get_campaign, _adb
     try:
-        from db import get_campaign_call_logs
         logs = await get_campaign_call_logs(campaign_id)
         return logs
     except Exception as e:
-        raise HTTPException(500, f"Error getting logs: {e}")
+        logger.warning(f"Error getting logs by campaign_id (column missing?): {e}. Falling back to phone numbers.")
+        
+        # Fallback: find logs matching the campaign's phone numbers
+        try:
+            campaign = await get_campaign(campaign_id)
+            if not campaign:
+                return []
+            contacts = json.loads(campaign.get("contacts_json") or "[]")
+            phones = [c.get("phone") for c in contacts if c.get("phone")]
+            if not phones:
+                return []
+                
+            db = await _adb()
+            result = await db.table("call_logs").select("*").in_("phone_number", phones).order("timestamp", desc=True).limit(100).execute()
+            return result.data or []
+        except Exception as fallback_e:
+            logger.error(f"Fallback logs error: {fallback_e}")
+            return []
 
 
 @app.patch("/api/campaigns/{campaign_id}/status")
