@@ -97,6 +97,7 @@ _google_realtime = None
 _google_beta_realtime = None
 _google_llm = None
 _google_tts = None
+_google_stt = None
 
 try:
     from livekit.plugins import google as _gp
@@ -116,16 +117,13 @@ try:
         _google_tts = _gp.TTS
     except AttributeError:
         pass
+    try:
+        _google_stt = _gp.STT
+        logger.info("Loaded Google STT for pipeline mode")
+    except AttributeError:
+        pass
 except ImportError:
     logger.warning("livekit-plugins-google not installed — run: pip install livekit-plugins-google>=1.0")
-
-# Deepgram STT as pipeline fallback (optional)
-_deepgram_stt = None
-try:
-    from livekit.plugins import deepgram as _dg
-    _deepgram_stt = _dg.STT
-except ImportError:
-    pass
 
 
 # ── Session factory ──────────────────────────────────────────────────────────
@@ -188,17 +186,17 @@ def _build_session(tools: list, system_prompt: str, voice_override: Optional[str
         logger.error("FINAL REALTIME MODEL=%s", gemini_model)
         return AgentSession(llm=RealtimeClass(**realtime_kwargs), tools=tools)
 
-    # ── Pipeline fallback (Deepgram STT + Gemini LLM + Google TTS) ───────────
+    # ── Pipeline fallback (Google STT + Gemini LLM + Google TTS) ──────────────
     if _google_llm is None:
         raise RuntimeError(
             "No Google AI backend found. Install: pip install 'livekit-plugins-google>=1.0'"
         )
-    logger.info("SESSION MODE: pipeline (Deepgram STT + Gemini LLM + Google TTS)")
-    stt = _deepgram_stt(model="nova-3", language="multi") if _deepgram_stt else None
+    logger.info("SESSION MODE: pipeline (Google STT + Gemini LLM + Google TTS)")
+    stt = _google_stt(model="chirp_2", languages=["en-US"]) if _google_stt else None
     tts = _google_tts(voice_name="en-US-Journey-O") if _google_tts else None
     return AgentSession(
         stt=stt,
-        llm=_google_llm(model="gemini-3.5-flash"),
+        llm=_google_llm(model="gemini-2.0-flash"),
         tts=tts,
         vad=silero.VAD.load(),
         tools=tools,
