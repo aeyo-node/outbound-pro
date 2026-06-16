@@ -60,6 +60,9 @@ export function OutboundCalls() {
             <thead>
               <tr className="border-b border-white/5 bg-white/[0.02]">
                 <th className="px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Phone</th>
+                <th className="px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Business</th>
+                <th className="px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Industry</th>
+                <th className="px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Place</th>
                 <th className="px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Status</th>
                 <th className="px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Outcome</th>
                 <th className="px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Duration</th>
@@ -79,7 +82,7 @@ export function OutboundCalls() {
                 </tr>
               ) : calls.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
+                  <td colSpan={9} className="px-6 py-12 text-center text-gray-500">
                     <div className="flex flex-col items-center justify-center">
                       <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center mb-3">
                         <PhoneOutgoing className="w-5 h-5 text-gray-400" />
@@ -88,10 +91,30 @@ export function OutboundCalls() {
                     </div>
                   </td>
                 </tr>
-              ) : calls.map((c, i) => (
+              ) : calls.map((c, i) => {
+                let tempBadge = null;
+                if (c.notes) {
+                  if (c.notes.includes("[HOT]")) tempBadge = <span className="ml-3 inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-red-500/20 text-red-400 border border-red-500/30">HOT</span>;
+                  else if (c.notes.includes("[WARM]")) tempBadge = <span className="ml-3 inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-orange-500/20 text-orange-400 border border-orange-500/30">WARM</span>;
+                  else if (c.notes.includes("[COLD]")) tempBadge = <span className="ml-3 inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-blue-500/20 text-blue-400 border border-blue-500/30">COLD</span>;
+                }
+                return (
                 <tr key={i} className="hover:bg-white/[0.02] transition-colors">
                   <td className="px-6 py-4">
-                    <span className="text-sm font-medium text-white">{c.phone_number}</span>
+                    <div className="flex items-center">
+                      <span className="text-sm font-medium text-white">{c.phone_number}</span>
+                      {tempBadge}
+                    </div>
+                    {c.lead_name && c.lead_name !== "there" && <span className="text-xs text-gray-500">{c.lead_name}</span>}
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className="text-sm text-gray-300">{c.business_name || "—"}</span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className="text-xs text-gray-400">{c.industry || "—"}</span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className="text-xs text-gray-400">{c.place || "—"}</span>
                   </td>
                   <td className="px-6 py-4">
                     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border ${
@@ -131,7 +154,8 @@ export function OutboundCalls() {
                     )}
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>

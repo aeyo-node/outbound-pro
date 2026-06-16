@@ -205,7 +205,10 @@ async def clear_errors() -> None:
 
 # ── Appointments ──────────────────────────────────────────────────────────────
 
-async def insert_appointment(name: str, phone: str, date: str, time: str, service: str, whatsapp_number: Optional[str] = None) -> str:
+async def insert_appointment(
+    name: str, phone: str, date: str, time: str, service: str, whatsapp_number: Optional[str] = None,
+    business_name: Optional[str] = None, industry: Optional[str] = None, place: Optional[str] = None
+) -> str:
     full_id = str(uuid.uuid4())
     booking_id = full_id[:8].upper()
     db = await _adb()
@@ -214,14 +217,20 @@ async def insert_appointment(name: str, phone: str, date: str, time: str, servic
         "date": date, "time": time, "service": service,
         "status": "booked", "created_at": datetime.now().isoformat(),
     }
-    if whatsapp_number:
-        payload["whatsapp_number"] = whatsapp_number
+    if whatsapp_number: payload["whatsapp_number"] = whatsapp_number
+    if business_name: payload["business_name"] = business_name
+    if industry: payload["industry"] = industry
+    if place: payload["place"] = place
+    
     try:
         await db.table("appointments").insert(payload).execute()
     except Exception as e:
-        if whatsapp_number:
-            print(f"⚠️ Insert failed: {e}. Retrying without whatsapp_number...")
+        if whatsapp_number or business_name or industry or place:
+            print(f"⚠️ Insert failed: {e}. Retrying without optional columns...")
             payload.pop("whatsapp_number", None)
+            payload.pop("business_name", None)
+            payload.pop("industry", None)
+            payload.pop("place", None)
             await db.table("appointments").insert(payload).execute()
         else:
             raise e
@@ -282,7 +291,8 @@ async def get_appointments_by_phone(phone: str) -> list:
 async def log_call(
     phone_number: str, lead_name: Optional[str], outcome: str, reason: str,
     duration_seconds: int, recording_url: Optional[str] = None, notes: Optional[str] = None,
-    campaign_id: Optional[str] = None,
+    campaign_id: Optional[str] = None, business_name: Optional[str] = None, 
+    industry: Optional[str] = None, place: Optional[str] = None,
 ) -> None:
     db = await _adb()
     row: dict = {
@@ -290,18 +300,19 @@ async def log_call(
         "outcome": outcome, "reason": reason, "duration_seconds": duration_seconds,
         "timestamp": datetime.now().isoformat(),
     }
-    if recording_url:
-        row["recording_url"] = recording_url
-    if notes:
-        row["notes"] = notes
-    if campaign_id:
-        row["campaign_id"] = campaign_id
+    if recording_url: row["recording_url"] = recording_url
+    if notes: row["notes"] = notes
+    if campaign_id: row["campaign_id"] = campaign_id
+    if business_name: row["business_name"] = business_name
+    if industry: row["industry"] = industry
+    if place: row["place"] = place
+
     try:
         await db.table("call_logs").insert(row).execute()
     except Exception as e:
         logger.warning(f"Failed to insert call log (attempt 1): {e}")
         # Try stripping optional columns one by one
-        for col in ["campaign_id", "notes", "recording_url"]:
+        for col in ["business_name", "industry", "place", "campaign_id", "notes", "recording_url"]:
             if col in row:
                 row.pop(col)
         try:
@@ -315,12 +326,16 @@ async def log_call(
     try:
         existing = await db.table("contacts").select("id").eq("phone", phone_number).execute()
         if not existing.data:
-            await db.table("contacts").insert({
+            contact_data = {
                 "id": str(uuid.uuid4()),
                 "name": display_name,
                 "phone": phone_number,
                 "created_at": datetime.now().isoformat()
-            }).execute()
+            }
+            if business_name: contact_data["business_name"] = business_name
+            if industry: contact_data["industry"] = industry
+            if place: contact_data["place"] = place
+            await db.table("contacts").insert(contact_data).execute()
             logger.info(f"Auto-added contact to CRM: {display_name} ({phone_number})")
     except Exception as e:
         logger.warning(f"Failed to auto-add contact to CRM: {e}")
@@ -360,13 +375,22 @@ async def get_contacts() -> list:
         return []
 
 
-async def create_contact(name: str, phone: str, email: str = "") -> str:
+async def create_contact(
+    name: str, phone: str, email: str = "",
+    business_name: Optional[str] = None,
+    industry: Optional[str] = None,
+    place: Optional[str] = None
+) -> str:
     contact_id = str(uuid.uuid4())
     db = await _adb()
-    await db.table("contacts").insert({
+    row = {
         "id": contact_id, "name": name, "phone": phone, "email": email,
         "created_at": datetime.now().isoformat()
-    }).execute()
+    }
+    if business_name: row["business_name"] = business_name
+    if industry: row["industry"] = industry
+    if place: row["place"] = place
+    await db.table("contacts").insert(row).execute()
     return contact_id
 
 
@@ -527,19 +551,24 @@ async def get_agent_profile(profile_id: str) -> Optional[dict]:
 async def create_agent_profile(
     name: str, voice: str = "Aoede", model: str = "models/gemini-2.0-flash-exp",
     system_prompt: Optional[str] = None, enabled_tools: str = "[]", is_default: bool = False,
+    place: Optional[str] = None,
 ) -> str:
     profile_id = str(uuid.uuid4())
     db = await _adb()
     # Force integer (Supabase INTEGER column expects 0 or 1, not boolean)
     default_val = 1 if is_default in (True, 1, "true", "1") else 0
     
-    if default_val == 1:
-        await db.table("agent_profiles").update({"is_default": 0}).neq("id", "placeholder").execute()
-    await db.table("agent_profiles").insert({
+    row = {
         "id": profile_id, "name": name, "voice": voice, "model": model,
         "system_prompt": system_prompt, "enabled_tools": enabled_tools,
         "is_default": default_val, "created_at": datetime.now().isoformat(),
-    }).execute()
+    }
+    if place:
+        row["place"] = place
+
+    if default_val == 1:
+        await db.table("agent_profiles").update({"is_default": 0}).neq("id", "placeholder").execute()
+    await db.table("agent_profiles").insert(row).execute()
     return profile_id
 
 

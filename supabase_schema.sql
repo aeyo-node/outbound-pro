@@ -49,6 +49,18 @@ ALTER TABLE error_logs    DISABLE ROW LEVEL SECURITY;
 ALTER TABLE call_logs ADD COLUMN IF NOT EXISTS recording_url TEXT;
 ALTER TABLE call_logs ADD COLUMN IF NOT EXISTS notes TEXT;
 ALTER TABLE call_logs ADD COLUMN IF NOT EXISTS campaign_id TEXT;
+ALTER TABLE call_logs ADD COLUMN IF NOT EXISTS business_name TEXT;
+ALTER TABLE call_logs ADD COLUMN IF NOT EXISTS industry TEXT;
+ALTER TABLE call_logs ADD COLUMN IF NOT EXISTS place TEXT;
+
+ALTER TABLE appointments ADD COLUMN IF NOT EXISTS business_name TEXT;
+ALTER TABLE appointments ADD COLUMN IF NOT EXISTS industry TEXT;
+ALTER TABLE appointments ADD COLUMN IF NOT EXISTS place TEXT;
+
+-- For contacts table
+ALTER TABLE contacts ADD COLUMN IF NOT EXISTS business_name TEXT;
+ALTER TABLE contacts ADD COLUMN IF NOT EXISTS industry TEXT;
+ALTER TABLE contacts ADD COLUMN IF NOT EXISTS place TEXT;
 
 CREATE TABLE IF NOT EXISTS campaigns (
     id TEXT PRIMARY KEY,
@@ -87,9 +99,11 @@ CREATE TABLE IF NOT EXISTS agent_profiles (
     system_prompt TEXT,
     enabled_tools TEXT DEFAULT '[]',
     is_default INTEGER DEFAULT 0,
+    place TEXT,
     created_at TEXT NOT NULL
 );
 ALTER TABLE agent_profiles DISABLE ROW LEVEL SECURITY;
+ALTER TABLE agent_profiles ADD COLUMN IF NOT EXISTS place TEXT;
 
 CREATE TABLE IF NOT EXISTS transactions (
     id TEXT PRIMARY KEY,

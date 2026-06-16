@@ -125,7 +125,9 @@ export function Campaigns() {
         
         const phoneIdx = findIndex(['phone number', 'phone_number', 'phone', 'mobile']);
         const businessIdx = findIndex(['business name', 'business_name', 'business', 'company']);
-        const industryIdx = findIndex(['industry', 'service_type', 'service', 'sector']);
+        const industryIdx = findIndex(['industry', 'service_type', 'service', 'sector', 'category']);
+        const placeIdx = findIndex(['place', 'city', 'location', 'address', 'area', 'town']);
+        const nameIdx = findIndex(['name', 'lead_name', 'contact_name', 'lead name', 'contact name']);
         
         if (phoneIdx === -1) {
           setCsvError("Could not find a 'phone number' or 'phone' column in the CSV.");
@@ -138,6 +140,8 @@ export function Campaigns() {
           const phoneVal = row[phoneIdx] || '';
           const businessVal = businessIdx !== -1 ? row[businessIdx] : '';
           const industryVal = industryIdx !== -1 ? row[industryIdx] : '';
+          const placeVal = placeIdx !== -1 ? row[placeIdx] : '';
+          const nameVal = nameIdx !== -1 ? row[nameIdx] : '';
           
           if (phoneVal) {
             let cleanedPhone = phoneVal.replace(/[\s\-\(\)]/g, '');
@@ -152,8 +156,9 @@ export function Campaigns() {
             parsed.push({
               phone: cleanedPhone,
               business_name: businessVal || "our company",
-              service_type: industryVal || "Free Demo",
-              lead_name: "there"
+              industry: industryVal || "Free Demo",
+              place: placeVal || "",
+              lead_name: nameVal || "there"
             });
           }
         }

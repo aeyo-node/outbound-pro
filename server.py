@@ -111,7 +111,9 @@ class CallRequest(BaseModel):
     phone: str
     lead_name: str = "there"
     business_name: str = "our company"
-    service_type: str = "our service"
+    service_type: Optional[str] = None
+    industry: Optional[str] = None
+    place: Optional[str] = None
     system_prompt: Optional[str] = None
     agent_profile_id: Optional[str] = None
 
@@ -123,6 +125,7 @@ class AgentProfileRequest(BaseModel):
     system_prompt: Optional[str] = None
     enabled_tools: str = "[]"
     is_default: bool = False
+    place: Optional[str] = None
 
 
 class PromptRequest(BaseModel):
@@ -236,6 +239,7 @@ async def api_dispatch_call(req: CallRequest):
     effective_voice  = None
     effective_model  = None
     effective_tools  = None
+    req_place = req.place
 
     if req.agent_profile_id:
         profile = await get_agent_profile(req.agent_profile_id)
@@ -245,26 +249,33 @@ async def api_dispatch_call(req: CallRequest):
             effective_voice = profile.get("voice")
             effective_model = profile.get("model")
             effective_tools = profile.get("enabled_tools")
+            if not req_place and profile.get("place"):
+                req_place = profile["place"]
+
+    req_industry = req.industry or req.service_type or "our service"
+    req_place = req_place or "your area"
 
     if not effective_voice:
-        if req.service_type in ["Vehicle Dealerships", "Finance / Loans"]:
+        if req_industry in ["Vehicle Dealerships", "Finance / Loans"]:
             effective_voice = "Charon"
-        elif req.service_type in ["Consultancies", "Home Services"]:
+        elif req_industry in ["Consultancies", "Home Services"]:
             effective_voice = "Fenrir"
-        elif req.service_type in ["Real Estate", "Insurance", "EV Charging & Support"]:
+        elif req_industry in ["Real Estate", "Insurance", "EV Charging & Support"]:
             effective_voice = "Aoede"
         else:
             effective_voice = "Kore"
 
     from prompts import build_prompt
-    effective_prompt = build_prompt(req.lead_name, req.business_name, req.service_type, effective_prompt)
+    effective_prompt = build_prompt(req.lead_name, req.business_name, req_industry, effective_prompt, place=req_place)
 
     room_name = f"call-{phone.replace('+', '')}-{random.randint(1000, 9999)}"
     metadata: dict = {
         "phone_number":   phone,
         "lead_name":      req.lead_name,
         "business_name":  req.business_name,
-        "service_type":   req.service_type,
+        "industry":       req_industry,
+        "place":          req_place,
+        "service_type":   req_industry,
         "system_prompt":  effective_prompt,
     }
     if effective_voice:  metadata["voice_override"]  = effective_voice
@@ -307,11 +318,15 @@ async def api_get_all_calls(page: int = 1, limit: int = 20) -> list:
 @app.get("/api/calls/phone/{phone}")
 async def api_get_calls_by_phone(phone: str) -> list:
     db = await _adb()
-    # Decode URL-encoded + symbol if necessary
     decoded_phone = urllib.parse.unquote(phone)
-    if not decoded_phone.startswith('+'):
-        decoded_phone = '+' + decoded_phone.lstrip(' ')
-    result = await db.table("call_logs").select("*").eq("phone_number", decoded_phone).order("timestamp", desc=True).execute()
+    digits_only = "".join(filter(str.isdigit, decoded_phone))
+    if digits_only:
+        # Use the last 10 digits to match (ignoring country codes)
+        last_10 = digits_only[-10:] if len(digits_only) >= 10 else digits_only
+        result = await db.table("call_logs").select("*").ilike("phone_number", f"%{last_10}%").order("timestamp", desc=True).execute()
+    else:
+        result = await db.table("call_logs").select("*").eq("phone_number", decoded_phone).order("timestamp", desc=True).execute()
+        
     return result.data or []
 
 
@@ -663,7 +678,10 @@ async def api_create_contact(req: dict):
     contact_id = await create_contact(
         name=req.get("name", "Unknown"),
         phone=req.get("phone", ""),
-        email=req.get("email", "")
+        email=req.get("email", ""),
+        business_name=req.get("business_name"),
+        industry=req.get("industry"),
+        place=req.get("place")
     )
     return {"status": "created", "id": contact_id}
 
@@ -834,6 +852,7 @@ async def api_create_agent_profile(req: AgentProfileRequest):
         profile_id = await create_agent_profile(
             name=req.name, voice=req.voice, model=req.model,
             system_prompt=req.system_prompt, enabled_tools=req.enabled_tools, is_default=req.is_default,
+            place=req.place,
         )
         return {"status": "created", "id": profile_id}
     except Exception as exc:
@@ -854,6 +873,7 @@ async def api_update_agent_profile(profile_id: str, req: AgentProfileRequest):
         "name": req.name, "voice": req.voice, "model": req.model,
         "system_prompt": req.system_prompt, "enabled_tools": req.enabled_tools,
         "is_default": 1 if req.is_default else 0,
+        "place": req.place,
     })
     if not ok:
         raise HTTPException(404, "Profile not found")
@@ -894,7 +914,8 @@ async def _dispatch_one(lk, lk_api, contact: dict, room_name: str,
             "phone_number":  contact["phone"],
             "lead_name":     contact.get("lead_name", "there"),
             "business_name": contact.get("business_name", "our company"),
-            "service_type":  contact.get("service_type", "our service"),
+            "industry":      contact.get("industry", "our service"),
+            "place":         contact.get("place", "your area"),
             "system_prompt": saved_prompt,
         }
         

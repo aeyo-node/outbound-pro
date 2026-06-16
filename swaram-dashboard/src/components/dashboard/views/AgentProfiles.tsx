@@ -25,7 +25,8 @@ export function AgentProfiles() {
     model: "models/gemini-2.0-flash-exp",
     system_prompt: "",
     enabled_tools: "[]",
-    is_default: false
+    is_default: false,
+    place: ""
   });
 
   const fetchProfiles = async () => {
@@ -52,7 +53,8 @@ export function AgentProfiles() {
       model: "models/gemini-2.0-flash-exp",
       system_prompt: "",
       enabled_tools: "[]",
-      is_default: false
+      is_default: false,
+      place: ""
     });
     setIsModalOpen(true);
   };
@@ -157,7 +159,8 @@ export function AgentProfiles() {
       model: p.model,
       system_prompt: p.system_prompt || "",
       enabled_tools: p.enabled_tools || "[]",
-      is_default: !!p.is_default
+      is_default: !!p.is_default,
+      place: p.place || ""
     });
     setDocsList({ documents: [], links: [] });
     setLinkUrl("");
@@ -273,6 +276,7 @@ export function AgentProfiles() {
               <div>
                 <h3 className="text-lg font-medium text-white">{p.name}</h3>
                 <p className="text-xs text-gray-400 capitalize">{p.voice} Voice • {p.model.split('/')[1] || p.model}</p>
+                {p.place && <p className="text-[11px] text-gray-500 mt-0.5">Location: {p.place}</p>}
               </div>
             </div>
 
@@ -357,6 +361,17 @@ export function AgentProfiles() {
                   type="text" 
                   value={formData.model}
                   onChange={e => setFormData({...formData, model: e.target.value})}
+                  className="w-full bg-[#0A0A0A] border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-[#FFD166]/50"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-400">Default Place / Location (Optional)</label>
+                <input 
+                  type="text" 
+                  value={formData.place}
+                  onChange={e => setFormData({...formData, place: e.target.value})}
+                  placeholder="e.g. Ernakulam"
                   className="w-full bg-[#0A0A0A] border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-[#FFD166]/50"
                 />
               </div>

@@ -226,7 +226,8 @@ async def entrypoint(ctx: agents.JobContext) -> None:
     phone_number: Optional[str] = None
     lead_name = "there"
     business_name = "our company"
-    service_type = "our service"
+    industry = "our service"
+    place = "your area"
     custom_prompt: Optional[str] = None
     voice_override: Optional[str] = None
     model_override: Optional[str] = None
@@ -240,7 +241,8 @@ async def entrypoint(ctx: agents.JobContext) -> None:
             phone_number   = data.get("phone_number")
             lead_name      = data.get("lead_name", lead_name)
             business_name  = data.get("business_name", business_name)
-            service_type   = data.get("service_type", service_type)
+            industry       = data.get("industry", industry)
+            place          = data.get("place", place)
             custom_prompt  = data.get("system_prompt")
             voice_override = data.get("voice_override")
             model_override = data.get("model_override")
@@ -284,13 +286,13 @@ async def entrypoint(ctx: agents.JobContext) -> None:
 
     system_prompt = build_prompt(
         lead_name=lead_name, business_name=business_name,
-        service_type=service_type, custom_prompt=custom_prompt,
+        industry=industry, place=place, custom_prompt=custom_prompt,
     )
     # Add inbound awareness to the prompt
     if not phone_number:
         system_prompt += "\n\nNOTE: This is an INBOUND call. The user called YOU. Do not ask 'Am I speaking with...'. Instead, greet them warmly and ask how you can help."
     
-    tool_ctx = AppointmentTools(ctx, phone_number, lead_name, agent_profile_id=agent_profile_id, campaign_id=campaign_id)
+    tool_ctx = AppointmentTools(ctx, phone_number, lead_name, business_name, industry, place, agent_profile_id=agent_profile_id, campaign_id=campaign_id)
 
     if voice_override:
         os.environ["GEMINI_TTS_VOICE"] = voice_override

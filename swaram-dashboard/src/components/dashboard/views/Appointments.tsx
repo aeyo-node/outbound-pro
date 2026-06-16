@@ -70,6 +70,9 @@ export function Appointments() {
               <tr className="border-b border-white/5 bg-white/[0.02]">
                 <th className="px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Scheduled Time</th>
                 <th className="px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Client Info</th>
+                <th className="px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Business</th>
+                <th className="px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Industry</th>
+                <th className="px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Place</th>
                 <th className="px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">WhatsApp</th>
                 <th className="px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Notes</th>
                 <th className="px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Status</th>
@@ -80,7 +83,7 @@ export function Appointments() {
             <tbody className="divide-y divide-white/5">
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-8 text-center text-gray-500 text-sm">
+                  <td colSpan={10} className="px-6 py-8 text-center text-gray-500 text-sm">
                     <div className="flex justify-center items-center gap-2">
                       <div className="w-4 h-4 border-2 border-white/10 border-t-[#FFD166] rounded-full animate-spin" />
                       Loading demos...
@@ -89,7 +92,7 @@ export function Appointments() {
                 </tr>
               ) : appointments.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
+                  <td colSpan={10} className="px-6 py-12 text-center text-gray-500">
                     <div className="flex flex-col items-center justify-center">
                       <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center mb-3">
                         <CalendarDays className="w-5 h-5 text-gray-400" />
@@ -113,6 +116,15 @@ export function Appointments() {
                       <span className="text-sm font-medium text-white">{a.client_name || "Unknown"}</span>
                       <span className="text-[11px] text-gray-500">{a.client_phone}</span>
                     </div>
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-300">
+                    {a.business_name || "—"}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-300">
+                    {a.industry || "—"}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-300">
+                    {a.place || "—"}
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-300">
                     {a.whatsapp_number || "—"}

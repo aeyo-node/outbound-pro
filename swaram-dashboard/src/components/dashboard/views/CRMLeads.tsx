@@ -20,7 +20,10 @@ export function CRMLeads() {
   const [formData, setFormData] = useState({
     name: "",
     phone: "",
-    email: ""
+    email: "",
+    business_name: "",
+    industry: "",
+    place: ""
   });
 
   const fetchContacts = async () => {
@@ -53,7 +56,7 @@ export function CRMLeads() {
       
       if (res.ok) {
         setIsModalOpen(false);
-        setFormData({ name: "", phone: "", email: "" });
+        setFormData({ name: "", phone: "", email: "", business_name: "", industry: "", place: "" });
         fetchContacts();
       }
     } catch (err) {
@@ -141,6 +144,9 @@ export function CRMLeads() {
                 <th className="px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Name</th>
                 <th className="px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Phone</th>
                 <th className="px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Email</th>
+                <th className="px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Business</th>
+                <th className="px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Industry</th>
+                <th className="px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Place</th>
                 <th className="px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Lead Source</th>
                 <th className="px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Added On</th>
               </tr>
@@ -148,7 +154,7 @@ export function CRMLeads() {
             <tbody className="divide-y divide-white/5">
               {loading ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-8 text-center text-gray-500 text-sm">
+                  <td colSpan={9} className="px-6 py-8 text-center text-gray-500 text-sm">
                     <div className="flex justify-center items-center gap-2">
                       <div className="w-4 h-4 border-2 border-white/10 border-t-[#FFD166] rounded-full animate-spin" />
                       Loading leads...
@@ -157,7 +163,7 @@ export function CRMLeads() {
                 </tr>
               ) : contacts.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
+                  <td colSpan={9} className="px-6 py-12 text-center text-gray-500">
                     <div className="flex flex-col items-center justify-center">
                       <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center mb-3">
                         <Users className="w-5 h-5 text-gray-400" />
@@ -187,6 +193,15 @@ export function CRMLeads() {
                       <Mail className="w-3 h-3 text-gray-500" />
                       {c.email || "—"}
                     </div>
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-300">
+                    {c.business_name || "—"}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-300">
+                    {c.industry || "—"}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-300">
+                    {c.place || "—"}
                   </td>
                   <td className="px-6 py-4">
                     <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border bg-white/5 text-gray-300 border-white/10">
@@ -256,6 +271,18 @@ export function CRMLeads() {
                 <div>
                   <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Added On</p>
                   <p className="text-sm text-gray-300">{formatTimestamp(selectedLead.created_at)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Business Name</p>
+                  <p className="text-sm text-gray-300">{selectedLead.business_name || "—"}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Industry</p>
+                  <p className="text-sm text-gray-300">{selectedLead.industry || "—"}</p>
+                </div>
+                <div className="col-span-2">
+                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Place / Location</p>
+                  <p className="text-sm text-gray-300">{selectedLead.place || "—"}</p>
                 </div>
               </div>
 
@@ -365,6 +392,39 @@ export function CRMLeads() {
                   value={formData.email}
                   onChange={e => setFormData({...formData, email: e.target.value})}
                   placeholder="john@example.com"
+                  className="w-full bg-[#0A0A0A] border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-[#FFD166]/50"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-400">Business Name (Optional)</label>
+                <input 
+                  type="text" 
+                  value={formData.business_name}
+                  onChange={e => setFormData({...formData, business_name: e.target.value})}
+                  placeholder="ACME Corp"
+                  className="w-full bg-[#0A0A0A] border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-[#FFD166]/50"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-400">Industry (Optional)</label>
+                <input 
+                  type="text" 
+                  value={formData.industry}
+                  onChange={e => setFormData({...formData, industry: e.target.value})}
+                  placeholder="Real Estate"
+                  className="w-full bg-[#0A0A0A] border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-[#FFD166]/50"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-400">Place / Location (Optional)</label>
+                <input 
+                  type="text" 
+                  value={formData.place}
+                  onChange={e => setFormData({...formData, place: e.target.value})}
+                  placeholder="Ernakulam"
                   className="w-full bg-[#0A0A0A] border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-[#FFD166]/50"
                 />
               </div>

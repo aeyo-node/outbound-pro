@@ -15,7 +15,8 @@ export function SingleCall() {
     phone: "",
     lead_name: "",
     business_name: "",
-    service_type: "",
+    industry: "",
+    place: "",
     agent_profile_id: "",
     system_prompt: ""
   });
@@ -137,14 +138,28 @@ export function SingleCall() {
 
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-300 flex items-center gap-2">
-                <Briefcase className="w-4 h-4 text-[#FFD166]" /> Service Type
+                <Briefcase className="w-4 h-4 text-[#FFD166]" /> Industry
               </label>
               <input 
                 type="text" 
-                name="service_type"
-                value={formData.service_type}
+                name="industry"
+                value={formData.industry}
                 onChange={handleChange}
                 placeholder="Real Estate Consulting"
+                className="w-full bg-[#0A0A0A] border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#FFD166]/50 transition-colors"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-300 flex items-center gap-2">
+                <Building2 className="w-4 h-4 text-[#FFD166]" /> Place / Location
+              </label>
+              <input 
+                type="text" 
+                name="place"
+                value={formData.place}
+                onChange={handleChange}
+                placeholder="Ernakulam"
                 className="w-full bg-[#0A0A0A] border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#FFD166]/50 transition-colors"
               />
             </div>

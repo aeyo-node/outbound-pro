@@ -232,9 +232,15 @@ INDUSTRY_PROMPTS = {
 }
 
 
-def build_prompt(lead_name: str, business_name: str, service_type: str, custom_prompt: str = None) -> str:
-    base = INDUSTRY_PROMPTS.get(service_type, DEFAULT_SYSTEM_PROMPT)
+def build_prompt(lead_name: str, business_name: str, industry: str, custom_prompt: str = None, place: str = "your area") -> str:
+    base = INDUSTRY_PROMPTS.get(industry, DEFAULT_SYSTEM_PROMPT)
     if custom_prompt and custom_prompt.strip():
         base = custom_prompt
 
-    return base + f"\n\nContext:\nLead: {lead_name or 'there'}\nBusiness: {business_name or 'Swaram'}\nService: {service_type or 'General Support'}"
+    # Replace dynamic variables in the prompt template
+    base = base.replace("{business_name}", business_name or "Swaram")
+    base = base.replace("{industry}", industry or "General Support")
+    base = base.replace("{place}", place or "your area")
+    base = base.replace("{lead_name}", lead_name or "there")
+
+    return base + f"\n\nContext:\nLead: {lead_name or 'there'}\nBusiness: {business_name or 'Swaram'}\nIndustry: {industry or 'General Support'}\nPlace: {place or 'your area'}"

@@ -131,10 +131,13 @@ class MCPClient:
 class AppointmentTools(llm.ToolContext):
     """All function tools available to the appointment-booking agent."""
 
-    def __init__(self, ctx: agents.JobContext, phone_number: Optional[str] = None, lead_name: Optional[str] = None, agent_profile_id: Optional[str] = None, campaign_id: Optional[str] = None):
+    def __init__(self, ctx: agents.JobContext, phone_number: Optional[str] = None, lead_name: Optional[str] = None, business_name: Optional[str] = None, industry: Optional[str] = None, place: Optional[str] = None, agent_profile_id: Optional[str] = None, campaign_id: Optional[str] = None):
         self.ctx = ctx
         self.phone_number = phone_number
         self.lead_name = lead_name
+        self.business_name = business_name
+        self.industry = industry
+        self.place = place
         self.whatsapp_number: Optional[str] = None
         self.agent_profile_id = agent_profile_id
         self.campaign_id = campaign_id
@@ -468,7 +471,8 @@ class AppointmentTools(llm.ToolContext):
                 phone_number=self.phone_number or "unknown",
                 lead_name=self.lead_name, outcome=outcome, reason=reason,
                 duration_seconds=duration, recording_url=self.recording_url,
-                notes=notes, campaign_id=self.campaign_id
+                notes=notes, campaign_id=self.campaign_id,
+                business_name=self.business_name, industry=self.industry, place=self.place
             )
             self._call_logged = True
         except Exception as exc:
@@ -645,7 +649,12 @@ class AppointmentTools(llm.ToolContext):
         
         # Save locally so it appears in appointments tab
         try:
-            booking_id = await insert_appointment(name, phone, preferred_date.split()[0] if " " in preferred_date else preferred_date, preferred_date.split()[1] if " " in preferred_date else "TBD", service_type)
+            date_part = preferred_date.split()[0] if " " in preferred_date else preferred_date
+            time_part = preferred_date.split()[1] if " " in preferred_date else "TBD"
+            booking_id = await insert_appointment(
+                name, phone, date_part, time_part, service_type,
+                business_name=self.business_name, industry=self.industry, place=self.place
+            )
         except Exception:
             pass
             
@@ -821,7 +830,10 @@ class AppointmentTools(llm.ToolContext):
                             date=date_str,
                             time=time_str,
                             service=f"Cal.com booking {booking_uid}",
-                            whatsapp_number=self.whatsapp_number
+                            whatsapp_number=self.whatsapp_number,
+                            business_name=self.business_name,
+                            industry=self.industry,
+                            place=self.place
                         )
                     except Exception as db_err:
                         print(f"[-] Failed to insert appointment locally: {db_err}")
