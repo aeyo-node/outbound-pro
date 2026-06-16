@@ -991,23 +991,13 @@ def _schedule_campaign(campaign_id: str, schedule_type: str, schedule_time: str)
         now = datetime.datetime.now(tz)
         target = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
         if target < now:
-            target += datetime.timedelta(days=1)
+            # If the scheduled time is in the past (e.g. current minute already started, or server was offline),
+            # trigger it almost immediately (in 5 seconds) instead of rescheduling it for tomorrow.
+            target = now + datetime.timedelta(seconds=5)
         trigger = DateTrigger(run_date=target)
 
-    def _run_campaign_sync(cid):
-        """Sync wrapper so APScheduler can invoke our async function."""
-        import asyncio as _aio
-        try:
-            loop = _aio.get_running_loop()
-        except RuntimeError:
-            loop = None
-        if loop and loop.is_running():
-            _aio.ensure_future(_run_campaign(cid))
-        else:
-            _aio.run(_run_campaign(cid))
-
     _scheduler.add_job(
-        _run_campaign_sync, trigger=trigger, args=[campaign_id],
+        _run_campaign, trigger=trigger, args=[campaign_id],
         id=job_id, replace_existing=True,
     )
     logger.info("Scheduled campaign %s (%s at %02d:%02d IST) — next fire: %s", campaign_id, schedule_type, hour, minute, trigger)

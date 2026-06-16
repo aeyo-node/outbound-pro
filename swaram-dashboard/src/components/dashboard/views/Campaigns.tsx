@@ -204,6 +204,20 @@ export function Campaigns() {
     }
   };
 
+  const handleRunNow = async (id: string) => {
+    try {
+      const res = await fetch(`${API}/campaigns/${id}/run`, { method: "POST" });
+      if (res.ok) {
+        fetchData();
+      } else {
+        alert("Failed to trigger campaign run.");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error starting campaign: " + err);
+    }
+  };
+
   const handleDelete = async (id: string) => {
     if (!confirm(`Are you sure you want to delete this campaign?`)) return;
     try {
@@ -342,6 +356,11 @@ export function Campaigns() {
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-2">
+                        {c.status === "active" && (
+                          <button onClick={() => handleRunNow(c.id)} className="p-2 hover:bg-green-500/10 rounded-lg text-gray-400 hover:text-green-400 transition-colors" title="Run Now">
+                            <Play className="w-4 h-4" />
+                          </button>
+                        )}
                         <button onClick={() => handleDelete(c.id)} className="p-2 hover:bg-red-500/10 rounded-lg text-gray-400 hover:text-red-400 transition-colors" title="Delete">
                           <Trash2 className="w-4 h-4" />
                         </button>
