@@ -279,6 +279,7 @@ async def get_appointments_by_phone(phone: str) -> list:
 async def log_call(
     phone_number: str, lead_name: Optional[str], outcome: str, reason: str,
     duration_seconds: int, recording_url: Optional[str] = None, notes: Optional[str] = None,
+    campaign_id: Optional[str] = None,
 ) -> None:
     db = await _adb()
     row: dict = {
@@ -290,6 +291,8 @@ async def log_call(
         row["recording_url"] = recording_url
     if notes:
         row["notes"] = notes
+    if campaign_id:
+        row["campaign_id"] = campaign_id
     await db.table("call_logs").insert(row).execute()
     
     # Auto-add to CRM contacts if a name is provided
@@ -449,7 +452,7 @@ async def update_campaign_run_stats(campaign_id: str, dispatched: int, failed: i
     db = await _adb()
     await db.table("campaigns").update({
         "last_run_at": datetime.now().isoformat(),
-        "total_dispatched": dispatched, "total_failed": failed, "status": "completed",
+        "total_dispatched": dispatched, "total_failed": failed, "status": "dispatched",
     }).eq("id", campaign_id).execute()
 
 

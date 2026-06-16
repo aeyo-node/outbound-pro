@@ -57,6 +57,27 @@ export function Campaigns() {
     return () => clearInterval(interval);
   }, []);
 
+  const [selectedCampaignLogs, setSelectedCampaignLogs] = useState<any[] | null>(null);
+  const [isLogsModalOpen, setIsLogsModalOpen] = useState(false);
+  const [selectedCampaign, setSelectedCampaign] = useState<any | null>(null);
+
+  const fetchCampaignLogs = async (campaign: any) => {
+    setSelectedCampaign(campaign);
+    setSelectedCampaignLogs(null);
+    setIsLogsModalOpen(true);
+    try {
+      const res = await fetch(`${API}/campaigns/${campaign.id}/logs`);
+      if (res.ok) {
+        setSelectedCampaignLogs(await res.json());
+      } else {
+        setSelectedCampaignLogs([]);
+      }
+    } catch (err) {
+      console.error(err);
+      setSelectedCampaignLogs([]);
+    }
+  };
+
   const downloadExampleCsv = () => {
     const csvContent = "business name,phone number,industry\n" +
                        "Apex Web Agency,+919876543210,Web Design\n" +
@@ -361,6 +382,9 @@ export function Campaigns() {
                             <Play className="w-4 h-4" />
                           </button>
                         )}
+                        <button onClick={() => fetchCampaignLogs(c)} className="p-2 hover:bg-blue-500/10 rounded-lg text-gray-400 hover:text-blue-400 transition-colors" title="View Details">
+                          <FileText className="w-4 h-4" />
+                        </button>
                         <button onClick={() => handleDelete(c.id)} className="p-2 hover:bg-red-500/10 rounded-lg text-gray-400 hover:text-red-400 transition-colors" title="Delete">
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -374,7 +398,58 @@ export function Campaigns() {
         </div>
       </div>
 
-      {/* Modal */}
+      {/* Logs Modal */}
+      {isLogsModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="bg-[#1C1C1E] border border-white/10 rounded-2xl w-full max-w-4xl overflow-hidden shadow-2xl max-h-[80vh] flex flex-col">
+            <div className="p-6 border-b border-white/10 flex justify-between items-center bg-[#2C2C2E]/50">
+              <div>
+                <h3 className="text-xl font-medium text-white">Campaign Details: {selectedCampaign?.name}</h3>
+                <p className="text-sm text-gray-400">Total Dispatched: {selectedCampaign?.total_dispatched}</p>
+              </div>
+              <button onClick={() => setIsLogsModalOpen(false)} className="p-2 hover:bg-white/10 rounded-xl transition-colors">
+                <X className="w-5 h-5 text-gray-400" />
+              </button>
+            </div>
+            <div className="p-6 overflow-y-auto">
+              {!selectedCampaignLogs ? (
+                <div className="text-center text-gray-400 py-10">Loading logs...</div>
+              ) : selectedCampaignLogs.length === 0 ? (
+                <div className="text-center text-gray-400 py-10">No calls have been logged for this campaign yet.</div>
+              ) : (
+                <table className="w-full text-left">
+                  <thead className="text-sm font-medium text-gray-400 border-b border-white/10">
+                    <tr>
+                      <th className="pb-3 font-medium">Phone</th>
+                      <th className="pb-3 font-medium">Outcome</th>
+                      <th className="pb-3 font-medium">Duration</th>
+                      <th className="pb-3 font-medium">Time</th>
+                    </tr>
+                  </thead>
+                  <tbody className="text-sm divide-y divide-white/5">
+                    {selectedCampaignLogs.map((log, idx) => (
+                      <tr key={idx}>
+                        <td className="py-3 text-white">{log.phone_number}</td>
+                        <td className="py-3">
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${
+                            log.outcome === "completed" || log.outcome === "booked" ? "bg-green-500/10 text-green-400 border-green-500/20" : "bg-gray-500/10 text-gray-400 border-gray-500/20"
+                          }`}>
+                            {log.outcome}
+                          </span>
+                        </td>
+                        <td className="py-3 text-gray-400">{log.duration_seconds}s</td>
+                        <td className="py-3 text-gray-400">{new Date(log.timestamp).toLocaleString()}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-300">
           <div className="bg-[#1C1C1E] border border-white/10 rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl">

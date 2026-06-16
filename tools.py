@@ -131,12 +131,13 @@ class MCPClient:
 class AppointmentTools(llm.ToolContext):
     """All function tools available to the appointment-booking agent."""
 
-    def __init__(self, ctx: agents.JobContext, phone_number: Optional[str] = None, lead_name: Optional[str] = None, agent_profile_id: Optional[str] = None):
+    def __init__(self, ctx: agents.JobContext, phone_number: Optional[str] = None, lead_name: Optional[str] = None, agent_profile_id: Optional[str] = None, campaign_id: Optional[str] = None):
         self.ctx = ctx
         self.phone_number = phone_number
         self.lead_name = lead_name
         self.whatsapp_number: Optional[str] = None
         self.agent_profile_id = agent_profile_id
+        self.campaign_id = campaign_id
         self._call_start_time = time.time()
         self._sip_domain = os.getenv("VOBIZ_SIP_DOMAIN", "")
         self.recording_url: Optional[str] = None
@@ -467,7 +468,7 @@ class AppointmentTools(llm.ToolContext):
                 phone_number=self.phone_number or "unknown",
                 lead_name=self.lead_name, outcome=outcome, reason=reason,
                 duration_seconds=duration, recording_url=self.recording_url,
-                notes=notes
+                notes=notes, campaign_id=self.campaign_id
             )
             self._call_logged = True
         except Exception as exc:

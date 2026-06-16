@@ -232,6 +232,7 @@ async def entrypoint(ctx: agents.JobContext) -> None:
     model_override: Optional[str] = None
     tools_override: Optional[str] = None
     agent_profile_id: Optional[str] = None
+    campaign_id: Optional[str] = None
 
     if ctx.job.metadata:
         try:
@@ -245,6 +246,7 @@ async def entrypoint(ctx: agents.JobContext) -> None:
             model_override = data.get("model_override")
             tools_override = data.get("tools_override")
             agent_profile_id = data.get("agent_profile_id")
+            campaign_id = data.get("campaign_id")
         except (json.JSONDecodeError, AttributeError):
             await _log("warning", "Invalid JSON in job metadata")
 
@@ -288,7 +290,7 @@ async def entrypoint(ctx: agents.JobContext) -> None:
     if not phone_number:
         system_prompt += "\n\nNOTE: This is an INBOUND call. The user called YOU. Do not ask 'Am I speaking with...'. Instead, greet them warmly and ask how you can help."
     
-    tool_ctx = AppointmentTools(ctx, phone_number, lead_name, agent_profile_id=agent_profile_id)
+    tool_ctx = AppointmentTools(ctx, phone_number, lead_name, agent_profile_id=agent_profile_id, campaign_id=campaign_id)
 
     if voice_override:
         os.environ["GEMINI_TTS_VOICE"] = voice_override
@@ -452,7 +454,8 @@ async def entrypoint(ctx: agents.JobContext) -> None:
                     outcome="no_answer" if duration < 10 else "completed",
                     reason="User hung up",
                     duration_seconds=duration,
-                    recording_url=getattr(tool_ctx, "recording_url", None)
+                    recording_url=getattr(tool_ctx, "recording_url", None),
+                    campaign_id=campaign_id
                 )
             except Exception as e:
                 await _log("warning", f"Failed to log call on disconnect: {e}")

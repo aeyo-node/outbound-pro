@@ -869,9 +869,16 @@ async def api_set_default_profile(profile_id: str):
 # ── Campaigns ─────────────────────────────────────────────────────────────────
 
 async def _dispatch_one(lk, lk_api, contact: dict, room_name: str,
-                         prompt: Optional[str], profile: Optional[dict] = None) -> bool:
+                         prompt: Optional[str], profile: Optional[dict] = None,
+                         campaign_id: Optional[str] = None) -> bool:
     try:
-        saved_prompt = prompt or (await get_setting("system_prompt", "")) or None
+        # Prompt priority: 1. Campaign 2. Profile 3. Global Setting
+        saved_prompt = prompt
+        if not saved_prompt and profile and profile.get("system_prompt"):
+            saved_prompt = profile.get("system_prompt")
+        if not saved_prompt:
+            saved_prompt = (await get_setting("system_prompt", "")) or None
+            
         metadata: dict = {
             "phone_number":  contact["phone"],
             "lead_name":     contact.get("lead_name", "there"),
@@ -879,9 +886,11 @@ async def _dispatch_one(lk, lk_api, contact: dict, room_name: str,
             "service_type":  contact.get("service_type", "our service"),
             "system_prompt": saved_prompt,
         }
+        
+        if campaign_id:
+            metadata["campaign_id"] = campaign_id
+            
         if profile:
-            if not metadata["system_prompt"] and profile.get("system_prompt"):
-                metadata["system_prompt"] = profile["system_prompt"]
             if profile.get("voice"):         metadata["voice_override"]  = profile["voice"]
             if profile.get("model"):         metadata["model_override"]  = profile["model"]
             if profile.get("enabled_tools"): metadata["tools_override"]  = profile["enabled_tools"]
@@ -936,7 +945,7 @@ async def _run_campaign(campaign_id: str) -> None:
                 fail_count += 1
                 continue
             room_name = f"camp-{campaign_id[:8]}-{phone.replace('+','')}-{random.randint(100,999)}"
-            success = await _dispatch_one(lk, lk_api_module, contact, room_name, prompt, profile)
+            success = await _dispatch_one(lk, lk_api_module, contact, room_name, prompt, profile, campaign_id=campaign_id)
             if success:
                 ok_count += 1
             else:
@@ -951,7 +960,6 @@ async def _run_campaign(campaign_id: str) -> None:
 
     await update_campaign_run_stats(campaign_id, ok_count, fail_count)
     logger.info("Campaign %s done — %d dispatched, %d failed", campaign_id, ok_count, fail_count)
-
 
 async def _reschedule_all_campaigns() -> None:
     if not _scheduler:
@@ -1046,6 +1054,15 @@ async def api_run_campaign_now(campaign_id: str):
         raise HTTPException(404, "Campaign not found")
     asyncio.create_task(_run_campaign(campaign_id))
     return {"status": "dispatching", "campaign_id": campaign_id}
+
+@app.get("/api/campaigns/{campaign_id}/logs")
+async def api_get_campaign_logs(campaign_id: str):
+    try:
+        from db import get_campaign_call_logs
+        logs = await get_campaign_call_logs(campaign_id)
+        return logs
+    except Exception as e:
+        raise HTTPException(500, f"Error getting logs: {e}")
 
 
 @app.patch("/api/campaigns/{campaign_id}/status")
