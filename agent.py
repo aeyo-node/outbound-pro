@@ -407,8 +407,8 @@ async def entrypoint(ctx: agents.JobContext) -> None:
 
     # ── Greeting ─────────────────────────────────────────────────────────────
     greeting = (
-        f"The call just connected. Speak strictly in Malayalam. Start the call by greeting the lead and using the greeting defined in your system prompt for {service_type}."
-        if phone_number else f"Speak strictly in Malayalam. Greet the caller warmly and help them with {service_type}."
+        f"The call just connected. Speak strictly in Malayalam. Start the call by greeting the lead and using the greeting defined in your system prompt for {industry}."
+        if phone_number else f"Speak strictly in Malayalam. Greet the caller warmly and help them with {industry}."
     )
     try:
         if hasattr(session, "chat_ctx"):
