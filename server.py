@@ -970,14 +970,14 @@ def _schedule_campaign(campaign_id: str, schedule_type: str, schedule_time: str)
         _scheduler.remove_job(job_id)
     from apscheduler.triggers.date import DateTrigger
     import datetime
-    import pytz
+    from zoneinfo import ZoneInfo
     
     try:
         hour, minute = map(int, schedule_time.split(":"))
     except (ValueError, AttributeError):
         hour, minute = 9, 0
 
-    tz = pytz.timezone("Asia/Kolkata")
+    tz = ZoneInfo("Asia/Kolkata")
     
     if schedule_type == "daily":
         trigger = CronTrigger(hour=hour, minute=minute, timezone=tz)

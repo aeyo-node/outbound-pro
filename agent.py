@@ -143,10 +143,10 @@ def _build_session(tools: list, system_prompt: str, voice_override: Optional[str
     gemini_model = "models/gemini-3.1-flash-live-preview"
     gemini_voice = voice_override or os.getenv("GEMINI_TTS_VOICE", "Aoede")
     
-    # FORCED PIPELINE: Google explicitly denied WebSocket access to your project
-    use_realtime = False
+    # Use Gemini Live Realtime — single model handles STT+LLM+TTS natively
+    use_realtime = True
 
-    RealtimeClass = _google_realtime or (_google_beta_realtime if use_realtime else None)
+    RealtimeClass = _google_realtime or _google_beta_realtime
 
     if use_realtime and RealtimeClass is not None:
         logger.info("SESSION MODE: Gemini Live realtime (%s, voice=%s)", gemini_model, gemini_voice)
