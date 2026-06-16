@@ -522,6 +522,12 @@ async def create_agent_profile(
 
 async def update_agent_profile(profile_id: str, updates: dict) -> bool:
     db = await _adb()
+    if "is_default" in updates:
+        val = updates["is_default"]
+        default_val = 1 if val in (True, 1, "true", "1") else 0
+        updates["is_default"] = default_val
+        if default_val == 1:
+            await db.table("agent_profiles").update({"is_default": 0}).neq("id", "placeholder").execute()
     result = await db.table("agent_profiles").update(updates).eq("id", profile_id).execute()
     return len(result.data or []) > 0
 

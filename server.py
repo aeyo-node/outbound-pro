@@ -886,6 +886,9 @@ async def _dispatch_one(lk, lk_api, contact: dict, room_name: str,
             if profile.get("model"):         metadata["model_override"]  = profile["model"]
             if profile.get("enabled_tools"): metadata["tools_override"]  = profile["enabled_tools"]
             if profile.get("id"):            metadata["agent_profile_id"] = profile["id"]
+        await lk.room.create_room(
+            lk_api.CreateRoomRequest(name=room_name, empty_timeout=300, max_participants=5)
+        )
         await lk.agent_dispatch.create_dispatch(
             lk_api.CreateAgentDispatchRequest(
                 agent_name="outbound-caller",
