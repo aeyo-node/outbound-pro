@@ -877,7 +877,7 @@ class AppointmentTools(llm.ToolContext):
         # Load and cache KB content
         if self._kb_cache is None:
             self._kb_cache = ""
-            doc_dir = os.path.join("data", "agent_docs", self.agent_profile_id)
+            doc_dir = os.path.join("/data" if os.path.exists("/data") else "data", "agent_docs", self.agent_profile_id)
             
             if os.path.exists(doc_dir):
                 # Read all text files (including extracted PDF text)

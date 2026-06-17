@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Users, Search, Mail, Phone, CalendarDays, Plus, X, Loader2, Save, PhoneOutgoing, Info, Clock, AlignLeft } from "lucide-react";
+import { Users, Search, Mail, Phone, CalendarDays, Plus, X, Loader2, Save, PhoneOutgoing, Info, Clock, AlignLeft, Trash2 } from "lucide-react";
 
 const API = "/api";
 
@@ -10,6 +10,8 @@ export function CRMLeads() {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
   
   // Details Modal State
   const [selectedLead, setSelectedLead] = useState<any>(null);
@@ -78,6 +80,7 @@ export function CRMLeads() {
     } catch (err) {
       console.error(err);
     } finally {
+      setSelectedLead(prev => ({...prev, ...lead})); // Merge in case lead was updated
       setLoadingLogs(false);
     }
   };
@@ -94,11 +97,70 @@ export function CRMLeads() {
     }
   };
 
+  const handleDeleteIndividual = async (id: string) => {
+    if (!confirm("Are you sure you want to permanently delete this CRM lead?")) return;
+    try {
+      const res = await fetch(`${API}/contacts/${id}`, { method: "DELETE" });
+      if (res.ok) {
+        setSelectedIds(prev => prev.filter(x => x !== id));
+        fetchContacts();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleDeleteBulk = async () => {
+    if (selectedIds.length === 0) return;
+    if (!confirm(`Are you sure you want to permanently delete the ${selectedIds.length} selected CRM leads?`)) return;
+    try {
+      const res = await fetch(`${API}/contacts/delete-bulk`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: selectedIds })
+      });
+      if (res.ok) {
+        setSelectedIds([]);
+        fetchContacts();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleToggleSelect = (id: string) => {
+    setSelectedIds(prev =>
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    );
+  };
+
+  const handleToggleAll = (filtered: any[]) => {
+    const filteredIds = filtered.map(c => c.id).filter(Boolean);
+    const allSelected = filteredIds.every(id => selectedIds.includes(id));
+    if (allSelected) {
+      setSelectedIds(prev => prev.filter(id => !filteredIds.includes(id)));
+    } else {
+      setSelectedIds(prev => Array.from(new Set([...prev, ...filteredIds])));
+    }
+  };
+
   const formatTimestamp = (ts: string) => {
     if (!ts) return "—";
     const d = new Date(ts);
     return d.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
   };
+
+  const filteredContacts = contacts.filter(c => {
+    const q = searchQuery.toLowerCase();
+    return (
+      (c.name || "").toLowerCase().includes(q) ||
+      (c.phone || "").toLowerCase().includes(q) ||
+      (c.email || "").toLowerCase().includes(q) ||
+      (c.business_name || "").toLowerCase().includes(q) ||
+      (c.industry || "").toLowerCase().includes(q) ||
+      (c.place || "").toLowerCase().includes(q)
+    );
+  });
 
   return (
     <div className="animate-in fade-in duration-500">
@@ -126,21 +188,41 @@ export function CRMLeads() {
       </div>
 
       <div className="bg-[#1C1C1E] border border-white/10 rounded-2xl overflow-hidden shadow-xl">
-        <div className="p-4 border-b border-white/10 flex items-center justify-between bg-white/[0.02]">
+        <div className="p-4 border-b border-white/10 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 bg-white/[0.02]">
           <div className="flex items-center gap-2 bg-[#0A0A0A] border border-white/10 rounded-lg px-3 py-2 w-full max-w-sm">
             <Search className="w-4 h-4 text-gray-500" />
             <input 
               type="text" 
-              placeholder="Search leads by name or phone..." 
+              placeholder="Search leads by name, phone, place..." 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
               className="bg-transparent border-none outline-none text-sm text-white placeholder-gray-500 w-full"
             />
           </div>
+
+          {selectedIds.length > 0 && (
+            <button
+              onClick={handleDeleteBulk}
+              className="flex items-center justify-center gap-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 px-4 py-2 rounded-xl text-sm font-semibold transition-all animate-in zoom-in duration-200"
+            >
+              <Trash2 className="w-4 h-4" />
+              Delete Selected ({selectedIds.length})
+            </button>
+          )}
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-white/5 bg-white/[0.02]">
+                <th className="px-6 py-4 w-12 text-center">
+                  <input
+                    type="checkbox"
+                    checked={filteredContacts.length > 0 && filteredContacts.every(c => selectedIds.includes(c.id))}
+                    onChange={() => handleToggleAll(filteredContacts)}
+                    className="rounded border-white/20 bg-white/5 text-[#FFD166] focus:ring-0 focus:ring-offset-0 cursor-pointer w-4 h-4"
+                  />
+                </th>
                 <th className="px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Name</th>
                 <th className="px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Phone</th>
                 <th className="px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Email</th>
@@ -149,21 +231,22 @@ export function CRMLeads() {
                 <th className="px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Place</th>
                 <th className="px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Lead Source</th>
                 <th className="px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Added On</th>
+                <th className="px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
               {loading ? (
                 <tr>
-                  <td colSpan={9} className="px-6 py-8 text-center text-gray-500 text-sm">
+                  <td colSpan={10} className="px-6 py-8 text-center text-gray-500 text-sm">
                     <div className="flex justify-center items-center gap-2">
                       <div className="w-4 h-4 border-2 border-white/10 border-t-[#FFD166] rounded-full animate-spin" />
                       Loading leads...
                     </div>
                   </td>
                 </tr>
-              ) : contacts.length === 0 ? (
+              ) : filteredContacts.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="px-6 py-12 text-center text-gray-500">
+                  <td colSpan={10} className="px-6 py-12 text-center text-gray-500">
                     <div className="flex flex-col items-center justify-center">
                       <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center mb-3">
                         <Users className="w-5 h-5 text-gray-400" />
@@ -172,76 +255,94 @@ export function CRMLeads() {
                     </div>
                   </td>
                 </tr>
-              ) : contacts.map((c, i) => (
-                <tr key={i} className="hover:bg-white/[0.02] transition-colors">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 font-medium text-xs">
-                        {c.name ? c.name.charAt(0).toUpperCase() : "?"}
+              ) : filteredContacts.map((c, i) => {
+                const isSelected = selectedIds.includes(c.id);
+                return (
+                  <tr key={c.id || i} className={`hover:bg-white/[0.02] transition-colors ${isSelected ? "bg-[#FFD166]/5" : ""}`}>
+                    <td className="px-6 py-4 text-center">
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => handleToggleSelect(c.id)}
+                        className="rounded border-white/20 bg-white/5 text-[#FFD166] focus:ring-0 focus:ring-offset-0 cursor-pointer w-4 h-4"
+                      />
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 font-medium text-xs">
+                          {c.name ? c.name.charAt(0).toUpperCase() : "?"}
+                        </div>
+                        <span className="text-sm font-medium text-white">{c.name || "Unknown"}</span>
                       </div>
-                      <span className="text-sm font-medium text-white">{c.name || "Unknown"}</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-2 text-sm text-gray-300">
-                      <Phone className="w-3 h-3 text-gray-500" />
-                      {c.phone}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                     <div className="flex items-center gap-2 text-sm text-gray-300">
-                      <Mail className="w-3 h-3 text-gray-500" />
-                      {c.email || "—"}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-300">
-                    {c.business_name || "—"}
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-300">
-                    {c.industry || "—"}
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-300">
-                    {c.place || "—"}
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border bg-white/5 text-gray-300 border-white/10">
-                      Voice Agent
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-2 text-xs text-gray-400">
-                      <CalendarDays className="w-3 h-3" />
-                      {formatTimestamp(c.created_at)}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <div className="flex justify-end gap-2">
-                      <button 
-                        onClick={() => openDetails(c)}
-                        className="p-2 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white rounded-lg transition-colors flex items-center gap-1.5"
-                        title="View Details & Notes"
-                      >
-                        <Info className="w-4 h-4" />
-                        <span className="text-xs font-medium">Details</span>
-                      </button>
-                      <button 
-                        onClick={async () => {
-                          const res = await fetch(`${API}/call`, {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ phone: c.phone, lead_name: c.name })
-                          });
-                          if (res.ok) alert("Call initiated!");
-                        }}
-                        className="p-2 bg-[#FFD166]/10 hover:bg-[#FFD166]/20 text-[#FFD166] rounded-lg transition-colors"
-                        title="Call Lead"
-                      >
-                        <PhoneOutgoing className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2 text-sm text-gray-300">
+                        <Phone className="w-3 h-3 text-gray-500" />
+                        {c.phone}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                       <div className="flex items-center gap-2 text-sm text-gray-300">
+                        <Mail className="w-3 h-3 text-gray-500" />
+                        {c.email || "—"}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-300">
+                      {c.business_name || "—"}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-300">
+                      {c.industry || "—"}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-300">
+                      {c.place || "—"}
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border bg-white/5 text-gray-300 border-white/10">
+                        Voice Agent
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2 text-xs text-gray-400">
+                        <CalendarDays className="w-3 h-3" />
+                        {formatTimestamp(c.created_at)}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <div className="flex justify-end gap-2">
+                        <button 
+                          onClick={() => openDetails(c)}
+                          className="p-1.5 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white rounded-lg transition-colors flex items-center gap-1"
+                          title="View Details"
+                        >
+                          <Info className="w-4 h-4" />
+                          <span className="text-xs font-medium">Details</span>
+                        </button>
+                        <button 
+                          onClick={async () => {
+                            const res = await fetch(`${API}/call`, {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ phone: c.phone, lead_name: c.name })
+                            });
+                            if (res.ok) alert("Call initiated!");
+                          }}
+                          className="p-1.5 bg-[#FFD166]/10 hover:bg-[#FFD166]/20 text-[#FFD166] rounded-lg transition-colors"
+                          title="Call Lead"
+                        >
+                          <PhoneOutgoing className="w-4 h-4" />
+                        </button>
+                        <button 
+                          onClick={() => handleDeleteIndividual(c.id)}
+                          className="p-1.5 bg-white/5 hover:bg-red-500/20 rounded-lg text-gray-400 hover:text-red-400 transition-colors"
+                          title="Delete Lead"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

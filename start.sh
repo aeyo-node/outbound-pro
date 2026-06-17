@@ -8,6 +8,9 @@ if [ -f ".env" ]; then
     export $(cat .env | grep -v '^#' | grep -v '^$' | xargs)
 fi
 
+# Ensure knowledge base directory exists on the persisted volume
+mkdir -p /data/agent_docs 2>/dev/null || mkdir -p data/agent_docs
+
 echo "📋 Configuration:"
 echo "   LiveKit:   ${LIVEKIT_URL}"
 echo "   Supabase:  ${SUPABASE_URL}"

@@ -60,6 +60,50 @@ export function Campaigns() {
   const [selectedCampaignLogs, setSelectedCampaignLogs] = useState<any[] | null>(null);
   const [isLogsModalOpen, setIsLogsModalOpen] = useState(false);
   const [selectedCampaign, setSelectedCampaign] = useState<any | null>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const handleDeleteBulk = async () => {
+    if (selectedIds.length === 0) return;
+    if (!confirm(`Are you sure you want to permanently delete the ${selectedIds.length} selected campaigns?`)) return;
+    try {
+      const res = await fetch(`${API}/campaigns/delete-bulk`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: selectedIds })
+      });
+      if (res.ok) {
+        setSelectedIds([]);
+        fetchData();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleToggleSelect = (id: string) => {
+    setSelectedIds(prev =>
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    );
+  };
+
+  const handleToggleAll = (filtered: any[]) => {
+    const filteredIds = filtered.map(c => c.id).filter(Boolean);
+    const allSelected = filteredIds.every(id => selectedIds.includes(id));
+    if (allSelected) {
+      setSelectedIds(prev => prev.filter(id => !filteredIds.includes(id)));
+    } else {
+      setSelectedIds(prev => Array.from(new Set([...prev, ...filteredIds])));
+    }
+  };
+
+  const filteredCampaigns = campaigns.filter(c => {
+    const q = searchQuery.toLowerCase();
+    return (
+      (c.name || "").toLowerCase().includes(q) ||
+      (c.status || "").toLowerCase().includes(q)
+    );
+  });
 
   const fetchCampaignLogs = async (campaign: any) => {
     setSelectedCampaign(campaign);
@@ -315,21 +359,41 @@ export function Campaigns() {
       </div>
 
       <div className="bg-[#1C1C1E] border border-white/10 rounded-2xl overflow-hidden shadow-xl">
-        <div className="p-4 border-b border-white/10 flex items-center justify-between bg-white/[0.02]">
+        <div className="p-4 border-b border-white/10 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 bg-white/[0.02]">
           <div className="flex items-center gap-2 bg-[#0A0A0A] border border-white/10 rounded-lg px-3 py-2 w-full max-w-sm">
             <Search className="w-4 h-4 text-gray-500" />
             <input 
               type="text" 
               placeholder="Search campaigns..." 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
               className="bg-transparent border-none outline-none text-sm text-white placeholder-gray-500 w-full"
             />
           </div>
+
+          {selectedIds.length > 0 && (
+            <button
+              onClick={handleDeleteBulk}
+              className="flex items-center justify-center gap-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 px-4 py-2 rounded-xl text-sm font-semibold transition-all animate-in zoom-in duration-200"
+            >
+              <Trash2 className="w-4 h-4" />
+              Delete Selected ({selectedIds.length})
+            </button>
+          )}
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-white/5 bg-white/[0.02]">
+                <th className="px-6 py-4 w-12 text-center">
+                  <input
+                    type="checkbox"
+                    checked={filteredCampaigns.length > 0 && filteredCampaigns.every(c => selectedIds.includes(c.id))}
+                    onChange={() => handleToggleAll(filteredCampaigns)}
+                    className="rounded border-white/20 bg-white/5 text-[#FFD166] focus:ring-0 focus:ring-offset-0 cursor-pointer w-4 h-4"
+                  />
+                </th>
                 <th className="px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Name</th>
                 <th className="px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Status</th>
                 <th className="px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Progress</th>
@@ -340,25 +404,25 @@ export function Campaigns() {
             <tbody className="divide-y divide-white/5">
               {loading ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-8 text-center text-gray-500 text-sm">
+                  <td colSpan={6} className="px-6 py-8 text-center text-gray-500 text-sm">
                     <div className="flex justify-center items-center gap-2">
                       <div className="w-4 h-4 border-2 border-white/10 border-t-[#FFD166] rounded-full animate-spin" />
                       Loading campaigns...
                     </div>
                   </td>
                 </tr>
-              ) : campaigns.length === 0 ? (
+              ) : filteredCampaigns.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-12 text-center text-gray-500">
+                  <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
                     <div className="flex flex-col items-center justify-center">
                       <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center mb-3">
                         <Megaphone className="w-5 h-5 text-gray-400" />
                       </div>
-                      <p className="text-sm">No campaigns found. Create one to get started.</p>
+                      <p className="text-sm">No campaigns found.</p>
                     </div>
                   </td>
                 </tr>
-              ) : campaigns.map((c, i) => {
+              ) : filteredCampaigns.map((c, i) => {
                 let total = c.total_contacts || 0;
                 try {
                    if (total === 0 && c.contacts_json) {
@@ -368,9 +432,18 @@ export function Campaigns() {
                 
                 const completed = c.total_dispatched || 0;
                 const progress = total > 0 ? (completed / total) * 100 : 0;
+                const isSelected = selectedIds.includes(c.id);
                 
                 return (
-                  <tr key={i} className="hover:bg-white/[0.02] transition-colors">
+                  <tr key={c.id || i} className={`hover:bg-white/[0.02] transition-colors ${isSelected ? "bg-[#FFD166]/5" : ""}`}>
+                    <td className="px-6 py-4 text-center">
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => handleToggleSelect(c.id)}
+                        className="rounded border-white/20 bg-white/5 text-[#FFD166] focus:ring-0 focus:ring-offset-0 cursor-pointer w-4 h-4"
+                      />
+                    </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-full bg-[#FFD166]/10 flex items-center justify-center border border-[#FFD166]/20">

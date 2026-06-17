@@ -119,7 +119,16 @@ async def save_settings(data: dict) -> None:
         rows.append({"key": k, "value": str(val_str), "updated_at": updated_at})
     
     if rows:
-        await db.table("settings").upsert(rows, on_conflict="key").execute()
+        try:
+            for row in rows:
+                k = row["key"]
+                existing = await db.table("settings").select("key").eq("key", k).execute()
+                if existing.data:
+                    await db.table("settings").update({"value": row["value"], "updated_at": row["updated_at"]}).eq("key", k).execute()
+                else:
+                    await db.table("settings").insert(row).execute()
+        except Exception as e:
+            logger.error(f"Failed to save settings: {e}")
 
 
 async def get_setting(key: str, default: str = "") -> str:
@@ -146,10 +155,14 @@ async def get_setting(key: str, default: str = "") -> str:
 
 async def set_setting(key: str, value: str) -> None:
     db = await _adb()
-    await db.table("settings").upsert(
-        {"key": key, "value": value, "updated_at": datetime.now().isoformat()},
-        on_conflict="key",
-    ).execute()
+    try:
+        existing = await db.table("settings").select("key").eq("key", key).execute()
+        if existing.data:
+            await db.table("settings").update({"value": value, "updated_at": datetime.now().isoformat()}).eq("key", key).execute()
+        else:
+            await db.table("settings").insert({"key": key, "value": value, "updated_at": datetime.now().isoformat()}).execute()
+    except Exception as e:
+        logger.error(f"Failed to set setting {key}: {e}")
 
 
 async def get_enabled_tools() -> list:
@@ -321,10 +334,10 @@ async def log_call(
         except Exception as e2:
             logger.error(f"Failed to insert call log even after stripping columns: {e2}")
     
-    # Auto-add to CRM contacts
+    # Auto-add/update CRM contacts
     display_name = lead_name if lead_name and lead_name.lower() not in ["there", "unknown", ""] else f"Lead {phone_number}"
     try:
-        existing = await db.table("contacts").select("id").eq("phone", phone_number).execute()
+        existing = await db.table("contacts").select("id, name, business_name, industry, place").eq("phone", phone_number).execute()
         if not existing.data:
             contact_data = {
                 "id": str(uuid.uuid4()),
@@ -337,8 +350,31 @@ async def log_call(
             if place: contact_data["place"] = place
             await db.table("contacts").insert(contact_data).execute()
             logger.info(f"Auto-added contact to CRM: {display_name} ({phone_number})")
+        else:
+            # Update existing contact if details are empty or default name
+            contact_id = existing.data[0]["id"]
+            existing_name = existing.data[0].get("name", "")
+            ex_biz = existing.data[0].get("business_name", "")
+            ex_ind = existing.data[0].get("industry", "")
+            ex_place = existing.data[0].get("place", "")
+            
+            update_data = {}
+            if business_name and business_name != "our company" and (not ex_biz or ex_biz == "our company"):
+                update_data["business_name"] = business_name
+            if industry and industry != "our service" and (not ex_ind or ex_ind == "our service"):
+                update_data["industry"] = industry
+            if place and place != "your area" and (not ex_place or ex_place == "your area"):
+                update_data["place"] = place
+            
+            # If the name is default like "Lead +91..." but we have a real lead_name now, update it
+            if lead_name and lead_name.lower() not in ["there", "unknown", ""] and (not existing_name or existing_name.startswith("Lead ") or existing_name.startswith("+") or existing_name == "there"):
+                update_data["name"] = lead_name
+                
+            if update_data:
+                await db.table("contacts").update(update_data).eq("id", contact_id).execute()
+                logger.info(f"Updated CRM contact {contact_id} with new details: {update_data}")
     except Exception as e:
-        logger.warning(f"Failed to auto-add contact to CRM: {e}")
+        logger.warning(f"Failed to auto-add/update contact in CRM: {e}")
 
 
 async def get_campaign_call_logs(campaign_id: str) -> list:
@@ -842,3 +878,56 @@ async def get_incoming_calls(limit: int = 50) -> list:
     result = await db.table("incoming_calls").select("*").order("timestamp", desc=True).limit(limit).execute()
     return result.data or []
 
+async def delete_contacts(contact_ids: list) -> bool:
+    try:
+        db = await _adb()
+        await db.table("contacts").delete().in_("id", contact_ids).execute()
+        return True
+    except Exception as e:
+        logger.error(f"Failed to delete contacts: {e}")
+        return False
+
+async def delete_call_logs(call_ids: list) -> bool:
+    try:
+        db = await _adb()
+        await db.table("call_logs").delete().in_("id", call_ids).execute()
+        return True
+    except Exception as e:
+        logger.error(f"Failed to delete call logs: {e}")
+        return False
+
+async def delete_appointments(appointment_ids: list) -> bool:
+    try:
+        db = await _adb()
+        await db.table("appointments").delete().in_("id", appointment_ids).execute()
+        return True
+    except Exception as e:
+        logger.error(f"Failed to delete appointments: {e}")
+        return False
+
+async def delete_campaigns(campaign_ids: list) -> bool:
+    try:
+        db = await _adb()
+        await db.table("campaigns").delete().in_("id", campaign_ids).execute()
+        return True
+    except Exception as e:
+        logger.error(f"Failed to delete campaigns: {e}")
+        return False
+
+async def delete_agent_profiles(profile_ids: list) -> bool:
+    try:
+        db = await _adb()
+        result = await db.table("agent_profiles").delete().in_("id", profile_ids).execute()
+        return len(result.data or []) > 0
+    except Exception as e:
+        logger.error(f"Failed to delete agent profiles: {e}")
+        return False
+
+async def delete_incoming_calls(call_ids: list) -> bool:
+    try:
+        db = await _adb()
+        result = await db.table("incoming_calls").delete().in_("id", call_ids).execute()
+        return len(result.data or []) > 0
+    except Exception as e:
+        logger.error(f"Failed to delete incoming calls: {e}")
+        return False

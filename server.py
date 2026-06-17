@@ -38,7 +38,8 @@ from db import (
 from prompts import DEFAULT_SYSTEM_PROMPT
 
 load_dotenv(".env", override=True)
-log_path = "/data/app.log" if os.path.exists("/data") else "app.log"
+DATA_DIR = "/data" if os.path.exists("/data") else "data"
+log_path = os.path.join(DATA_DIR, "app.log")
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
@@ -337,6 +338,21 @@ async def api_update_notes(call_id: str, req: NotesRequest):
         raise HTTPException(404, "Call not found")
     return {"status": "updated"}
 
+@app.delete("/api/calls/{call_id}")
+async def api_delete_call(call_id: str):
+    from db import delete_call_logs
+    ok = await delete_call_logs([call_id])
+    return {"status": "deleted" if ok else "failed"}
+
+@app.post("/api/calls/delete-bulk")
+async def api_delete_calls_bulk(req: dict):
+    from db import delete_call_logs
+    ids = req.get("ids", [])
+    if not ids:
+        return {"status": "success", "count": 0}
+    ok = await delete_call_logs(ids)
+    return {"status": "deleted" if ok else "failed", "count": len(ids)}
+
 @app.get("/api/transactions")
 async def api_get_transactions(limit: int = 50):
     return await get_all_transactions(limit=limit)
@@ -344,6 +360,15 @@ async def api_get_transactions(limit: int = 50):
 @app.get("/api/incoming_calls")
 async def api_get_incoming_calls(limit: int = 50):
     return await get_incoming_calls(limit=limit)
+
+@app.post("/api/incoming_calls/delete-bulk")
+async def api_delete_incoming_calls_bulk(req: dict):
+    from db import delete_incoming_calls
+    ids = req.get("ids", [])
+    if not ids:
+        return {"status": "success", "count": 0}
+    ok = await delete_incoming_calls(ids)
+    return {"status": "deleted" if ok else "failed", "count": len(ids)}
 
 @app.post("/api/webhook")
 @app.post("/api/livekit/webhook")
@@ -424,17 +449,30 @@ async def api_get_appointments(date: Optional[str] = None):
             "status": status,
             "service": appt.get("service") or "General Meeting",
             "whatsapp_number": appt.get("whatsapp_number") or "",
+            "business_name": appt.get("business_name") or "",
+            "industry": appt.get("industry") or "",
+            "place": appt.get("place") or "",
             "created_at": appt.get("created_at") or datetime.now().isoformat()
         })
     return mapped
 
 
 @app.delete("/api/appointments/{appointment_id}")
-async def api_cancel_appointment(appointment_id: str):
-    ok = await cancel_appointment(appointment_id)
+async def api_delete_appointment(appointment_id: str):
+    from db import delete_appointments
+    ok = await delete_appointments([appointment_id])
     if not ok:
-        raise HTTPException(404, "Appointment not found or already cancelled")
-    return {"status": "cancelled"}
+        raise HTTPException(404, "Appointment not found")
+    return {"status": "deleted"}
+
+@app.post("/api/appointments/delete-bulk")
+async def api_delete_appointments_bulk(req: dict):
+    from db import delete_appointments
+    ids = req.get("ids", [])
+    if not ids:
+        return {"status": "success", "count": 0}
+    ok = await delete_appointments(ids)
+    return {"status": "deleted" if ok else "failed", "count": len(ids)}
 
 @app.post("/api/appointments/{appointment_id}/cancel")
 async def api_post_cancel_appointment(appointment_id: str):
@@ -531,6 +569,15 @@ async def api_delete_profile(profile_id: str):
     await delete_agent_profile(profile_id)
     return {"status": "deleted"}
 
+@app.post("/api/profiles/delete-bulk")
+async def api_delete_profiles_bulk(req: dict):
+    from db import delete_agent_profiles
+    ids = req.get("ids", [])
+    if not ids:
+        return {"status": "success", "count": 0}
+    ok = await delete_agent_profiles(ids)
+    return {"status": "deleted" if ok else "failed", "count": len(ids)}
+
 
 @app.post("/api/profiles/{profile_id}/default")
 async def api_set_default_profile(profile_id: str):
@@ -544,7 +591,7 @@ async def api_set_default_profile(profile_id: str):
 async def api_get_profile_documents(profile_id: str):
     import os
     import json
-    doc_dir = os.path.join("data", "agent_docs", profile_id)
+    doc_dir = os.path.join(DATA_DIR, "agent_docs", profile_id)
     if not os.path.exists(doc_dir):
         return {"documents": [], "links": []}
     
@@ -578,7 +625,7 @@ async def api_get_profile_documents(profile_id: str):
 async def api_upload_profile_document(profile_id: str, file: UploadFile = File(...)):
     import os
     import shutil
-    doc_dir = os.path.join("data", "agent_docs", profile_id)
+    doc_dir = os.path.join(DATA_DIR, "agent_docs", profile_id)
     os.makedirs(doc_dir, exist_ok=True)
     
     filepath = os.path.join(doc_dir, file.filename)
@@ -612,7 +659,7 @@ async def api_add_profile_link(profile_id: str, req: dict):
     if not url:
         raise HTTPException(400, "URL is required")
         
-    doc_dir = os.path.join("data", "agent_docs", profile_id)
+    doc_dir = os.path.join(DATA_DIR, "agent_docs", profile_id)
     os.makedirs(doc_dir, exist_ok=True)
     
     links_file = os.path.join(doc_dir, "links.json")
@@ -635,7 +682,7 @@ async def api_add_profile_link(profile_id: str, req: dict):
 @app.delete("/api/profiles/{profile_id}/documents/{filename}")
 async def api_delete_profile_document(profile_id: str, filename: str):
     import os
-    doc_dir = os.path.join("data", "agent_docs", profile_id)
+    doc_dir = os.path.join(DATA_DIR, "agent_docs", profile_id)
     filepath = os.path.join(doc_dir, filename)
     if os.path.exists(filepath):
         os.remove(filepath)
@@ -651,7 +698,7 @@ async def api_delete_profile_document(profile_id: str, filename: str):
 async def api_delete_profile_link(profile_id: str, url: str):
     import os
     import json
-    doc_dir = os.path.join("data", "agent_docs", profile_id)
+    doc_dir = os.path.join(DATA_DIR, "agent_docs", profile_id)
     links_file = os.path.join(doc_dir, "links.json")
     if os.path.exists(links_file):
         try:
@@ -685,6 +732,23 @@ async def api_create_contact(req: dict):
     )
     return {"status": "created", "id": contact_id}
 
+@app.delete("/api/contacts/{contact_id}")
+async def api_delete_contact(contact_id: str):
+    from db import delete_contacts
+    ok = await delete_contacts([contact_id])
+    if not ok:
+        raise HTTPException(404, "Contact not found")
+    return {"status": "deleted"}
+
+@app.post("/api/contacts/delete-bulk")
+async def api_delete_contacts_bulk(req: dict):
+    from db import delete_contacts
+    ids = req.get("ids", [])
+    if not ids:
+        return {"status": "success", "count": 0}
+    ok = await delete_contacts(ids)
+    return {"status": "deleted" if ok else "failed", "count": len(ids)}
+
 
 # ── Campaigns ─────────────────────────────────────────────────────────────────
 
@@ -716,6 +780,15 @@ async def api_create_campaign(req: dict):
 async def api_delete_campaign(id: str):
     success = await delete_campaign(id)
     return {"status": "deleted" if success else "failed"}
+
+@app.post("/api/campaigns/delete-bulk")
+async def api_delete_campaigns_bulk(req: dict):
+    from db import delete_campaigns
+    ids = req.get("ids", [])
+    if not ids:
+        return {"status": "success", "count": 0}
+    ok = await delete_campaigns(ids)
+    return {"status": "deleted" if ok else "failed", "count": len(ids)}
 
 
 # ── EV Operations ─────────────────────────────────────────────────────────────

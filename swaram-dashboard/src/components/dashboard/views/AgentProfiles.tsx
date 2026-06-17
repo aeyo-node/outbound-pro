@@ -12,6 +12,8 @@ export function AgentProfiles() {
   const [editingProfile, setEditingProfile] = useState<any>(null);
   const [saving, setSaving] = useState(false);
   
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
   // Document knowledge base states
   const [docsList, setDocsList] = useState<{ documents: any[]; links: any[] }>({ documents: [], links: [] });
   const [fetchingDocs, setFetchingDocs] = useState(false);
@@ -224,6 +226,49 @@ export function AgentProfiles() {
     }
   };
 
+  const handleDeleteBulk = async () => {
+    if (selectedIds.length === 0) return;
+    if (!confirm(`Are you sure you want to permanently delete the ${selectedIds.length} selected agent profiles?`)) return;
+    try {
+      const res = await fetch(`${API}/profiles/delete-bulk`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: selectedIds })
+      });
+      if (res.ok) {
+        setSelectedIds([]);
+        fetchProfiles();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleToggleSelect = (id: string) => {
+    setSelectedIds(prev =>
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    );
+  };
+
+  const handleToggleAll = (filtered: any[]) => {
+    const filteredIds = filtered.map(p => p.id).filter(Boolean);
+    const allSelected = filteredIds.every(id => selectedIds.includes(id));
+    if (allSelected) {
+      setSelectedIds(prev => prev.filter(id => !filteredIds.includes(id)));
+    } else {
+      setSelectedIds(prev => Array.from(new Set([...prev, ...filteredIds])));
+    }
+  };
+
+  const filteredProfiles = profiles.filter(p => {
+    const q = searchQuery.toLowerCase();
+    return (
+      (p.name || "").toLowerCase().includes(q) ||
+      (p.place || "").toLowerCase().includes(q) ||
+      (p.voice || "").toLowerCase().includes(q)
+    );
+  });
+
   return (
     <div className="animate-in fade-in duration-500">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
@@ -249,19 +294,57 @@ export function AgentProfiles() {
         </div>
       </div>
 
+      <div className="bg-[#1C1C1E] border border-white/10 rounded-2xl overflow-hidden shadow-xl mb-6">
+        <div className="p-4 border-b border-white/10 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 bg-white/[0.02]">
+          <div className="flex items-center gap-2 bg-[#0A0A0A] border border-white/10 rounded-lg px-3 py-2 w-full max-w-sm">
+            <Search className="w-4 h-4 text-gray-500" />
+            <input 
+              type="text" 
+              placeholder="Search profiles..." 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="bg-transparent border-none outline-none text-sm text-white placeholder-gray-500 w-full"
+            />
+          </div>
+
+          <div className="flex items-center gap-4">
+            <label className="flex items-center gap-2 text-sm text-gray-400 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={filteredProfiles.length > 0 && filteredProfiles.every(p => selectedIds.includes(p.id))}
+                onChange={() => handleToggleAll(filteredProfiles)}
+                className="rounded border-white/20 bg-white/5 text-[#FFD166] focus:ring-0 cursor-pointer w-4 h-4"
+              />
+              Select All
+            </label>
+
+            {selectedIds.length > 0 && (
+              <button
+                onClick={handleDeleteBulk}
+                className="flex items-center justify-center gap-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 px-4 py-2 rounded-xl text-sm font-semibold transition-all animate-in zoom-in duration-200"
+              >
+                <Trash2 className="w-4 h-4" />
+                Delete Selected ({selectedIds.length})
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
         {loading ? (
           <div className="col-span-full flex justify-center py-12">
              <div className="w-6 h-6 border-2 border-white/10 border-t-[#FFD166] rounded-full animate-spin" />
           </div>
-        ) : profiles.length === 0 ? (
+          </div>
+        ) : filteredProfiles.length === 0 ? (
           <div className="col-span-full text-center py-12 bg-[#1C1C1E] border border-white/10 rounded-2xl">
             <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center mb-3 mx-auto">
               <UserSquare2 className="w-5 h-5 text-gray-400" />
             </div>
             <p className="text-sm text-gray-400">No agent profiles found.</p>
           </div>
-        ) : profiles.map((p, i) => (
+        ) : filteredProfiles.map((p, i) => (
           <div key={i} className={`bg-[#1C1C1E] border rounded-2xl p-6 relative group transition-colors ${p.is_default ? "border-[#FFD166]/50" : "border-white/10 hover:border-white/20"}`}>
             {p.is_default && (
               <div className="absolute top-0 right-0 bg-[#FFD166] text-black text-[10px] font-bold px-3 py-1 rounded-bl-xl rounded-tr-2xl uppercase tracking-wider flex items-center gap-1">
@@ -269,7 +352,16 @@ export function AgentProfiles() {
               </div>
             )}
             
-            <div className="flex items-start gap-4 mb-5">
+            <div className="absolute top-4 right-4 z-10">
+              <input
+                type="checkbox"
+                checked={selectedIds.includes(p.id)}
+                onChange={() => handleToggleSelect(p.id)}
+                className="rounded border-white/20 bg-white/5 text-[#FFD166] focus:ring-0 focus:ring-offset-0 cursor-pointer w-4 h-4"
+              />
+            </div>
+
+            <div className="flex items-start gap-4 mb-5 pr-8">
               <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${p.is_default ? "bg-[#FFD166]/20" : "bg-white/5"}`}>
                 <Bot className={`w-6 h-6 ${p.is_default ? "text-[#FFD166]" : "text-gray-400"}`} />
               </div>
