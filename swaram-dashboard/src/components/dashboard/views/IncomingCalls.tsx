@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { PhoneIncoming, Search, Clock } from "lucide-react";
+import { PhoneIncoming, Search, Clock, Trash2 } from "lucide-react";
 
 const API = "/api";
 
