@@ -80,7 +80,7 @@ export function CRMLeads() {
     } catch (err) {
       console.error(err);
     } finally {
-      setSelectedLead(prev => ({...prev, ...lead})); // Merge in case lead was updated
+      setSelectedLead((prev: any) => ({...prev, ...lead})); // Merge in case lead was updated
       setLoadingLogs(false);
     }
   };

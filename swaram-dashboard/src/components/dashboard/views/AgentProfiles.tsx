@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { UserSquare2, Plus, Star, Trash2, Edit2, Bot, X, Loader2, Save, Upload, Link as LinkIcon, FileText } from "lucide-react";
+import { UserSquare2, Plus, Star, Trash2, Edit2, Bot, X, Loader2, Save, Upload, Link as LinkIcon, FileText, Search } from "lucide-react";
 
 const API = "/api";
 
