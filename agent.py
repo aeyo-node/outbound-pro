@@ -450,6 +450,26 @@ async def entrypoint(ctx: agents.JobContext) -> None:
                 import time
                 from db import log_call
                 duration = int(time.time() - _call_start_time)
+                
+                transcript = ""
+                try:
+                    c_ctx = getattr(session, "chat_ctx", None)
+                    if not c_ctx and hasattr(session, "agent"):
+                        c_ctx = getattr(session.agent, "chat_ctx", None)
+                    if c_ctx and hasattr(c_ctx, "messages"):
+                        lines = []
+                        for m in c_ctx.messages:
+                            if m.role in ("user", "assistant", "system") and m.content:
+                                text = m.content if isinstance(m.content, str) else str(m.content)
+                                # Filter out prompt injection system messages if needed, or keep for context
+                                if m.role == "system" and "Speak strictly" in text: continue
+                                lines.append(f"[{m.role.upper()}]: {text}")
+                        transcript = "\n".join(lines)
+                except Exception:
+                    pass
+                
+                final_notes = f"[COLD] User hung up prematurely.\n\nTranscript:\n{transcript}" if transcript else "[COLD] User hung up prematurely."
+
                 await log_call(
                     phone_number=phone_number,
                     lead_name=lead_name,
@@ -457,7 +477,11 @@ async def entrypoint(ctx: agents.JobContext) -> None:
                     reason="User hung up",
                     duration_seconds=duration,
                     recording_url=getattr(tool_ctx, "recording_url", None),
-                    campaign_id=campaign_id
+                    campaign_id=campaign_id,
+                    business_name=business_name,
+                    industry=industry,
+                    place=place,
+                    notes=final_notes
                 )
             except Exception as e:
                 await _log("warning", f"Failed to log call on disconnect: {e}")
