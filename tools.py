@@ -42,6 +42,34 @@ async def _log(msg: str, detail: str = "", level: str = "info") -> None:
         pass
 
 
+async def translate_transcript_to_english(transcript: str) -> str:
+    """Translate a multilingual call transcript to English using Gemini Flash."""
+    if not transcript or not transcript.strip():
+        return transcript
+    try:
+        import google.generativeai as genai
+        api_key = os.getenv("GOOGLE_API_KEY", "")
+        if not api_key:
+            return transcript
+        loop = asyncio.get_event_loop()
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel("gemini-2.0-flash")
+        prompt = (
+            "You are a professional translator. The following is a call transcript that may be in Tamil, Malayalam, Hindi, or any mix of languages. "
+            "Translate EVERY line to clear, natural English. "
+            "Preserve the speaker labels exactly as they appear (e.g. [USER]:, [ASSISTANT]:). "
+            "Do not add any explanation or commentary — output ONLY the translated transcript lines.\n\n"
+            f"{transcript}"
+        )
+        response = await loop.run_in_executor(None, lambda: model.generate_content(prompt))
+        translated = (response.text or "").strip()
+        if translated:
+            return translated
+    except Exception as exc:
+        logger.warning(f"Transcript translation failed (using original): {exc}")
+    return transcript
+
+
 # ANSI Colors for logging
 C_BLUE = "\033[94m"
 C_CYAN = "\033[96m"
@@ -468,6 +496,9 @@ class AppointmentTools(llm.ToolContext):
         duration = int(time.time() - self._call_start_time)
         # Use live-captured transcript lines (works with Gemini Realtime which doesn't populate chat_ctx)
         transcript = "\n".join(self._transcript_lines) if self._transcript_lines else ""
+        # Translate transcript to English (call may be in Tamil/Malayalam/Hindi)
+        if transcript:
+            transcript = await translate_transcript_to_english(transcript)
         notes = f"[{lead_temperature.upper()}] {summary}\n\nTranscript:\n{transcript}" if transcript else f"[{lead_temperature.upper()}] {summary}"
         try:
             await log_call(
