@@ -353,6 +353,58 @@ async def entrypoint(ctx: agents.JobContext) -> None:
     session = _build_session(tools=active_tools, system_prompt=system_prompt, voice_override=voice_override)
     tool_ctx.session = session
 
+    # ── Live transcript accumulator ───────────────────────────────────────────
+    # Gemini Live (realtime) does NOT populate chat_ctx.messages like a pipeline.
+    # We must hook session events to build the transcript on the fly.
+    _transcript_lines: list = []
+
+    def _on_conversation_item(event):
+        try:
+            role = getattr(event, "role", None) or getattr(event, "type", "?")
+            content = getattr(event, "content", None) or getattr(event, "text", "")
+            if not content:
+                return
+            if isinstance(content, list):
+                # Some versions return a list of content items
+                for item in content:
+                    if isinstance(item, str):
+                        text = item.strip()
+                    elif hasattr(item, "text"):
+                        text = (item.text or "").strip()
+                    else:
+                        text = str(item).strip()
+                    if text and text != "[SYSTEM:" and "Speak strictly" not in text:
+                        _transcript_lines.append(f"[{str(role).upper()}]: {text}")
+            else:
+                text = str(content).strip()
+                if text and "Speak strictly" not in text:
+                    _transcript_lines.append(f"[{str(role).upper()}]: {text}")
+        except Exception:
+            pass
+
+    def _on_user_transcribed(event):
+        try:
+            is_final = getattr(event, "is_final", True)
+            if not is_final:
+                return  # Skip interim results
+            text = (getattr(event, "transcript", "") or "").strip()
+            if text:
+                _transcript_lines.append(f"[USER]: {text}")
+        except Exception:
+            pass
+
+    try:
+        session.on("conversation_item_added", _on_conversation_item)
+    except Exception:
+        pass
+    try:
+        session.on("user_input_transcribed", _on_user_transcribed)
+    except Exception:
+        pass
+    
+    # Share the same accumulator list with tool_ctx so end_call() uses it too
+    tool_ctx._transcript_lines = _transcript_lines
+
     # Use RoomOptions if available (non-deprecated), else fall back
     # NEVER use close_on_disconnect=True with SIP
     if _HAS_ROOM_OPTIONS:
@@ -452,22 +504,8 @@ async def entrypoint(ctx: agents.JobContext) -> None:
                 from db import log_call
                 duration = int(time.time() - _call_start_time)
                 
-                transcript = ""
-                try:
-                    c_ctx = getattr(session, "chat_ctx", None)
-                    if not c_ctx and hasattr(session, "agent"):
-                        c_ctx = getattr(session.agent, "chat_ctx", None)
-                    if c_ctx and hasattr(c_ctx, "messages"):
-                        lines = []
-                        for m in c_ctx.messages:
-                            if m.role in ("user", "assistant", "system") and m.content:
-                                text = m.content if isinstance(m.content, str) else str(m.content)
-                                # Filter out prompt injection system messages if needed, or keep for context
-                                if m.role == "system" and "Speak strictly" in text: continue
-                                lines.append(f"[{m.role.upper()}]: {text}")
-                        transcript = "\n".join(lines)
-                except Exception:
-                    pass
+                # Use live-captured transcript lines (works with Gemini Realtime)
+                transcript = "\n".join(_transcript_lines) if _transcript_lines else ""
                 
                 if duration < 15:
                     prefix = "[COLD] User hung up prematurely."
