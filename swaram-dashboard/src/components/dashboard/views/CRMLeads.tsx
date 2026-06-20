@@ -12,6 +12,10 @@ export function CRMLeads() {
   const [saving, setSaving] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const rowsPerPage = 20;
+
+  useEffect(() => { setCurrentPage(1); }, [searchQuery]);
   
   // Details Modal State
   const [selectedLead, setSelectedLead] = useState<any>(null);
@@ -162,6 +166,9 @@ export function CRMLeads() {
     );
   });
 
+  const totalPages = Math.max(1, Math.ceil(filteredContacts.length / rowsPerPage));
+  const currentContacts = filteredContacts.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
+
   return (
     <div className="animate-in fade-in duration-500">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
@@ -244,7 +251,7 @@ export function CRMLeads() {
                     </div>
                   </td>
                 </tr>
-              ) : filteredContacts.length === 0 ? (
+              ) : currentContacts.length === 0 ? (
                 <tr>
                   <td colSpan={10} className="px-6 py-12 text-center text-gray-500">
                     <div className="flex flex-col items-center justify-center">
@@ -255,7 +262,7 @@ export function CRMLeads() {
                     </div>
                   </td>
                 </tr>
-              ) : filteredContacts.map((c, i) => {
+              ) : currentContacts.map((c, i) => {
                 const isSelected = selectedIds.includes(c.id);
                 return (
                   <tr key={c.id || i} className={`hover:bg-white/[0.02] transition-colors ${isSelected ? "bg-[#FFD166]/5" : ""}`}>
@@ -343,8 +350,37 @@ export function CRMLeads() {
                   </tr>
                 );
               })}
-            </tbody>
-          </table>
+              </tbody>
+            </table>
+          </div>
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between px-4 py-3 border-t border-white/5 bg-black/20">
+              <div className="text-sm text-gray-400">
+                Showing {((currentPage - 1) * rowsPerPage) + 1} to {Math.min(currentPage * rowsPerPage, filteredContacts.length)} of {filteredContacts.length} entries
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1 rounded-md bg-white/5 border border-white/10 text-sm disabled:opacity-50 hover:bg-white/10 transition-colors"
+                >
+                  Previous
+                </button>
+                <div className="text-sm font-medium px-2">
+                  Page {currentPage} of {totalPages}
+                </div>
+                <button
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-1 rounded-md bg-white/5 border border-white/10 text-sm disabled:opacity-50 hover:bg-white/10 transition-colors"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

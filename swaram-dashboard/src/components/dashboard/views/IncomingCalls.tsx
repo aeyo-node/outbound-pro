@@ -10,6 +10,10 @@ export function IncomingCalls() {
   const [loading, setLoading] = useState(true);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const rowsPerPage = 20;
+
+  useEffect(() => { setCurrentPage(1); }, [searchQuery]);
 
   const fetchCalls = async () => {
     try {
@@ -77,6 +81,9 @@ export function IncomingCalls() {
     );
   });
 
+  const totalPages = Math.max(1, Math.ceil(filteredCalls.length / rowsPerPage));
+  const currentCalls = filteredCalls.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
+
   return (
     <div className="animate-in fade-in duration-500">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
@@ -138,7 +145,7 @@ export function IncomingCalls() {
                     </div>
                   </td>
                 </tr>
-              ) : filteredCalls.length === 0 ? (
+              ) : currentCalls.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="px-6 py-12 text-center text-gray-500">
                     <div className="flex flex-col items-center justify-center">
@@ -149,7 +156,7 @@ export function IncomingCalls() {
                     </div>
                   </td>
                 </tr>
-              ) : filteredCalls.map((c, i) => {
+              ) : currentCalls.map((c, i) => {
                 const isSelected = selectedIds.includes(c.id);
                 return (
                   <tr key={c.id || i} className={`hover:bg-white/[0.02] transition-colors ${isSelected ? "bg-[#FFD166]/5" : ""}`}>
@@ -163,31 +170,58 @@ export function IncomingCalls() {
                     </td>
                     <td className="px-6 py-4">
                       <span className="text-sm font-medium text-white">{c.phone_number}</span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border ${
-                      c.status === "received" ? "bg-green-500/10 text-green-400 border-green-500/20" : 
-                      c.status === "failed" ? "bg-red-500/10 text-red-400 border-red-500/20" :
-                      "bg-blue-500/10 text-blue-400 border-blue-500/20"
-                    }`}>
-                      {c.status || "received"}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-2 text-sm text-gray-400">
-                      <Clock className="w-4 h-4" />
-                      {c.duration_seconds || 0}s
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <span className="text-xs text-gray-400">{formatTimestamp(c.timestamp)}</span>
-                  </td>
-                </tr>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border ${
+                        c.status === "received" ? "bg-green-500/10 text-green-400 border-green-500/20" : 
+                        c.status === "failed" ? "bg-red-500/10 text-red-400 border-red-500/20" :
+                        "bg-blue-500/10 text-blue-400 border-blue-500/20"
+                      }`}>
+                        {c.status || "received"}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2 text-sm text-gray-400">
+                        <Clock className="w-4 h-4" />
+                        {c.duration_seconds || 0}s
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <span className="text-xs text-gray-400">{formatTimestamp(c.timestamp)}</span>
+                    </td>
+                  </tr>
                 );
               })}
             </tbody>
           </table>
         </div>
+
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between px-4 py-3 border-t border-white/5 bg-black/20">
+            <div className="text-sm text-gray-400">
+              Showing {((currentPage - 1) * rowsPerPage) + 1} to {Math.min(currentPage * rowsPerPage, filteredCalls.length)} of {filteredCalls.length} entries
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="px-3 py-1 rounded-md bg-white/5 border border-white/10 text-sm disabled:opacity-50 hover:bg-white/10 transition-colors"
+              >
+                Previous
+              </button>
+              <div className="text-sm font-medium px-2">
+                Page {currentPage} of {totalPages}
+              </div>
+              <button
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="px-3 py-1 rounded-md bg-white/5 border border-white/10 text-sm disabled:opacity-50 hover:bg-white/10 transition-colors"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

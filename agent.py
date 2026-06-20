@@ -351,6 +351,7 @@ async def entrypoint(ctx: agents.JobContext) -> None:
     await _log("info", f"Active tools: {[t.__name__ for t in active_tools]}")
 
     session = _build_session(tools=active_tools, system_prompt=system_prompt, voice_override=voice_override)
+    tool_ctx.session = session
 
     # Use RoomOptions if available (non-deprecated), else fall back
     # NEVER use close_on_disconnect=True with SIP
@@ -468,7 +469,11 @@ async def entrypoint(ctx: agents.JobContext) -> None:
                 except Exception:
                     pass
                 
-                final_notes = f"[COLD] User hung up prematurely.\n\nTranscript:\n{transcript}" if transcript else "[COLD] User hung up prematurely."
+                if duration < 15:
+                    prefix = "[COLD] User hung up prematurely."
+                else:
+                    prefix = "[UNRATED] Call disconnected by user."
+                final_notes = f"{prefix}\n\nTranscript:\n{transcript}" if transcript else prefix
 
                 await log_call(
                     phone_number=phone_number,

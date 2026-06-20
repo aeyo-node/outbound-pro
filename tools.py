@@ -465,7 +465,23 @@ class AppointmentTools(llm.ToolContext):
     async def end_call(self, outcome: str, lead_temperature: str, summary: str, reason: str = "") -> str:
         """End call. outcome: 'booked'|'not_interested'|'wrong_number'|'no_answer', lead_temperature: 'HOT'|'WARM'|'COLD', summary: details."""
         duration = int(time.time() - self._call_start_time)
-        notes = f"[{lead_temperature.upper()}] {summary}"
+        transcript = ""
+        try:
+            session = getattr(self, "session", None)
+            c_ctx = getattr(session, "chat_ctx", None)
+            if not c_ctx and hasattr(session, "agent"):
+                c_ctx = getattr(session.agent, "chat_ctx", None)
+            if c_ctx and hasattr(c_ctx, "messages"):
+                lines = []
+                for m in c_ctx.messages:
+                    if m.role in ("user", "assistant", "system") and m.content:
+                        text = m.content if isinstance(m.content, str) else str(m.content)
+                        if m.role == "system" and "Speak strictly" in text: continue
+                        lines.append(f"[{m.role.upper()}]: {text}")
+                transcript = "\n".join(lines)
+        except Exception:
+            pass
+        notes = f"[{lead_temperature.upper()}] {summary}\n\nTranscript:\n{transcript}" if transcript else f"[{lead_temperature.upper()}] {summary}"
         try:
             await log_call(
                 phone_number=self.phone_number or "unknown",

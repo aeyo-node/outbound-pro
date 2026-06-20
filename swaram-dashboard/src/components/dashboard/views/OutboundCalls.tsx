@@ -11,6 +11,10 @@ export function OutboundCalls() {
   const [selectedNote, setSelectedNote] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const rowsPerPage = 20;
+
+  useEffect(() => { setCurrentPage(1); }, [searchQuery]);
 
   const fetchCalls = async () => {
     try {
@@ -94,6 +98,9 @@ export function OutboundCalls() {
     );
   });
 
+  const totalPages = Math.max(1, Math.ceil(filteredCalls.length / rowsPerPage));
+  const currentCalls = filteredCalls.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
+
   return (
     <div className="animate-in fade-in duration-500">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
@@ -160,7 +167,7 @@ export function OutboundCalls() {
                     </div>
                   </td>
                 </tr>
-              ) : filteredCalls.length === 0 ? (
+              ) : currentCalls.length === 0 ? (
                 <tr>
                   <td colSpan={10} className="px-6 py-12 text-center text-gray-500">
                     <div className="flex flex-col items-center justify-center">
@@ -171,7 +178,7 @@ export function OutboundCalls() {
                     </div>
                   </td>
                 </tr>
-              ) : filteredCalls.map((c, i) => {
+              ) : currentCalls.map((c, i) => {
                 let tempBadge = null;
                 if (c.notes) {
                   if (c.notes.includes("[HOT]")) tempBadge = <span className="ml-3 inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-red-500/20 text-red-400 border border-red-500/30 animate-pulse">HOT</span>;
@@ -257,6 +264,33 @@ export function OutboundCalls() {
               })}
             </tbody>
           </table>
+          
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between px-4 py-3 border-t border-white/5 bg-black/20">
+              <div className="text-sm text-gray-400">
+                Showing {((currentPage - 1) * rowsPerPage) + 1} to {Math.min(currentPage * rowsPerPage, filteredCalls.length)} of {filteredCalls.length} entries
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1 rounded-md bg-white/5 border border-white/10 text-sm disabled:opacity-50 hover:bg-white/10 transition-colors"
+                >
+                  Previous
+                </button>
+                <div className="text-sm font-medium px-2">
+                  Page {currentPage} of {totalPages}
+                </div>
+                <button
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-1 rounded-md bg-white/5 border border-white/10 text-sm disabled:opacity-50 hover:bg-white/10 transition-colors"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

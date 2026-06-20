@@ -382,7 +382,7 @@ async def get_campaign_call_logs(campaign_id: str) -> list:
     result = await db.table("call_logs").select("*").eq("campaign_id", campaign_id).order("timestamp", desc=True).execute()
     return result.data or []
 
-async def get_all_calls(page: int = 1, limit: int = 20) -> list:
+async def get_all_calls(page: int = 1, limit: int = 5000) -> list:
     await cleanup_unknown_rows()
     db = await _adb()
     offset = (page - 1) * limit
@@ -872,7 +872,7 @@ async def log_incoming_call(phone: str, status: str = "received", duration: int 
         print(f"Error logging incoming call: {e}")
     return call_id
 
-async def get_incoming_calls(limit: int = 50) -> list:
+async def get_incoming_calls(limit: int = 5000) -> list:
     await cleanup_unknown_rows()
     db = await _adb()
     result = await db.table("incoming_calls").select("*").order("timestamp", desc=True).limit(limit).execute()

@@ -313,7 +313,7 @@ async def api_dispatch_call(req: CallRequest):
 # ── Calls ─────────────────────────────────────────────────────────────────────
 
 @app.get("/api/calls")
-async def api_get_all_calls(page: int = 1, limit: int = 20) -> list:
+async def api_get_all_calls(page: int = 1, limit: int = 5000) -> list:
     return await get_all_calls(page, limit)
 
 @app.get("/api/calls/phone/{phone}")
