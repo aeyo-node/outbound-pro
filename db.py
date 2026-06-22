@@ -115,8 +115,22 @@ async def save_settings(data: dict) -> None:
         val_str = v
         if isinstance(v, dict) and "value" in v:
             val_str = v["value"]
+        elif isinstance(v, str):
+            import ast
+            try:
+                # Recursively unwrap stringified dicts
+                unwrapped = v
+                while unwrapped.startswith("{") and "value" in unwrapped:
+                    parsed = ast.literal_eval(unwrapped)
+                    if isinstance(parsed, dict) and "value" in parsed:
+                        unwrapped = str(parsed["value"])
+                    else:
+                        break
+                val_str = unwrapped
+            except Exception:
+                pass
         
-        rows.append({"key": k, "value": str(val_str), "updated_at": updated_at})
+        rows.append({"key": k, "value": str(val_str).strip(), "updated_at": updated_at})
     
     if rows:
         try:
