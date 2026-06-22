@@ -544,10 +544,11 @@ export function Campaigns() {
                 <table className="w-full text-left">
                   <thead className="text-sm font-medium text-gray-400 border-b border-white/10">
                     <tr>
-                      <th className="pb-3 font-medium">Phone</th>
-                      <th className="pb-3 font-medium">Outcome</th>
-                      <th className="pb-3 font-medium">Duration</th>
-                      <th className="pb-3 font-medium">Time</th>
+                        <th className="py-2 text-left font-medium text-gray-500">Phone</th>
+                        <th className="py-2 text-left font-medium text-gray-500">Outcome</th>
+                        <th className="py-2 text-left font-medium text-gray-500">Duration</th>
+                        <th className="py-2 text-left font-medium text-gray-500">Date</th>
+                        <th className="py-2 text-left font-medium text-gray-500">Recording</th>
                     </tr>
                   </thead>
                   <tbody className="text-sm divide-y divide-white/5">
@@ -563,6 +564,11 @@ export function Campaigns() {
                         </td>
                         <td className="py-3 text-gray-400">{log.duration_seconds}s</td>
                         <td className="py-3 text-gray-400">{new Date(log.timestamp).toLocaleString()}</td>
+                        <td className="py-3 text-gray-400">
+                          {log.recording_url ? (
+                            <audio controls src={log.recording_url} className="h-8 w-48" preload="none" />
+                          ) : "—"}
+                        </td>
                       </tr>
                     ))}
                   </tbody>

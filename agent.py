@@ -437,11 +437,11 @@ async def entrypoint(ctx: agents.JobContext) -> None:
         _s3_region   = os.getenv("S3_REGION") or os.getenv("AWS_REGION", "ap-south-1")
         if _aws_key and _aws_secret and _aws_bucket:
             try:
-                _recording_path = f"recordings/{ctx.room.name}.ogg"
+                _recording_path = f"recordings/{ctx.room.name}.mp4"
                 _egress_req = api.RoomCompositeEgressRequest(
                     room_name=ctx.room.name, audio_only=True,
                     file_outputs=[api.EncodedFileOutput(
-                        file_type=api.EncodedFileType.OGG, filepath=_recording_path,
+                        file_type=api.EncodedFileType.MP4, filepath=_recording_path,
                         s3=api.S3Upload(
                             access_key=_aws_key, secret=_aws_secret,
                             bucket=_aws_bucket, region=_s3_region, endpoint=_s3_endpoint,

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { PhoneOutgoing, Search, Clock, AlignLeft, X, Trash2 } from "lucide-react";
+import { PhoneOutgoing, Search, Clock, AlignLeft, X, Trash2, Download } from "lucide-react";
 
 const API = "/api";
 
@@ -154,6 +154,7 @@ export function OutboundCalls() {
                 <th className="px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Outcome</th>
                 <th className="px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Duration</th>
                 <th className="px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Date</th>
+                <th className="px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Recording</th>
                 <th className="px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider text-right">Actions</th>
               </tr>
             </thead>
@@ -236,6 +237,18 @@ export function OutboundCalls() {
                     </td>
                     <td className="px-6 py-4">
                       <span className="text-xs text-gray-400">{formatTimestamp(c.timestamp || c.created_at)}</span>
+                    </td>
+                    <td className="px-6 py-4">
+                      {c.recording_url ? (
+                        <div className="flex items-center gap-2">
+                          <audio controls src={c.recording_url} className="h-8 w-40" preload="none" />
+                          <a href={c.recording_url} download target="_blank" rel="noreferrer" className="text-gray-400 hover:text-white p-1" title="Download MP3/MP4">
+                            <Download className="w-4 h-4" />
+                          </a>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-gray-600">—</span>
+                      )}
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex justify-end items-center gap-2">
