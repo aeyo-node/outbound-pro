@@ -507,15 +507,19 @@ async def entrypoint(ctx: agents.JobContext) -> None:
                 # Use live-captured transcript lines (works with Gemini Realtime)
                 transcript = "\n".join(_transcript_lines) if _transcript_lines else ""
                 
+                transcript_summary = ""
                 if transcript:
-                    from tools import translate_transcript_to_english
-                    transcript = await translate_transcript_to_english(transcript)
+                    from tools import summarize_call_transcript
+                    transcript_summary = await summarize_call_transcript(transcript)
 
                 if duration < 15:
                     prefix = "[COLD] User hung up prematurely."
                 else:
                     prefix = "[UNRATED] Call disconnected by user."
-                final_notes = f"{prefix}\n\nTranscript:\n{transcript}" if transcript else prefix
+                
+                final_notes = prefix
+                if transcript_summary:
+                    final_notes += f"\n\nCall Summary:\n{transcript_summary}"
 
                 await log_call(
                     phone_number=phone_number,

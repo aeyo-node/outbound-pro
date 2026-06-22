@@ -1047,6 +1047,12 @@ async def _run_campaign(campaign_id: str) -> None:
     try:
         lk = lk_api_module.LiveKitAPI(url=url, api_key=key, api_secret=secret, session=session)
         for i, contact in enumerate(contacts):
+            # Dynamically check status to allow pausing/stopping mid-run
+            current_campaign = await get_campaign(campaign_id)
+            if not current_campaign or current_campaign.get("status") not in ("active", "dispatching"):
+                logger.info("Campaign %s paused/stopped. Aborting run loop.", campaign_id)
+                break
+
             phone = contact.get("phone", "")
             if not phone.startswith("+"):
                 fail_count += 1

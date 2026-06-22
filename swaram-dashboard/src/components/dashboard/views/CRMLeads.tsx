@@ -155,6 +155,9 @@ export function CRMLeads() {
   };
 
   const filteredContacts = contacts.filter(c => {
+    // Only show contacts that have been labelled (HOT, WARM, COLD, etc)
+    if (!c.lead_temperature) return false;
+    
     const q = searchQuery.toLowerCase();
     return (
       (c.name || "").toLowerCase().includes(q) ||
@@ -162,7 +165,8 @@ export function CRMLeads() {
       (c.email || "").toLowerCase().includes(q) ||
       (c.business_name || "").toLowerCase().includes(q) ||
       (c.industry || "").toLowerCase().includes(q) ||
-      (c.place || "").toLowerCase().includes(q)
+      (c.place || "").toLowerCase().includes(q) ||
+      (c.lead_temperature || "").toLowerCase().includes(q)
     );
   });
 
@@ -236,7 +240,7 @@ export function CRMLeads() {
                 <th className="px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Business</th>
                 <th className="px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Industry</th>
                 <th className="px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Place</th>
-                <th className="px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Lead Source</th>
+                <th className="px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Rating</th>
                 <th className="px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Added On</th>
                 <th className="px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider text-right">Actions</th>
               </tr>
@@ -304,8 +308,13 @@ export function CRMLeads() {
                       {c.place || "—"}
                     </td>
                     <td className="px-6 py-4">
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border bg-white/5 text-gray-300 border-white/10">
-                        Voice Agent
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
+                        c.lead_temperature === 'HOT' ? 'bg-red-500/10 text-red-400 border-red-500/20' :
+                        c.lead_temperature === 'WARM' ? 'bg-orange-500/10 text-orange-400 border-orange-500/20' :
+                        c.lead_temperature === 'COLD' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
+                        'bg-gray-500/10 text-gray-400 border-gray-500/20'
+                      }`}>
+                        {c.lead_temperature || 'UNRATED'}
                       </span>
                     </td>
                     <td className="px-6 py-4">

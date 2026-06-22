@@ -336,8 +336,16 @@ async def log_call(
     
     # Auto-add/update CRM contacts
     display_name = lead_name if lead_name and lead_name.lower() not in ["there", "unknown", ""] else f"Lead {phone_number}"
+    
+    temperature = None
+    if notes:
+        if "[HOT]" in notes.upper(): temperature = "HOT"
+        elif "[WARM]" in notes.upper(): temperature = "WARM"
+        elif "[COLD]" in notes.upper(): temperature = "COLD"
+        elif "[UNRATED]" in notes.upper(): temperature = "UNRATED"
+
     try:
-        existing = await db.table("contacts").select("id, name, business_name, industry, place").eq("phone", phone_number).execute()
+        existing = await db.table("contacts").select("id, name, business_name, industry, place, lead_temperature").eq("phone", phone_number).execute()
         if not existing.data:
             contact_data = {
                 "id": str(uuid.uuid4()),
@@ -348,6 +356,7 @@ async def log_call(
             if business_name: contact_data["business_name"] = business_name
             if industry: contact_data["industry"] = industry
             if place: contact_data["place"] = place
+            if temperature: contact_data["lead_temperature"] = temperature
             await db.table("contacts").insert(contact_data).execute()
             logger.info(f"Auto-added contact to CRM: {display_name} ({phone_number})")
         else:
@@ -357,6 +366,7 @@ async def log_call(
             ex_biz = existing.data[0].get("business_name", "")
             ex_ind = existing.data[0].get("industry", "")
             ex_place = existing.data[0].get("place", "")
+            ex_temp = existing.data[0].get("lead_temperature", "")
             
             update_data = {}
             if business_name and business_name != "our company" and (not ex_biz or ex_biz == "our company"):
@@ -365,6 +375,8 @@ async def log_call(
                 update_data["industry"] = industry
             if place and place != "your area" and (not ex_place or ex_place == "your area"):
                 update_data["place"] = place
+            if temperature and temperature != ex_temp:
+                update_data["lead_temperature"] = temperature
             
             # If the name is default like "Lead +91..." but we have a real lead_name now, update it
             if lead_name and lead_name.lower() not in ["there", "unknown", ""] and (not existing_name or existing_name.startswith("Lead ") or existing_name.startswith("+") or existing_name == "there"):

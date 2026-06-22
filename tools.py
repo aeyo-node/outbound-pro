@@ -42,23 +42,23 @@ async def _log(msg: str, detail: str = "", level: str = "info") -> None:
         pass
 
 
-async def translate_transcript_to_english(transcript: str) -> str:
-    """Translate a multilingual call transcript to English using Gemini Flash."""
+async def summarize_call_transcript(transcript: str) -> str:
+    """Summarize a multilingual call transcript into a detailed English description using Gemini Flash."""
     if not transcript or not transcript.strip():
-        return transcript
+        return ""
     try:
         import google.generativeai as genai
         api_key = os.getenv("GOOGLE_API_KEY", "")
         if not api_key:
-            return transcript
+            return ""
         loop = asyncio.get_event_loop()
         genai.configure(api_key=api_key)
         model = genai.GenerativeModel("gemini-2.0-flash")
         prompt = (
-            "You are a professional translator. The following is a call transcript that may be in Tamil, Malayalam, Hindi, or any mix of languages. "
-            "Translate EVERY line to clear, natural English. "
-            "Preserve the speaker labels exactly as they appear (e.g. [USER]:, [ASSISTANT]:). "
-            "Do not add any explanation or commentary — output ONLY the translated transcript lines.\n\n"
+            "You are an expert sales analyst. The following is a raw call transcript that may be in Tamil, Malayalam, Hindi, or English. "
+            "Write a highly descriptive, professional summary of the call in English. "
+            "Include key details such as the lead's level of interest, specific questions asked, objections raised, and any next steps agreed upon. "
+            "Do NOT output the raw transcript. Output ONLY your comprehensive summary.\n\n"
             f"{transcript}"
         )
         response = await loop.run_in_executor(None, lambda: model.generate_content(prompt))
@@ -496,10 +496,15 @@ class AppointmentTools(llm.ToolContext):
         duration = int(time.time() - self._call_start_time)
         # Use live-captured transcript lines (works with Gemini Realtime which doesn't populate chat_ctx)
         transcript = "\n".join(self._transcript_lines) if self._transcript_lines else ""
-        # Translate transcript to English (call may be in Tamil/Malayalam/Hindi)
+        # Generate a descriptive summary of the call
         if transcript:
-            transcript = await translate_transcript_to_english(transcript)
-        notes = f"[{lead_temperature.upper()}] {summary}\n\nTranscript:\n{transcript}" if transcript else f"[{lead_temperature.upper()}] {summary}"
+            transcript_summary = await summarize_call_transcript(transcript)
+        else:
+            transcript_summary = ""
+        
+        notes = f"[{lead_temperature.upper()}] {summary}"
+        if transcript_summary:
+            notes += f"\n\nCall Summary:\n{transcript_summary}"
         try:
             await log_call(
                 phone_number=self.phone_number or "unknown",

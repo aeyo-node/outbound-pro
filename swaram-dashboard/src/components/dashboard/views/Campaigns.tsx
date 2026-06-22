@@ -311,6 +311,24 @@ export function Campaigns() {
     }
   };
 
+  const handlePauseCampaign = async (id: string) => {
+    try {
+      const res = await fetch(`${API}/campaigns/${id}/status`, { 
+        method: "PATCH", 
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "paused" })
+      });
+      if (res.ok) {
+        fetchData();
+      } else {
+        alert("Failed to pause campaign.");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error pausing campaign: " + err);
+    }
+  };
+
   const handleDelete = async (id: string) => {
     if (!confirm(`Are you sure you want to delete this campaign?`)) return;
     try {
@@ -481,6 +499,11 @@ export function Campaigns() {
                         {c.status === "active" && (
                           <button onClick={() => handleRunNow(c.id)} className="p-2 hover:bg-green-500/10 rounded-lg text-gray-400 hover:text-green-400 transition-colors" title="Run Now">
                             <Play className="w-4 h-4" />
+                          </button>
+                        )}
+                        {(c.status === "active" || c.status === "dispatching") && (
+                          <button onClick={() => handlePauseCampaign(c.id)} className="p-2 hover:bg-yellow-500/10 rounded-lg text-gray-400 hover:text-yellow-400 transition-colors" title="Pause / Stop">
+                            <Pause className="w-4 h-4" />
                           </button>
                         )}
                         <button onClick={() => fetchCampaignLogs(c)} className="p-2 hover:bg-blue-500/10 rounded-lg text-gray-400 hover:text-blue-400 transition-colors" title="View Details">
