@@ -437,7 +437,7 @@ async def entrypoint(ctx: agents.JobContext) -> None:
         _s3_region   = os.getenv("S3_REGION") or os.getenv("AWS_REGION", "ap-south-1")
         if _aws_key and _aws_secret and _aws_bucket:
             try:
-                from livekit import api
+                # 'api' is already imported globally, importing it locally shadows it and causes UnboundLocalError earlier in the function
                 _recording_path = f"recordings/{ctx.room.name}.mp4"
                 
                 s3_kwargs = {
