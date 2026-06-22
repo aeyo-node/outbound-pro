@@ -281,6 +281,8 @@ export function Settings() {
                 <p className="text-xs text-gray-500 mt-1">Limits simultaneous SIP calls to prevent carrier rejection.</p>
               </div>
             </div>
+          </div>
+
           {/* AWS S3 Section */}
           <div className="space-y-4">
             <h3 className="text-lg font-medium text-white flex items-center gap-2 border-b border-white/10 pb-2">
