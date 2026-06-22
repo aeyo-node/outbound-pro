@@ -452,7 +452,7 @@ async def entrypoint(ctx: agents.JobContext) -> None:
                 _s3_ep = _s3_endpoint.rstrip("/")
                 tool_ctx.recording_url = (
                     f"{_s3_ep}/{_aws_bucket}/{_recording_path}"
-                    if _s3_ep else f"s3://{_aws_bucket}/{_recording_path}"
+                    if _s3_ep else f"https://{_aws_bucket}.s3.{_s3_region}.amazonaws.com/{_recording_path}"
                 )
                 await _log("info", f"Recording started: egress={_egress.egress_id}")
             except Exception as _exc:
