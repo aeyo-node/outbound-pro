@@ -154,9 +154,10 @@ export function CRMLeads() {
     return d.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
   };
 
+  const [filterMode, setFilterMode] = useState<"all" | "labelled">("all");
+
   const filteredContacts = contacts.filter(c => {
-    // Only show contacts that have been labelled (HOT, WARM, COLD, etc)
-    if (!c.lead_temperature) return false;
+    if (filterMode === "labelled" && !c.lead_temperature) return false;
     
     const q = searchQuery.toLowerCase();
     return (
@@ -200,21 +201,31 @@ export function CRMLeads() {
 
       <div className="bg-[#1C1C1E] border border-white/10 rounded-2xl overflow-hidden shadow-xl">
         <div className="p-4 border-b border-white/10 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 bg-white/[0.02]">
-          <div className="flex items-center gap-2 bg-[#0A0A0A] border border-white/10 rounded-lg px-3 py-2 w-full max-w-sm">
-            <Search className="w-4 h-4 text-gray-500" />
-            <input 
-              type="text" 
-              placeholder="Search leads by name, phone, place..." 
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="bg-transparent border-none outline-none text-sm text-white placeholder-gray-500 w-full"
-            />
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 w-full">
+            <div className="flex items-center gap-2 bg-[#0A0A0A] border border-white/10 rounded-lg px-3 py-2 w-full max-w-sm">
+              <Search className="w-4 h-4 text-gray-500" />
+              <input 
+                type="text" 
+                placeholder="Search leads by name, phone, place..." 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="bg-transparent border-none outline-none text-sm text-white placeholder-gray-500 w-full"
+              />
+            </div>
+            <select
+              value={filterMode}
+              onChange={(e) => setFilterMode(e.target.value as "all" | "labelled")}
+              className="bg-[#0A0A0A] border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-[#FFD166]/50 transition-colors w-full sm:w-auto"
+            >
+              <option value="all">All Leads</option>
+              <option value="labelled">Only Labelled (Hot/Warm/Cold)</option>
+            </select>
           </div>
 
           {selectedIds.length > 0 && (
             <button
               onClick={handleDeleteBulk}
-              className="flex items-center justify-center gap-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 px-4 py-2 rounded-xl text-sm font-semibold transition-all animate-in zoom-in duration-200"
+              className="flex items-center justify-center gap-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 px-4 py-2 rounded-xl text-sm font-semibold transition-all animate-in zoom-in duration-200 whitespace-nowrap"
             >
               <Trash2 className="w-4 h-4" />
               Delete Selected ({selectedIds.length})

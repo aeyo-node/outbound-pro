@@ -437,18 +437,28 @@ async def entrypoint(ctx: agents.JobContext) -> None:
         _s3_region   = os.getenv("S3_REGION") or os.getenv("AWS_REGION", "ap-south-1")
         if _aws_key and _aws_secret and _aws_bucket:
             try:
+                from livekit import api
                 _recording_path = f"recordings/{ctx.room.name}.mp4"
+                
+                s3_kwargs = {
+                    "access_key": _aws_key,
+                    "secret": _aws_secret,
+                    "bucket": _aws_bucket,
+                    "region": _s3_region,
+                }
+                if _s3_endpoint:
+                    s3_kwargs["endpoint"] = _s3_endpoint
+
                 _egress_req = api.RoomCompositeEgressRequest(
                     room_name=ctx.room.name, audio_only=True,
                     file_outputs=[api.EncodedFileOutput(
                         file_type=api.EncodedFileType.MP4, filepath=_recording_path,
-                        s3=api.S3Upload(
-                            access_key=_aws_key, secret=_aws_secret,
-                            bucket=_aws_bucket, region=_s3_region, endpoint=_s3_endpoint,
-                        ),
+                        s3=api.S3Upload(**s3_kwargs),
                     )],
                 )
-                _egress = await ctx.api.egress.start_room_composite_egress(_egress_req)
+                async with api.LiveKitAPI() as lkapi:
+                    _egress = await lkapi.egress.start_room_composite_egress(_egress_req)
+                    
                 _s3_ep = _s3_endpoint.rstrip("/")
                 tool_ctx.recording_url = (
                     f"{_s3_ep}/{_aws_bucket}/{_recording_path}"
