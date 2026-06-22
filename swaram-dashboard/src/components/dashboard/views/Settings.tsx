@@ -281,6 +281,62 @@ export function Settings() {
                 <p className="text-xs text-gray-500 mt-1">Limits simultaneous SIP calls to prevent carrier rejection.</p>
               </div>
             </div>
+          {/* AWS S3 Section */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-medium text-white flex items-center gap-2 border-b border-white/10 pb-2">
+              <Database className="w-5 h-5 text-[#FFD166]" /> AWS S3 Storage (Call Recordings)
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-400">AWS / S3 Access Key ID</label>
+                <input 
+                  type="text" 
+                  name="S3_ACCESS_KEY_ID"
+                  value={settings.S3_ACCESS_KEY_ID || ""}
+                  onChange={handleChange}
+                  className="w-full bg-[#0A0A0A] border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#FFD166]/50 transition-colors"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-400">AWS / S3 Secret Access Key</label>
+                <div className="relative">
+                  <input 
+                    type={showSecrets.S3_SECRET_ACCESS_KEY ? "text" : "password"} 
+                    name="S3_SECRET_ACCESS_KEY"
+                    value={settings.S3_SECRET_ACCESS_KEY || ""}
+                    onChange={handleChange}
+                    className="w-full bg-[#0A0A0A] border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#FFD166]/50 transition-colors pr-12"
+                  />
+                  <button 
+                    type="button"
+                    onClick={() => toggleSecret('S3_SECRET_ACCESS_KEY')}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white"
+                  >
+                    {showSecrets.S3_SECRET_ACCESS_KEY ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-400">S3 Bucket Name</label>
+                <input 
+                  type="text" 
+                  name="S3_BUCKET"
+                  value={settings.S3_BUCKET || ""}
+                  onChange={handleChange}
+                  className="w-full bg-[#0A0A0A] border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#FFD166]/50 transition-colors"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-400">S3 Region (e.g. us-east-1)</label>
+                <input 
+                  type="text" 
+                  name="S3_REGION"
+                  value={settings.S3_REGION || ""}
+                  onChange={handleChange}
+                  className="w-full bg-[#0A0A0A] border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#FFD166]/50 transition-colors"
+                />
+              </div>
+            </div>
           </div>
 
           <div className="pt-6 border-t border-white/10 flex justify-end">
