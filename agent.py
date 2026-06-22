@@ -357,7 +357,7 @@ async def entrypoint(ctx: agents.JobContext) -> None:
     gemini_model = os.getenv("GEMINI_MODEL", "models/gemini-2.0-flash-exp")
     await _log("info", f"Building Gemini Live session — model={gemini_model}")
     active_tools = tool_ctx.build_tool_list(enabled_tools)
-    await _log("info", f"Active tools: {[t.name for t in active_tools]}")
+    await _log("info", f"Active tools: {len(active_tools)} loaded")
 
     # Build the greeting before starting the session
     greeting = (
