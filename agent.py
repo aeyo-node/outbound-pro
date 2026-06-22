@@ -128,7 +128,7 @@ except ImportError:
 
 # ── Session factory ──────────────────────────────────────────────────────────
 
-def _build_session(tools: list, system_prompt: str, voice_override: Optional[str] = None) -> AgentSession:
+def _build_session(tools: list, system_prompt: str, voice_override: Optional[str] = None, greeting: Optional[str] = None) -> AgentSession:
     """
     Build AgentSession with Gemini Live realtime.
 
@@ -182,6 +182,15 @@ def _build_session(tools: list, system_prompt: str, voice_override: Optional[str
             realtime_kwargs["realtime_input_config"]      = _realtime_input_cfg
             realtime_kwargs["session_resumption"]         = _session_resumption_cfg
             realtime_kwargs["context_window_compression"] = _ctx_compression_cfg
+
+        if greeting:
+            try:
+                from livekit.agents.llm import ChatContext, ChatMessage
+                chat_ctx = ChatContext()
+                chat_ctx.messages.append(ChatMessage(role="system", content=greeting))
+                realtime_kwargs["chat_ctx"] = chat_ctx
+            except Exception as _ctx_err:
+                logger.warning("Could not build initial chat context: %s", _ctx_err)
 
         logger.error("FINAL REALTIME MODEL=%s", gemini_model)
         return AgentSession(llm=RealtimeClass(**realtime_kwargs), tools=tools)
@@ -348,9 +357,15 @@ async def entrypoint(ctx: agents.JobContext) -> None:
     gemini_model = os.getenv("GEMINI_MODEL", "models/gemini-2.0-flash-exp")
     await _log("info", f"Building Gemini Live session — model={gemini_model}")
     active_tools = tool_ctx.build_tool_list(enabled_tools)
-    await _log("info", f"Active tools: {[t.__name__ for t in active_tools]}")
+    await _log("info", f"Active tools: {[t.name for t in active_tools]}")
 
-    session = _build_session(tools=active_tools, system_prompt=system_prompt, voice_override=voice_override)
+    # Build the greeting before starting the session
+    greeting = (
+        f"The call just connected. Speak strictly in Malayalam. Start the call by greeting the lead and using the greeting defined in your system prompt for {industry}."
+        if phone_number else f"Speak strictly in Malayalam. Greet the caller warmly and help them with {industry}."
+    )
+
+    session = _build_session(tools=active_tools, system_prompt=system_prompt, voice_override=voice_override, greeting=greeting)
     tool_ctx.session = session
 
     # ── Live transcript accumulator ───────────────────────────────────────────
@@ -413,7 +428,8 @@ async def entrypoint(ctx: agents.JobContext) -> None:
             room=ctx.room,
             agent=OutboundAssistant(instructions=system_prompt),
             room_options=_RO(input_options=RoomInputOptions(
-                noise_cancellation=noise_cancellation.BVCTelephony()
+                noise_cancellation=noise_cancellation.BVCTelephony(),
+                close_on_disconnect=False,
             )),
         )
     else:
@@ -421,7 +437,8 @@ async def entrypoint(ctx: agents.JobContext) -> None:
             room=ctx.room,
             agent=OutboundAssistant(instructions=system_prompt),
             room_input_options=RoomInputOptions(
-                noise_cancellation=noise_cancellation.BVCTelephony()
+                noise_cancellation=noise_cancellation.BVCTelephony(),
+                close_on_disconnect=False,
             ),
         )
 
@@ -467,22 +484,6 @@ async def entrypoint(ctx: agents.JobContext) -> None:
                 await _log("info", f"Recording started: egress={_egress.egress_id}")
             except Exception as _exc:
                 await _log("warning", f"Recording start failed (non-fatal): {_exc}")
-
-    # ── Greeting ─────────────────────────────────────────────────────────────
-    greeting = (
-        f"The call just connected. Speak strictly in Malayalam. Start the call by greeting the lead and using the greeting defined in your system prompt for {industry}."
-        if phone_number else f"Speak strictly in Malayalam. Greet the caller warmly and help them with {industry}."
-    )
-    try:
-        if hasattr(session, "chat_ctx"):
-            # LiveKit 1.5+ AgentSession context
-            session.chat_ctx.append(role="user", text=f"[SYSTEM: {greeting}]")
-        elif hasattr(session, "agent") and hasattr(session.agent, "chat_ctx"):
-            session.agent.chat_ctx.append(role="user", text=f"[SYSTEM: {greeting}]")
-        else:
-            await _log("warning", "No chat_ctx found on session - greeting may be delayed")
-    except Exception as _gr_exc:
-        await _log("warning", f"Greeting trigger failed: {_gr_exc}")
 
     # ── Keep session alive until SIP participant leaves ───────────────────────
     # Without this the entrypoint returns and the worker spins down.
