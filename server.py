@@ -1053,8 +1053,18 @@ async def _run_campaign(campaign_id: str) -> None:
                 logger.info("Campaign %s paused/stopped. Aborting run loop.", campaign_id)
                 break
 
-            phone = contact.get("phone", "")
-            if not phone.startswith("+"):
+            phone = str(contact.get("phone", "")).strip().replace(" ", "").replace("-", "")
+            
+            # Auto-format phone number
+            if phone and not phone.startswith("+"):
+                # If it's exactly 10 digits, assume it's an Indian number
+                if len(phone) == 10 and phone.isdigit():
+                    phone = "+91" + phone
+                else:
+                    phone = "+" + phone
+
+            if not phone or len(phone) < 7:
+                logger.warning(f"Campaign {campaign_id}: Skipping invalid phone number: '{phone}'")
                 fail_count += 1
                 continue
                 
