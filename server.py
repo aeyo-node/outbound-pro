@@ -1177,8 +1177,9 @@ async def api_run_campaign_now(campaign_id: str):
     campaign = await get_campaign(campaign_id)
     if not campaign:
         raise HTTPException(404, "Campaign not found")
+    await update_campaign_status(campaign_id, "active")
     asyncio.create_task(_run_campaign(campaign_id))
-    return {"status": "dispatching", "campaign_id": campaign_id}
+    return {"status": "active", "campaign_id": campaign_id}
 
 @app.get("/api/campaigns/{campaign_id}/logs")
 async def api_get_campaign_logs(campaign_id: str):

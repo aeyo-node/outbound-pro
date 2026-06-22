@@ -496,7 +496,7 @@ export function Campaigns() {
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-2">
-                        {c.status === "active" && (
+                        {(c.status === "active" || c.status === "paused") && (
                           <button onClick={() => handleRunNow(c.id)} className="p-2 hover:bg-green-500/10 rounded-lg text-gray-400 hover:text-green-400 transition-colors" title="Run Now">
                             <Play className="w-4 h-4" />
                           </button>
