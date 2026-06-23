@@ -106,7 +106,7 @@ export function Appointments() {
       (a.place || "").toLowerCase().includes(q) ||
       (a.service || "").toLowerCase().includes(q)
     );
-  });
+  }).sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
 
   const totalPages = Math.max(1, Math.ceil(filteredAppointments.length / rowsPerPage));
   const currentAppointments = filteredAppointments.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);

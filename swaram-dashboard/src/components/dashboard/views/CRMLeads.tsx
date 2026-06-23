@@ -169,7 +169,7 @@ export function CRMLeads() {
       (c.place || "").toLowerCase().includes(q) ||
       (c.lead_temperature || "").toLowerCase().includes(q)
     );
-  });
+  }).sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
 
   const totalPages = Math.max(1, Math.ceil(filteredContacts.length / rowsPerPage));
   const currentContacts = filteredContacts.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
