@@ -336,7 +336,6 @@ export function AgentProfiles() {
           <div className="col-span-full flex justify-center py-12">
              <div className="w-6 h-6 border-2 border-white/10 border-t-[#FFD166] rounded-full animate-spin" />
           </div>
-          </div>
         ) : filteredProfiles.length === 0 ? (
           <div className="col-span-full text-center py-12 bg-[#1C1C1E] border border-white/10 rounded-2xl">
             <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center mb-3 mx-auto">

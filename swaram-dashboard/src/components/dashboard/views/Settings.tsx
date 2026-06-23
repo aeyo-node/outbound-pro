@@ -220,6 +220,43 @@ export function Settings() {
             </div>
           </div>
 
+          {/* OpenRouter Section */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-medium text-white flex items-center gap-2 border-b border-white/10 pb-2">
+              <Key className="w-5 h-5 text-[#FFD166]" /> OpenRouter AI (For Call Summaries)
+            </h3>
+            <p className="text-xs text-gray-500">If Key 1 fails (rate limit / out of credits), it automatically falls back to Key 2, then Key 3, then Key 4.</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {[
+                { name: "OPENROUTER_API_KEY", label: "Key 1 (Primary)" },
+                { name: "OPENROUTER_API_KEY_2", label: "Key 2 (Fallback)" },
+                { name: "OPENROUTER_API_KEY_3", label: "Key 3 (Fallback)" },
+                { name: "OPENROUTER_API_KEY_4", label: "Key 4 (Fallback)" },
+              ].map((k) => (
+                <div className="space-y-2" key={k.name}>
+                  <label className="text-sm font-medium text-gray-400">{k.label}</label>
+                  <div className="relative">
+                    <input 
+                      type={(showSecrets as any)[k.name] ? "text" : "password"} 
+                      name={k.name}
+                      value={(settings as any)[k.name] || ""}
+                      onChange={handleChange}
+                      placeholder="sk-or-v1-..."
+                      className="w-full bg-[#0A0A0A] border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#FFD166]/50 transition-colors pr-12"
+                    />
+                    <button 
+                      type="button"
+                      onClick={() => toggleSecret(k.name as any)}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white"
+                    >
+                      {(showSecrets as any)[k.name] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
           {/* Twilio Section */}
           <div className="space-y-4">
             <h3 className="text-lg font-medium text-white flex items-center gap-2 border-b border-white/10 pb-2">

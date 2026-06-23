@@ -43,86 +43,127 @@ async def _log(msg: str, detail: str = "", level: str = "info") -> None:
 
 
 async def summarize_call_transcript(transcript: str) -> str:
-    """Summarize a multilingual call transcript into a detailed English description using Gemini Flash."""
+    """Summarize a multilingual call transcript into a detailed English description using OpenRouter."""
     if not transcript or not transcript.strip():
         return ""
     try:
-        import google.generativeai as genai
+        import httpx
         from db import get_setting
+        import asyncio
         
-        # 1. Fetch API Key: Environment overrides database setting
-        api_key = os.getenv("GOOGLE_API_KEY", "")
-        if not api_key:
-            api_key = await get_setting("GOOGLE_API_KEY", "")
-        
-        if not api_key:
-            logger.warning("No GOOGLE_API_KEY found in env or database settings for transcript summary.")
-            return transcript
+        # Pull all 4 API keys dynamically from Dashboard settings
+        key_names = ["OPENROUTER_API_KEY", "OPENROUTER_API_KEY_2", "OPENROUTER_API_KEY_3", "OPENROUTER_API_KEY_4"]
+        api_keys_to_try = []
+        for kn in key_names:
+            k = os.getenv(kn, "")
+            if not k:
+                k = await get_setting(kn, "")
+            if k:
+                api_keys_to_try.append(k)
             
-        loop = asyncio.get_event_loop()
-        genai.configure(api_key=api_key)
-        
-        # 2. Try models with robust fallbacks
-        models_to_try = ["gemini-2.0-flash", "models/gemini-1.5-flash", "models/gemini-2.0-flash-exp", "gemini-1.5-flash"]
-        response = None
-        last_error = None
+        if not api_keys_to_try:
+            logger.warning("No OpenRouter API keys found in env or database settings for transcript summary.")
+            return transcript
         
         prompt = (
-            "You are an expert CRM and sales analyst. The following is a raw call transcript that may be in Tamil, Malayalam, Hindi, or English. "
-            "Your task is to analyze the conversation and extract structured CRM notes in English. "
-            "Output exactly the following Markdown structure, extracting the requested details for each section:\n\n"
+            "You are a strict, factual CRM note-taker for an outbound sales team. "
+            "The following is a raw call transcript. The call is from an AI voice agent of a company called Swaram that sells websites, apps, and digital marketing services to businesses. "
+            "The transcript may contain Tamil, Malayalam, Hindi, Telugu, Kannada, or English text. Words may be phonetically transliterated (e.g., 'vanakkam' for வணக்கம்). "
+            "\n\n"
+            "## CRITICAL RULES:\n"
+            "1. **NEVER hallucinate or invent information.** If something is NOT explicitly stated in the transcript, write 'Not mentioned'. Do NOT guess names, business names, products, or any other details.\n"
+            "2. **Do NOT misinterpret Indian language words as English words.** For example, Tamil/Hindi greetings or filler words must NOT be treated as product names or business names.\n"
+            "3. **Translate Indian language dialogue accurately to English.** If you are unsure of a translation, write the original word in quotes and mark it as '[unclear]'.\n"
+            "4. **Only extract phone numbers that are explicitly dictated digit-by-digit in the transcript.**\n"
+            "5. **The Interest Score must reflect ONLY what the customer explicitly expressed.** A short or vague call = low score (1-3).\n"
+            "\n\n"
+            "Output exactly this Markdown structure:\n\n"
             "# Summary\n"
-            "(A highly descriptive, professional summary of the call)\n\n"
+            "(A factual, concise summary of what actually happened in the call. No speculation.)\n\n"
             "# Customer Details\n"
-            "- Name: (Extracted Lead name)\n"
-            "- WhatsApp Number: (Extracted WhatsApp number if any)\n"
-            "- Owner Details: (Extracted Owner details if any)\n"
-            "- Business Name: (Extracted Business name if any)\n\n"
+            "- Name: (ONLY if the customer explicitly states their name, otherwise 'Not mentioned')\n"
+            "- WhatsApp Number: (ONLY if explicitly dictated, otherwise 'Not mentioned')\n"
+            "- Owner Details: (ONLY if explicitly mentioned, otherwise 'Not mentioned')\n"
+            "- Business Name: (ONLY if the customer explicitly names their business, otherwise 'Not mentioned')\n\n"
             "# Interest Level\n"
-            "- Customer Intent: (Summary of their intent)\n"
-            "- Interest Score: (1-10)\n\n"
+            "- Customer Intent: (What did the customer actually want or ask about?)\n"
+            "- Interest Score: (1-10, based strictly on what was said)\n\n"
             "# Conversation Highlights\n"
-            "- Emotion: (Customer's overall emotion)\n"
-            "- Important Quotes: (Key quotes if any)\n\n"
+            "- Emotion: (Customer's tone — e.g., neutral, interested, annoyed, confused)\n"
+            "- Important Quotes: (Actual quotes from the transcript, translated to English if needed)\n\n"
             "# Questions\n"
-            "(Questions asked by the customer)\n\n"
+            "(Only questions the customer actually asked. Write 'None' if there were no questions.)\n\n"
             "# Objections\n"
-            "(Objections raised by the customer)\n\n"
+            "(Only objections the customer actually raised. Write 'None' if there were no objections.)\n\n"
             "# Customer Mood\n"
-            "(Detailed customer mood analysis)\n\n"
+            "(Brief factual description of the customer's mood based on their words and tone.)\n\n"
             "# Next Steps\n"
-            "- Requirements: (Specific requirements mentioned)\n"
-            "- Promises Made: (Promises made by the agent)\n"
-            "- Follow-up Actions: (Specific follow-up tasks)\n"
-            "- Callback Schedule: (When to call back)\n"
-            "- Sales Opportunity: (Potential opportunity size/details)\n\n"
+            "- Requirements: (Only if explicitly mentioned, otherwise 'Not mentioned')\n"
+            "- Promises Made: (Only promises actually made in the call, otherwise 'None')\n"
+            "- Follow-up Actions: (Only if discussed, otherwise 'None')\n"
+            "- Callback Schedule: (Only if a specific time was agreed, otherwise 'Not mentioned')\n"
+            "- Sales Opportunity: (Brief realistic assessment based on the call)\n\n"
             "# Agent Notes\n"
-            "(Any other critical agent notes)\n\n"
+            "(Any other important observations. Keep it factual.)\n\n"
             "Do NOT output the raw transcript. Output ONLY your structured markdown summary.\n\n"
             "### Raw Call Transcript:\n"
             f"{transcript}"
         )
         
-        for model_name in models_to_try:
-            try:
-                model = genai.GenerativeModel(model_name)
-                # Call generate_content in executor
-                response = await loop.run_in_executor(None, lambda m=model, p=prompt: m.generate_content(p))
-                if response and response.text:
-                    translated = response.text.strip()
-                    if translated:
-                        logger.info(f"Successfully generated structured call notes using model: {model_name}")
-                        return translated
-            except Exception as e:
-                last_error = e
-                logger.warning(f"Failed to generate notes with model {model_name}: {e}")
-                continue
+        data = {
+            "model": "openrouter/free",
+            "messages": [
+                {"role": "user", "content": prompt}
+            ]
+        }
+        
+        async with httpx.AsyncClient() as client:
+            for key_index, current_key in enumerate(api_keys_to_try):
+                headers = {
+                    "Authorization": f"Bearer {current_key}",
+                    "Content-Type": "application/json"
+                }
                 
-        if last_error:
-            logger.error(f"All model summarizations failed. Last error: {last_error}")
-            
+                max_retries = 3
+                success = False
+                for attempt in range(max_retries):
+                    response = await client.post(
+                        "https://openrouter.ai/api/v1/chat/completions",
+                        headers=headers,
+                        json=data,
+                        timeout=60.0
+                    )
+                    
+                    if response.status_code == 200:
+                        result = response.json()
+                        if "choices" in result and len(result["choices"]) > 0:
+                            content = result["choices"][0]["message"]["content"]
+                            logger.info(f"Successfully generated structured call notes using OpenRouter (Key {key_index + 1})")
+                            return content.strip()
+                        success = True
+                        break
+                    elif response.status_code in [429, 402]:
+                        # 429 = Rate Limit, 402 = Payment Required (Out of credits)
+                        logger.warning(f"OpenRouter key {key_index + 1} hit error {response.status_code}. Response: {response.text}")
+                        if attempt < max_retries - 1 and response.status_code == 429:
+                            wait_time = 2 ** attempt  # 1s, 2s, 4s...
+                            logger.warning(f"Retrying key {key_index + 1} in {wait_time}s...")
+                            await asyncio.sleep(wait_time)
+                            continue
+                        else:
+                            # Stop retrying this key and move to the fallback key
+                            logger.error(f"Failing over from key {key_index + 1} to next key due to {response.status_code}")
+                            break
+                    else:
+                        logger.error(f"OpenRouter API failed with status {response.status_code}: {response.text}")
+                        break
+                
+                if success:
+                    break
+                    
     except Exception as exc:
-        logger.error(f"Transcript summarization wrapper failed: {exc}", exc_info=True)
+        logger.error(f"Transcript summarization via OpenRouter failed: {exc}", exc_info=True)
+        
     return transcript
 
 
