@@ -48,12 +48,25 @@ async def summarize_call_transcript(transcript: str) -> str:
         return ""
     try:
         import google.generativeai as genai
+        from db import get_setting
+        
+        # 1. Fetch API Key: Environment overrides database setting
         api_key = os.getenv("GOOGLE_API_KEY", "")
         if not api_key:
-            return ""
+            api_key = await get_setting("GOOGLE_API_KEY", "")
+        
+        if not api_key:
+            logger.warning("No GOOGLE_API_KEY found in env or database settings for transcript summary.")
+            return transcript
+            
         loop = asyncio.get_event_loop()
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel("gemini-2.0-flash")
+        
+        # 2. Try models with robust fallbacks
+        models_to_try = ["gemini-2.0-flash", "models/gemini-1.5-flash", "models/gemini-2.0-flash-exp", "gemini-1.5-flash"]
+        response = None
+        last_error = None
+        
         prompt = (
             "You are an expert CRM and sales analyst. The following is a raw call transcript that may be in Tamil, Malayalam, Hindi, or English. "
             "Your task is to analyze the conversation and extract structured CRM notes in English. "
@@ -89,12 +102,27 @@ async def summarize_call_transcript(transcript: str) -> str:
             "### Raw Call Transcript:\n"
             f"{transcript}"
         )
-        response = await loop.run_in_executor(None, lambda: model.generate_content(prompt))
-        translated = (response.text or "").strip()
-        if translated:
-            return translated
+        
+        for model_name in models_to_try:
+            try:
+                model = genai.GenerativeModel(model_name)
+                # Call generate_content in executor
+                response = await loop.run_in_executor(None, lambda m=model, p=prompt: m.generate_content(p))
+                if response and response.text:
+                    translated = response.text.strip()
+                    if translated:
+                        logger.info(f"Successfully generated structured call notes using model: {model_name}")
+                        return translated
+            except Exception as e:
+                last_error = e
+                logger.warning(f"Failed to generate notes with model {model_name}: {e}")
+                continue
+                
+        if last_error:
+            logger.error(f"All model summarizations failed. Last error: {last_error}")
+            
     except Exception as exc:
-        logger.warning(f"Transcript translation failed (using original): {exc}")
+        logger.error(f"Transcript summarization wrapper failed: {exc}", exc_info=True)
     return transcript
 
 
