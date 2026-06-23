@@ -324,10 +324,6 @@ async def entrypoint(ctx: agents.JobContext) -> None:
     if phone_number:
         # Strip \r to fix CRLF docker issues on Windows
         trunk_id = os.getenv("OUTBOUND_TRUNK_ID", "").strip()
-        
-        # FAILSAFE: If the old broken Vobiz UUID is still stuck in memory, override it!
-        if "53eeb610" in trunk_id:
-            trunk_id = "ST_puExWSEydrQF"
             
         if not trunk_id:
             await _log("error", "OUTBOUND_TRUNK_ID not set — cannot place outbound call")
