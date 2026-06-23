@@ -468,6 +468,12 @@ async def entrypoint(ctx: agents.JobContext) -> None:
                 if _s3_endpoint:
                     s3_kwargs["endpoint"] = _s3_endpoint
 
+                _s3_ep = _s3_endpoint.rstrip("/")
+                tool_ctx.recording_url = (
+                    f"{_s3_ep}/{_aws_bucket}/{_recording_path}"
+                    if _s3_ep else f"https://{_aws_bucket}.s3.{_s3_region}.amazonaws.com/{_recording_path}"
+                )
+
                 _egress_req = api.RoomCompositeEgressRequest(
                     room_name=ctx.room.name, audio_only=True,
                     file_outputs=[api.EncodedFileOutput(
@@ -476,14 +482,16 @@ async def entrypoint(ctx: agents.JobContext) -> None:
                     )],
                 )
                 async with api.LiveKitAPI() as lkapi:
-                    _egress = await lkapi.egress.start_room_composite_egress(_egress_req)
-                    
-                _s3_ep = _s3_endpoint.rstrip("/")
-                tool_ctx.recording_url = (
-                    f"{_s3_ep}/{_aws_bucket}/{_recording_path}"
-                    if _s3_ep else f"https://{_aws_bucket}.s3.{_s3_region}.amazonaws.com/{_recording_path}"
-                )
-                await _log("info", f"Recording started: egress={_egress.egress_id}")
+                    # Retry logic for LiveKit API limits
+                    for attempt in range(5):
+                        try:
+                            _egress = await lkapi.egress.start_room_composite_egress(_egress_req)
+                            await _log("info", f"Recording started: egress={_egress.egress_id}")
+                            break
+                        except Exception as egress_exc:
+                            if attempt == 4:
+                                raise egress_exc
+                            await asyncio.sleep(2 ** attempt)
             except Exception as _exc:
                 await _log("warning", f"Recording start failed (non-fatal): {_exc}")
 
