@@ -32,7 +32,7 @@ except ImportError:
     _HAS_ROOM_OPTIONS = False
 from livekit.plugins import noise_cancellation, silero
 
-from db import init_db, log_error, get_enabled_tools
+from db import init_db, log_error, get_enabled_tools, get_all_settings
 from prompts import build_prompt
 from tools import AppointmentTools
 
@@ -447,11 +447,13 @@ async def entrypoint(ctx: agents.JobContext) -> None:
 
     # ── Optional S3 call recording via LiveKit Egress ─────────────────────────
     if phone_number:
-        _aws_key     = os.getenv("S3_ACCESS_KEY_ID") or os.getenv("AWS_ACCESS_KEY_ID", "")
-        _aws_secret  = os.getenv("S3_SECRET_ACCESS_KEY") or os.getenv("AWS_SECRET_ACCESS_KEY", "")
-        _aws_bucket  = os.getenv("S3_BUCKET") or os.getenv("AWS_BUCKET_NAME", "")
-        _s3_endpoint = os.getenv("S3_ENDPOINT_URL") or os.getenv("S3_ENDPOINT", "")
-        _s3_region   = os.getenv("S3_REGION") or os.getenv("AWS_REGION", "ap-south-1")
+        db_settings = await get_all_settings()
+        
+        _aws_key     = db_settings.get("S3_ACCESS_KEY_ID") or os.getenv("S3_ACCESS_KEY_ID") or os.getenv("AWS_ACCESS_KEY_ID", "")
+        _aws_secret  = db_settings.get("S3_SECRET_ACCESS_KEY") or os.getenv("S3_SECRET_ACCESS_KEY") or os.getenv("AWS_SECRET_ACCESS_KEY", "")
+        _aws_bucket  = db_settings.get("S3_BUCKET") or os.getenv("S3_BUCKET") or os.getenv("AWS_BUCKET_NAME", "")
+        _s3_endpoint = db_settings.get("S3_ENDPOINT_URL") or os.getenv("S3_ENDPOINT_URL") or os.getenv("S3_ENDPOINT", "")
+        _s3_region   = db_settings.get("S3_REGION") or os.getenv("S3_REGION") or os.getenv("AWS_REGION", "ap-south-1")
         if _aws_key and _aws_secret and _aws_bucket:
             try:
                 # 'api' is already imported globally, importing it locally shadows it and causes UnboundLocalError earlier in the function
