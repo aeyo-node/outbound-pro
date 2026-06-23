@@ -162,7 +162,7 @@ export function Campaigns() {
         }
         
         // Parse headers — support both comma and tab separated
-        const rawHeader = lines[0];
+        const rawHeader = lines[0].replace(/^\uFEFF/, '');
         const delimiter = rawHeader.includes('\t') ? '\t' : ',';
         const headers = rawHeader.split(delimiter).map(h => h.trim().replace(/^["']|["']$/g, '').toLowerCase());
         
