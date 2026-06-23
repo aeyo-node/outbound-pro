@@ -291,7 +291,7 @@ async def get_next_available(date: str, time: str) -> str:
 async def get_all_appointments(date_filter: Optional[str] = None) -> list:
     await cleanup_unknown_rows()
     db = await _adb()
-    query = db.table("appointments").select("*").order("date").order("time")
+    query = db.table("appointments").select("*").order("created_at", desc=True)
     if date_filter:
         query = query.eq("date", date_filter)
     result = await query.execute()
