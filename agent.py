@@ -300,6 +300,11 @@ async def entrypoint(ctx: agents.JobContext) -> None:
     # Add inbound awareness to the prompt
     if not phone_number:
         system_prompt += "\n\nNOTE: This is an INBOUND call. The user called YOU. Do not ask 'Am I speaking with...'. Instead, greet them warmly and ask how you can help."
+
+    # Append knowledge base if configured
+    knowledge_base = os.environ.get("KNOWLEDGE_BASE", "").strip()
+    if knowledge_base:
+        system_prompt += f"\n\n# KNOWLEDGE BASE\n{knowledge_base}"
     
     tool_ctx = AppointmentTools(ctx, phone_number, lead_name, business_name, industry, place, agent_profile_id=agent_profile_id, campaign_id=campaign_id)
 
