@@ -1,9 +1,10 @@
 import React from "react";
 import { 
   LayoutDashboard, PhoneCall, Megaphone, Users, PhoneOutgoing, 
-  PhoneIncoming, Zap, CalendarDays, UserSquare2, TerminalSquare, 
+  PhoneIncoming, CalendarDays, UserSquare2, TerminalSquare, 
   Settings, LogOut, Headset
 } from "lucide-react";
+import { useBranding } from "@/lib/BrandingContext";
 
 export type TabId = 
   "overview" | "single_call" | "campaigns" | "crm" | "outbound" | 
@@ -16,6 +17,8 @@ interface SidebarProps {
 }
 
 export function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
+  const { brand, palette } = useBranding();
+
   const menuItems: { id: TabId; label: string; icon: React.ElementType; badge?: string }[] = [
     { id: "overview", label: "Dashboard", icon: LayoutDashboard },
     { id: "single_call", label: "Single Call", icon: PhoneCall },
@@ -37,14 +40,28 @@ export function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
     window.location.href = "/login";
   };
 
+  const accent = palette.accent;
+  const accentRgb = palette.accentRgb;
+
   return (
     <aside className="w-64 h-screen bg-[#0A0A0A] border-r border-white/5 flex flex-col fixed left-0 top-0 overflow-y-auto hidden md:flex">
       {/* Logo */}
       <div className="p-6 flex items-center gap-3 shrink-0">
-        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#FFD166] to-[#FF9F1C] flex items-center justify-center">
-          <Headset className="w-4 h-4 text-black" />
-        </div>
-        <span className="text-xl font-bold tracking-tight text-white">Swaram</span>
+        {brand.logoUrl ? (
+          <img
+            src={brand.logoUrl}
+            alt={brand.brandName}
+            className="w-8 h-8 rounded-xl object-cover"
+          />
+        ) : (
+          <div
+            className="w-8 h-8 rounded-xl flex items-center justify-center"
+            style={{ background: `linear-gradient(135deg, ${accent}, ${accent}99)` }}
+          >
+            <Headset className="w-4 h-4 text-black" />
+          </div>
+        )}
+        <span className="text-xl font-bold tracking-tight text-white">{brand.brandName || "Swaram"}</span>
       </div>
 
       <div className="px-4 pb-6 flex-1 flex flex-col gap-8">
@@ -59,17 +76,27 @@ export function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
                   key={item.id}
                   onClick={() => setActiveTab(item.id)}
                   className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all ${
-                    isActive 
-                      ? "bg-[#FFD166]/10 text-[#FFD166] font-medium" 
+                    isActive
+                      ? "font-medium"
                       : "text-gray-400 hover:text-white hover:bg-white/5"
                   }`}
+                  style={isActive ? {
+                    backgroundColor: `rgba(${accentRgb},0.10)`,
+                    color: accent,
+                  } : undefined}
                 >
                   <div className="flex items-center gap-3">
-                    <item.icon className={`w-5 h-5 ${isActive ? "text-[#FFD166]" : "text-gray-500"}`} />
+                    <item.icon
+                      className="w-5 h-5"
+                      style={{ color: isActive ? accent : undefined }}
+                    />
                     <span className="text-sm">{item.label}</span>
                   </div>
                   {item.badge && isActive && (
-                    <span className="bg-[#FFD166]/20 text-[#FFD166] text-[10px] px-2 py-0.5 rounded-full">
+                    <span
+                      className="text-[10px] px-2 py-0.5 rounded-full"
+                      style={{ backgroundColor: `rgba(${accentRgb},0.2)`, color: accent }}
+                    >
                       {item.badge}
                     </span>
                   )}
@@ -90,39 +117,58 @@ export function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
                   key={item.id}
                   onClick={() => setActiveTab(item.id)}
                   className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${
-                    isActive 
-                      ? "bg-[#FFD166]/10 text-[#FFD166] font-medium" 
+                    isActive
+                      ? "font-medium"
                       : "text-gray-400 hover:text-white hover:bg-white/5"
                   }`}
+                  style={isActive ? {
+                    backgroundColor: `rgba(${accentRgb},0.10)`,
+                    color: accent,
+                  } : undefined}
                 >
-                  <item.icon className={`w-5 h-5 ${isActive ? "text-[#FFD166]" : "text-gray-500"}`} />
+                  <item.icon
+                    className="w-5 h-5"
+                    style={{ color: isActive ? accent : undefined }}
+                  />
                   <span className="text-sm">{item.label}</span>
                 </button>
               );
             })}
-            
+
             <button
               onClick={handleLogout}
               className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-400 hover:text-red-400 hover:bg-red-400/10 transition-all mt-4"
             >
-              <LogOut className="w-5 h-5 text-gray-500 group-hover:text-red-400" />
+              <LogOut className="w-5 h-5 text-gray-500" />
               <span className="text-sm">Logout</span>
             </button>
           </div>
         </div>
       </div>
-      
-      {/* Mobile App Promo (matching design) */}
+
+      {/* Bottom card */}
       <div className="p-4 shrink-0">
         <div className="bg-gradient-to-br from-[#1C1C1E] to-[#0A0A0A] border border-white/10 rounded-2xl p-4 relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-24 h-24 bg-[#FFD166]/10 rounded-full blur-xl" />
+          <div
+            className="absolute top-0 right-0 w-24 h-24 rounded-full blur-xl"
+            style={{ backgroundColor: `rgba(${accentRgb},0.10)` }}
+          />
           <div className="relative z-10">
             <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center mb-3">
-              <Headset className="w-4 h-4 text-[#FFD166]" />
+              <Headset className="w-4 h-4" style={{ color: accent }} />
             </div>
-            <h4 className="text-white text-sm font-semibold mb-1">Swaram Agent</h4>
+            <h4 className="text-white text-sm font-semibold mb-1">{brand.brandName || "Swaram"} Agent</h4>
             <p className="text-xs text-gray-400 mb-4">Enterprise Voice AI</p>
-            <a href="/" className="block w-full py-2 bg-[#FFD166]/10 hover:bg-[#FFD166]/20 text-[#FFD166] text-xs font-medium text-center rounded-lg transition-colors">
+            <a
+              href="/"
+              className="block w-full py-2 text-xs font-medium text-center rounded-lg transition-colors"
+              style={{
+                backgroundColor: `rgba(${accentRgb},0.10)`,
+                color: accent,
+              }}
+              onMouseEnter={e => (e.currentTarget.style.backgroundColor = `rgba(${accentRgb},0.20)`)}
+              onMouseLeave={e => (e.currentTarget.style.backgroundColor = `rgba(${accentRgb},0.10)`)}
+            >
               View Website
             </a>
           </div>
