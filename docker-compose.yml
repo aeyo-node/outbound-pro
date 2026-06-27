@@ -1,24 +1,93 @@
 version: "3.9"
 
 services:
+  # ── Your existing app (UNCHANGED) ──────────────────────────
   swaram:
     build: .
     restart: unless-stopped
     shm_size: '512m'
     ports:
-      - "8000:8000"   # Python backend (FastAPI)
-      - "127.0.0.1:3000:3000" # Next.js frontend (local only)
+      - "8000:8000"
+      - "127.0.0.1:3000:3000"
     env_file:
       - .env
     sysctls:
       - net.ipv6.conf.all.disable_ipv6=1
     volumes:
       - swaram_data:/data
+    depends_on:
+      redis:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/stats"]
       interval: 30s
       timeout: 10s
       retries: 3
 
+  # ── Redis (state coordination for LiveKit + Egress + SIP) ──
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    network_mode: "host"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  # ── LiveKit Server ─────────────────────────────────────────
+  livekit:
+    image: livekit/livekit-server:latest
+    restart: unless-stopped
+    network_mode: "host"
+    volumes:
+      - ./livekit/livekit.yaml:/etc/livekit.yaml
+    command: --config /etc/livekit.yaml
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  # ── Caddy (SSL → wss://lk.workflow-tech.info) ─────────────
+  caddy:
+    image: livekit/caddyl4
+    restart: unless-stopped
+    network_mode: "host"
+    volumes:
+      - ./livekit/caddy.yaml:/etc/caddy.yaml
+      - caddy_data:/data
+    command: run --config /etc/caddy.yaml --adapter yaml
+    depends_on:
+      - livekit
+
+  # ── Egress (unlimited call recordings!) ────────────────────
+  livekit-egress:
+    image: livekit/egress:latest
+    restart: unless-stopped
+    network_mode: "host"
+    cap_add:
+      - SYS_ADMIN
+    environment:
+      - EGRESS_CONFIG_FILE=/etc/egress.yaml
+    volumes:
+      - ./livekit/egress.yaml:/etc/egress.yaml
+    depends_on:
+      - livekit
+
+  # ── SIP (telephony — inbound + outbound calls) ────────────
+  livekit-sip:
+    image: livekit/sip:latest
+    restart: unless-stopped
+    network_mode: "host"
+    environment:
+      - SIP_CONFIG_FILE=/etc/sip.yaml
+    volumes:
+      - ./livekit/sip.yaml:/etc/sip.yaml
+    depends_on:
+      - livekit
+
 volumes:
   swaram_data:
+  redis_data:
+  caddy_data:
