@@ -187,7 +187,7 @@ def _build_session(tools: list, system_prompt: str, voice_override: Optional[str
             try:
                 from livekit.agents.llm import ChatContext, ChatMessage
                 chat_ctx = ChatContext()
-                chat_ctx.messages.append(ChatMessage(role="system", content=greeting))
+                chat_ctx.messages.append(ChatMessage(role="user", content=greeting))
                 realtime_kwargs["chat_ctx"] = chat_ctx
             except Exception as _ctx_err:
                 logger.warning("Could not build initial chat context: %s", _ctx_err)
