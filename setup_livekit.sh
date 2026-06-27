@@ -17,19 +17,20 @@ echo ""
 
 # Step 1: Generate API keys
 echo "📦 Generating LiveKit API keys..."
-KEYS_OUTPUT=$(docker run --rm livekit/generate --keys 2>&1)
+KEYS_OUTPUT=$(docker run --rm livekit/livekit-server generate-keys 2>&1)
 echo "$KEYS_OUTPUT"
 
-# Extract key and secret from output
-API_KEY=$(echo "$KEYS_OUTPUT" | grep -oP 'API Key:\s*\K\S+' || echo "")
-API_SECRET=$(echo "$KEYS_OUTPUT" | grep -oP 'API Secret:\s*\K\S+' || echo "")
+# Extract key and secret from output (format: "API Key: xxx\nAPI Secret: xxx")
+API_KEY=$(echo "$KEYS_OUTPUT" | grep -i "api key" | head -1 | awk '{print $NF}' || echo "")
+API_SECRET=$(echo "$KEYS_OUTPUT" | grep -i "api secret" | head -1 | awk '{print $NF}' || echo "")
 
 if [ -z "$API_KEY" ] || [ -z "$API_SECRET" ]; then
     echo ""
-    echo "⚠️  Could not auto-extract keys from output."
-    echo "Please enter them manually from the output above:"
-    read -p "API Key: " API_KEY
-    read -p "API Secret: " API_SECRET
+    echo "⚠️  Could not auto-extract keys. Generating random keys instead..."
+    API_KEY="API$(openssl rand -base64 12 | tr -d '/+=' | head -c 12)"
+    API_SECRET="$(openssl rand -base64 36 | tr -d '/+=')"
+    echo "🔑 Generated API Key:    $API_KEY"
+    echo "🔐 Generated API Secret: $API_SECRET"
 fi
 
 echo ""
