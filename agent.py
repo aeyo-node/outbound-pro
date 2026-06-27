@@ -187,7 +187,7 @@ def _build_session(tools: list, system_prompt: str, voice_override: Optional[str
             try:
                 from livekit.agents.llm import ChatContext, ChatMessage
                 chat_ctx = ChatContext()
-                chat_ctx.messages.append(ChatMessage(role="user", content=greeting))
+                chat_ctx.append(role="system", text=greeting)
                 realtime_kwargs["chat_ctx"] = chat_ctx
             except Exception as _ctx_err:
                 logger.warning("Could not build initial chat context: %s", _ctx_err)
@@ -486,7 +486,7 @@ async def entrypoint(ctx: agents.JobContext) -> None:
                 _lk_url    = os.getenv("LIVEKIT_URL", "ws://localhost:7880")
                 _lk_key    = os.getenv("LIVEKIT_API_KEY", "")
                 _lk_secret = os.getenv("LIVEKIT_API_SECRET", "")
-                _internal_url = _lk_url.replace("wss://", "ws://").replace("lk.workflow-tech.info", "localhost") if "workflow-tech" in _lk_url else _lk_url
+                _internal_url = "http://localhost:7880" if "workflow-tech" in _lk_url else _lk_url
                 async with api.LiveKitAPI(url=_internal_url, api_key=_lk_key, api_secret=_lk_secret) as lkapi:
                     for attempt in range(5):
                         try:
