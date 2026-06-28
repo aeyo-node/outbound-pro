@@ -27,6 +27,7 @@ export function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
     { id: "outbound", label: "Outbound Calls", icon: PhoneOutgoing },
     { id: "incoming", label: "Incoming Calls", icon: PhoneIncoming },
     { id: "appointments", label: "Demo Booked", icon: CalendarDays },
+    { id: "live_ops", label: "Live Monitoring", icon: Headset, badge: "NEW" },
     { id: "agent_profiles", label: "Agent Profiles", icon: UserSquare2 },
   ];
 

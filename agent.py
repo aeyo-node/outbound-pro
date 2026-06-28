@@ -36,7 +36,7 @@ from db import init_db, log_error, get_enabled_tools, get_all_settings
 from prompts import build_prompt
 from tools import AppointmentTools
 
-load_dotenv(".env", override=True)
+# load_dotenv(".env", override=True)
 log_path = "/data/app.log" if os.path.exists("/data") else "app.log"
 logging.basicConfig(
     level=logging.INFO,
@@ -184,13 +184,13 @@ def _build_session(tools: list, system_prompt: str, voice_override: Optional[str
             realtime_kwargs["context_window_compression"] = _ctx_compression_cfg
 
         if greeting:
-            try:
-                from livekit.agents.llm import ChatContext, ChatMessage
-                chat_ctx = ChatContext()
-                chat_ctx.append(role="system", text=greeting)
-                realtime_kwargs["chat_ctx"] = chat_ctx
-            except Exception as _ctx_err:
-                logger.warning("Could not build initial chat context: %s", _ctx_err)
+            # Inject greeting into instructions so the model speaks first
+            realtime_kwargs["instructions"] = (
+                system_prompt + "\n\n"
+                "IMPORTANT: You MUST begin the conversation immediately by saying the following greeting "
+                "out loud as your very first response. Do not wait for the user to speak first.\n"
+                f"Greeting: {greeting}"
+            )
 
         logger.error("FINAL REALTIME MODEL=%s", gemini_model)
         return AgentSession(llm=RealtimeClass(**realtime_kwargs), tools=tools)
@@ -293,6 +293,18 @@ async def entrypoint(ctx: agents.JobContext) -> None:
         except Exception:
             pass
 
+    # Fetch full profile from DB
+    profile = None
+    if agent_profile_id:
+        from db import get_agent_profile
+        try:
+            profile = await get_agent_profile(agent_profile_id)
+        except Exception:
+            pass
+
+    if profile and profile.get("system_prompt") and not custom_prompt:
+        custom_prompt = profile.get("system_prompt")
+
     system_prompt = build_prompt(
         lead_name=lead_name, business_name=business_name,
         industry=industry, place=place, custom_prompt=custom_prompt,
@@ -300,6 +312,24 @@ async def entrypoint(ctx: agents.JobContext) -> None:
     # Add inbound awareness to the prompt
     if not phone_number:
         system_prompt += "\n\nNOTE: This is an INBOUND call. The user called YOU. Do not ask 'Am I speaking with...'. Instead, greet them warmly and ask how you can help."
+
+    # Inject speech settings if configured
+    if profile and profile.get("speech_settings"):
+        try:
+            import json
+            sp = json.loads(profile["speech_settings"])
+            if sp:
+                system_prompt += f"\n\n# SPEECH INSTRUCTIONS\n"
+                if sp.get("fillers"):
+                    system_prompt += "- Use conversational filler words (um, uh, ah) naturally while thinking to sound human.\n"
+                if sp.get("laugh"):
+                    system_prompt += "- Laugh slightly or chuckle appropriately during the conversation to build rapport.\n"
+                if sp.get("speed"):
+                    system_prompt += f"- Speak at a speed modifier of {sp.get('speed')}.\n"
+                if sp.get("custom_instructions"):
+                    system_prompt += f"- {sp.get('custom_instructions')}\n"
+        except Exception:
+            pass
 
     # Append knowledge base if configured
     knowledge_base = os.environ.get("KNOWLEDGE_BASE", "").strip()
@@ -361,10 +391,12 @@ async def entrypoint(ctx: agents.JobContext) -> None:
     await _log("info", f"Active tools: {len(active_tools)} loaded")
 
     # Build the greeting before starting the session
-    greeting = (
-        f"The call just connected. Speak strictly in Malayalam. Start the call by greeting the lead and using the greeting defined in your system prompt for {industry}."
-        if phone_number else f"Speak strictly in Malayalam. Greet the caller warmly and help them with {industry}."
-    )
+    default_inbound = f"Speak strictly in Malayalam. Greet the caller warmly and help them with {industry}."
+    default_outbound = f"The call just connected. Speak strictly in Malayalam. Start the call by greeting the lead and using the greeting defined in your system prompt for {industry}."
+    
+    greeting = default_outbound if phone_number else default_inbound
+    if profile and profile.get("welcome_message"):
+        greeting = f"IMPORTANT: You MUST start the call EXACTLY with this welcome message: '{profile['welcome_message']}'"
 
     session = _build_session(tools=active_tools, system_prompt=system_prompt, voice_override=voice_override, greeting=greeting)
     tool_ctx.session = session
@@ -429,7 +461,7 @@ async def entrypoint(ctx: agents.JobContext) -> None:
             room=ctx.room,
             agent=OutboundAssistant(instructions=system_prompt),
             room_options=_RO(input_options=RoomInputOptions(
-                noise_cancellation=noise_cancellation.BVCTelephony(),
+                # noise_cancellation=noise_cancellation.BVCTelephony(),
                 close_on_disconnect=False,
             )),
         )
@@ -438,7 +470,7 @@ async def entrypoint(ctx: agents.JobContext) -> None:
             room=ctx.room,
             agent=OutboundAssistant(instructions=system_prompt),
             room_input_options=RoomInputOptions(
-                noise_cancellation=noise_cancellation.BVCTelephony(),
+                # noise_cancellation=noise_cancellation.BVCTelephony(),
                 close_on_disconnect=False,
             ),
         )

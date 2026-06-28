@@ -1,24 +1,18 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { UserSquare2, Plus, Star, Trash2, Edit2, Bot, X, Loader2, Save, Upload, Link as LinkIcon, FileText, Search } from "lucide-react";
+import { Plus, Loader2, Save, Bot, Star } from "lucide-react";
+import { TestAgentWidget } from "../TestAgentWidget";
 
 const API = "/api";
+
 
 export function AgentProfiles() {
   const [profiles, setProfiles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProfile, setEditingProfile] = useState<any>(null);
   const [saving, setSaving] = useState(false);
-  
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [searchQuery, setSearchQuery] = useState("");
-  // Document knowledge base states
-  const [docsList, setDocsList] = useState<{ documents: any[]; links: any[] }>({ documents: [], links: [] });
-  const [fetchingDocs, setFetchingDocs] = useState(false);
-  const [linkUrl, setLinkUrl] = useState("");
-  const [linkDesc, setLinkDesc] = useState("");
+  const [activeTab, setActiveTab] = useState("functions");
   
   // Form state
   const [formData, setFormData] = useState({
@@ -26,16 +20,28 @@ export function AgentProfiles() {
     voice: "Aoede",
     model: "models/gemini-2.0-flash-exp",
     system_prompt: "",
+    welcome_message: "",
     enabled_tools: "[]",
     is_default: false,
-    place: ""
+    place: "",
+    speech_settings: {
+      fillers: false,
+      laugh: false,
+      speed: 1.0,
+      custom_instructions: ""
+    }
   });
 
   const fetchProfiles = async () => {
     try {
       const res = await fetch(`${API}/profiles`);
       const data = await res.json();
-      if (Array.isArray(data)) setProfiles(data);
+      if (Array.isArray(data)) {
+        setProfiles(data);
+        if (data.length > 0 && !editingProfile) {
+          handleSelectProfile(data[0]);
+        }
+      }
     } catch (err) {
       console.error(err);
     } finally {
@@ -47,146 +53,66 @@ export function AgentProfiles() {
     fetchProfiles();
   }, []);
 
-  const handleOpenCreate = () => {
-    setEditingProfile(null);
-    setFormData({
-      name: "",
-      voice: "Aoede",
-      model: "models/gemini-2.0-flash-exp",
-      system_prompt: "",
-      enabled_tools: "[]",
-      is_default: false,
-      place: ""
-    });
-    setIsModalOpen(true);
-  };
-
-  const fetchDocs = async (profileId: string) => {
-    setFetchingDocs(true);
-    try {
-      const res = await fetch(`${API}/profiles/${profileId}/documents`);
-      const data = await res.json();
-      if (data && (Array.isArray(data.documents) || Array.isArray(data.links))) {
-        setDocsList(data);
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setFetchingDocs(false);
-    }
-  };
-
-  const handleDocUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !editingProfile) return;
-    
-    const uploadForm = new FormData();
-    uploadForm.append("file", file);
-    
-    setFetchingDocs(true);
-    try {
-      const res = await fetch(`${API}/profiles/${editingProfile.id}/documents`, {
-        method: "POST",
-        body: uploadForm
-      });
-      if (res.ok) {
-        fetchDocs(editingProfile.id);
-      }
-    } catch (err) {
-      console.error(err);
-      setFetchingDocs(false);
-    }
-  };
-
-  const handleAddLink = async () => {
-    if (!linkUrl || !editingProfile) return;
-    
-    setFetchingDocs(true);
-    try {
-      const res = await fetch(`${API}/profiles/${editingProfile.id}/links`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: linkUrl, description: linkDesc })
-      });
-      if (res.ok) {
-        setLinkUrl("");
-        setLinkDesc("");
-        fetchDocs(editingProfile.id);
-      }
-    } catch (err) {
-      console.error(err);
-      setFetchingDocs(false);
-    }
-  };
-
-  const handleDeleteDoc = async (filename: string) => {
-    if (!editingProfile || !confirm(`Delete file "${filename}"?`)) return;
-    
-    setFetchingDocs(true);
-    try {
-      const res = await fetch(`${API}/profiles/${editingProfile.id}/documents/${encodeURIComponent(filename)}`, {
-        method: "DELETE"
-      });
-      if (res.ok) {
-        fetchDocs(editingProfile.id);
-      }
-    } catch (err) {
-      console.error(err);
-      setFetchingDocs(false);
-    }
-  };
-
-  const handleDeleteLink = async (url: string) => {
-    if (!editingProfile || !confirm(`Remove link "${url}"?`)) return;
-    
-    setFetchingDocs(true);
-    try {
-      const res = await fetch(`${API}/profiles/${editingProfile.id}/links?url=${encodeURIComponent(url)}`, {
-        method: "DELETE"
-      });
-      if (res.ok) {
-        fetchDocs(editingProfile.id);
-      }
-    } catch (err) {
-      console.error(err);
-      setFetchingDocs(false);
-    }
-  };
-
-  const handleOpenEdit = (p: any) => {
+  const handleSelectProfile = (p: any) => {
     setEditingProfile(p);
+    
+    let parsedSpeech = { fillers: false, laugh: false, speed: 1.0, custom_instructions: "" };
+    try {
+      if (p.speech_settings) parsedSpeech = JSON.parse(p.speech_settings);
+    } catch (e) {}
+    
     setFormData({
       name: p.name,
       voice: p.voice,
       model: p.model,
       system_prompt: p.system_prompt || "",
+      welcome_message: p.welcome_message || "",
       enabled_tools: p.enabled_tools || "[]",
       is_default: !!p.is_default,
-      place: p.place || ""
+      place: p.place || "",
+      speech_settings: parsedSpeech
     });
-    setDocsList({ documents: [], links: [] });
-    setLinkUrl("");
-    setLinkDesc("");
-    fetchDocs(p.id);
-    setIsModalOpen(true);
   };
 
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleCreateNew = () => {
+    setEditingProfile(null);
+    setFormData({
+      name: "New Agent",
+      voice: "Aoede",
+      model: "models/gemini-2.0-flash-exp",
+      system_prompt: "",
+      welcome_message: "",
+      enabled_tools: "[]",
+      is_default: false,
+      place: "",
+      speech_settings: { fillers: false, laugh: false, speed: 1.0, custom_instructions: "" }
+    });
+  };
+
+  const handleSave = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     setSaving(true);
     try {
       const url = editingProfile ? `${API}/profiles/${editingProfile.id}` : `${API}/profiles`;
       const method = editingProfile ? "PUT" : "POST";
       
+      const payload = {
+        ...formData,
+        speech_settings: JSON.stringify(formData.speech_settings)
+      };
+      
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(editingProfile ? formData : formData)
+        body: JSON.stringify(payload)
       });
       
       if (res.ok) {
-        setIsModalOpen(false);
-        fetchProfiles();
+        const saved = await res.json();
+        await fetchProfiles();
+        if (!editingProfile && saved.id) {
+          handleSelectProfile(saved);
+        }
       }
     } catch (err) {
       console.error(err);
@@ -195,247 +121,128 @@ export function AgentProfiles() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Delete this agent profile?")) return;
-    try {
-      await fetch(`${API}/profiles/${id}`, { method: "DELETE" });
-      fetchProfiles();
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const handleSetDefault = async (id: string) => {
-    try {
-      await fetch(`${API}/profiles/${id}/default`, { method: "POST" });
-      fetchProfiles();
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const loadDemoData = async () => {
-    setLoading(true);
-    try {
-      await fetch(`${API}/init_demo_data`);
-      fetchProfiles();
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDeleteBulk = async () => {
-    if (selectedIds.length === 0) return;
-    if (!confirm(`Are you sure you want to permanently delete the ${selectedIds.length} selected agent profiles?`)) return;
-    try {
-      const res = await fetch(`${API}/profiles/delete-bulk`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ids: selectedIds })
-      });
-      if (res.ok) {
-        setSelectedIds([]);
-        fetchProfiles();
-      }
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const handleToggleSelect = (id: string) => {
-    setSelectedIds(prev =>
-      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
-    );
-  };
-
-  const handleToggleAll = (filtered: any[]) => {
-    const filteredIds = filtered.map(p => p.id).filter(Boolean);
-    const allSelected = filteredIds.every(id => selectedIds.includes(id));
-    if (allSelected) {
-      setSelectedIds(prev => prev.filter(id => !filteredIds.includes(id)));
-    } else {
-      setSelectedIds(prev => Array.from(new Set([...prev, ...filteredIds])));
-    }
-  };
-
-  const filteredProfiles = profiles.filter(p => {
-    const q = searchQuery.toLowerCase();
-    return (
-      (p.name || "").toLowerCase().includes(q) ||
-      (p.place || "").toLowerCase().includes(q) ||
-      (p.voice || "").toLowerCase().includes(q)
-    );
-  });
+  if (loading) {
+    return <div className="flex justify-center p-12"><Loader2 className="w-8 h-8 animate-spin text-[#FFD166]" /></div>;
+  }
 
   return (
-    <div className="animate-in fade-in duration-500">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+    <div className="flex flex-col h-[calc(100vh-120px)] animate-in fade-in duration-500">
+      <div className="flex justify-between items-center mb-6">
         <div>
-          <h2 className="text-2xl font-medium text-white mb-2">Agent Profiles</h2>
-          <p className="text-gray-400 text-sm">Configure multiple AI personalities, voices, and capabilities.</p>
+          <h2 className="text-2xl font-medium text-white mb-1">Agent Builder</h2>
+          <p className="text-gray-400 text-sm">Configure AI personalities and test them live.</p>
         </div>
-        <div className="flex gap-3">
-          {profiles.length === 0 && !loading && (
-            <button 
-              onClick={loadDemoData}
-              className="bg-white/5 hover:bg-white/10 text-white font-semibold py-2.5 px-6 rounded-xl border border-white/10 transition-all text-sm"
-            >
-              Load Demo Profiles
-            </button>
-          )}
-          <button 
-            onClick={handleOpenCreate}
-            className="bg-[#FFD166] hover:bg-[#FFD166]/90 text-black font-semibold py-2.5 px-6 rounded-xl flex items-center gap-2 transition-all"
+        <div className="flex gap-4">
+          <select 
+            className="bg-[#1C1C1E] border border-white/10 rounded-xl px-4 py-2 text-white outline-none focus:border-[#FFD166]/50"
+            value={editingProfile?.id || ""}
+            onChange={(e) => {
+              const p = profiles.find(x => x.id === e.target.value);
+              if (p) handleSelectProfile(p);
+            }}
           >
-            <Plus className="w-5 h-5" /> Create Profile
+            {profiles.map(p => <option key={p.id} value={p.id}>{p.name} {p.is_default ? '(Default)' : ''}</option>)}
+          </select>
+          <button 
+            onClick={handleCreateNew}
+            className="bg-white/5 hover:bg-white/10 text-white py-2 px-4 rounded-xl border border-white/10 flex items-center gap-2 transition-all text-sm"
+          >
+            <Plus className="w-4 h-4" /> New Profile
+          </button>
+          <button 
+            onClick={handleSave}
+            disabled={saving}
+            className="bg-[#FFD166] hover:bg-[#FFD166]/90 text-black font-semibold py-2 px-6 rounded-xl flex items-center gap-2 transition-all disabled:opacity-50 text-sm"
+          >
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+            Save Changes
           </button>
         </div>
       </div>
 
-      <div className="bg-[#1C1C1E] border border-white/10 rounded-2xl overflow-hidden shadow-xl mb-6">
-        <div className="p-4 border-b border-white/10 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 bg-white/[0.02]">
-          <div className="flex items-center gap-2 bg-[#0A0A0A] border border-white/10 rounded-lg px-3 py-2 w-full max-w-sm">
-            <Search className="w-4 h-4 text-gray-500" />
-            <input 
-              type="text" 
-              placeholder="Search profiles..." 
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="bg-transparent border-none outline-none text-sm text-white placeholder-gray-500 w-full"
-            />
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-6 overflow-hidden">
+        {/* LEFT COLUMN: Prompts & Identity */}
+        <div className="bg-[#1C1C1E] border border-white/10 rounded-2xl flex flex-col overflow-hidden">
+          <div className="p-4 border-b border-white/10 bg-white/5">
+            <h3 className="text-sm font-semibold text-white uppercase tracking-wider">Identity & Prompts</h3>
           </div>
-
-          <div className="flex items-center gap-4">
-            <label className="flex items-center gap-2 text-sm text-gray-400 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={filteredProfiles.length > 0 && filteredProfiles.every(p => selectedIds.includes(p.id))}
-                onChange={() => handleToggleAll(filteredProfiles)}
-                className="rounded border-white/20 bg-white/5 text-[#FFD166] focus:ring-0 cursor-pointer w-4 h-4"
+          <div className="p-6 overflow-y-auto flex-1 space-y-6">
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-gray-400 uppercase">Agent Name</label>
+              <input 
+                type="text" 
+                value={formData.name}
+                onChange={e => setFormData({...formData, name: e.target.value})}
+                className="w-full bg-[#0A0A0A] border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-[#FFD166]/50 text-sm"
               />
-              Select All
-            </label>
-
-            {selectedIds.length > 0 && (
-              <button
-                onClick={handleDeleteBulk}
-                className="flex items-center justify-center gap-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 px-4 py-2 rounded-xl text-sm font-semibold transition-all animate-in zoom-in duration-200"
-              >
-                <Trash2 className="w-4 h-4" />
-                Delete Selected ({selectedIds.length})
-              </button>
-            )}
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-gray-400 uppercase">Welcome Message</label>
+              <textarea 
+                rows={3}
+                value={formData.welcome_message}
+                onChange={e => setFormData({...formData, welcome_message: e.target.value})}
+                placeholder="Hi, this is Alex calling from Swaram AI. How can I help you today?"
+                className="w-full bg-[#0A0A0A] border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#FFD166]/50 resize-none text-sm leading-relaxed"
+              />
+            </div>
+            <div className="space-y-2 flex-1">
+              <label className="text-xs font-medium text-gray-400 uppercase">System Prompt</label>
+              <textarea 
+                rows={12}
+                value={formData.system_prompt}
+                onChange={e => setFormData({...formData, system_prompt: e.target.value})}
+                placeholder="You are an expert sales assistant..."
+                className="w-full bg-[#0A0A0A] border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#FFD166]/50 resize-none text-sm leading-relaxed h-full"
+              />
+            </div>
           </div>
         </div>
-      </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-        {loading ? (
-          <div className="col-span-full flex justify-center py-12">
-             <div className="w-6 h-6 border-2 border-white/10 border-t-[#FFD166] rounded-full animate-spin" />
+        {/* MIDDLE COLUMN: Settings & Functions */}
+        <div className="bg-[#1C1C1E] border border-white/10 rounded-2xl flex flex-col overflow-hidden">
+          <div className="flex border-b border-white/10 bg-white/5">
+            <button 
+              onClick={() => setActiveTab("functions")}
+              className={`flex-1 py-4 text-xs font-semibold uppercase tracking-wider transition-colors ${activeTab === "functions" ? "text-[#FFD166] border-b-2 border-[#FFD166]" : "text-gray-400 hover:text-white"}`}
+            >
+              Functions
+            </button>
+            <button 
+              onClick={() => setActiveTab("speech")}
+              className={`flex-1 py-4 text-xs font-semibold uppercase tracking-wider transition-colors ${activeTab === "speech" ? "text-[#FFD166] border-b-2 border-[#FFD166]" : "text-gray-400 hover:text-white"}`}
+            >
+              Speech & Voice
+            </button>
           </div>
-        ) : filteredProfiles.length === 0 ? (
-          <div className="col-span-full text-center py-12 bg-[#1C1C1E] border border-white/10 rounded-2xl">
-            <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center mb-3 mx-auto">
-              <UserSquare2 className="w-5 h-5 text-gray-400" />
-            </div>
-            <p className="text-sm text-gray-400">No agent profiles found.</p>
-          </div>
-        ) : filteredProfiles.map((p, i) => (
-          <div key={i} className={`bg-[#1C1C1E] border rounded-2xl p-6 relative group transition-colors ${p.is_default ? "border-[#FFD166]/50" : "border-white/10 hover:border-white/20"}`}>
-            {p.is_default && (
-              <div className="absolute top-0 right-0 bg-[#FFD166] text-black text-[10px] font-bold px-3 py-1 rounded-bl-xl rounded-tr-2xl uppercase tracking-wider flex items-center gap-1">
-                <Star className="w-3 h-3 fill-black" /> Default
+          <div className="p-6 overflow-y-auto flex-1">
+            {activeTab === "functions" && (
+              <div className="space-y-6">
+                <div className="bg-[#0A0A0A] border border-white/10 rounded-xl p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="text-sm font-medium text-white">Book Appointment</h4>
+                    <input type="checkbox" checked={formData.enabled_tools.includes("book_appointment")} onChange={() => {}} className="accent-[#FFD166]" />
+                  </div>
+                  <p className="text-xs text-gray-500">Allows the agent to schedule meetings in Google Calendar.</p>
+                </div>
+                <div className="bg-[#0A0A0A] border border-white/10 rounded-xl p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="text-sm font-medium text-white">Transfer Call</h4>
+                    <input type="checkbox" checked={formData.enabled_tools.includes("transfer_call")} onChange={() => {}} className="accent-[#FFD166]" />
+                  </div>
+                  <p className="text-xs text-gray-500">Allows the agent to route the call to a human representative.</p>
+                </div>
               </div>
             )}
             
-            <div className="absolute top-4 right-4 z-10">
-              <input
-                type="checkbox"
-                checked={selectedIds.includes(p.id)}
-                onChange={() => handleToggleSelect(p.id)}
-                className="rounded border-white/20 bg-white/5 text-[#FFD166] focus:ring-0 focus:ring-offset-0 cursor-pointer w-4 h-4"
-              />
-            </div>
-
-            <div className="flex items-start gap-4 mb-5 pr-8">
-              <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${p.is_default ? "bg-[#FFD166]/20" : "bg-white/5"}`}>
-                <Bot className={`w-6 h-6 ${p.is_default ? "text-[#FFD166]" : "text-gray-400"}`} />
-              </div>
-              <div>
-                <h3 className="text-lg font-medium text-white">{p.name}</h3>
-                <p className="text-xs text-gray-400 capitalize">{p.voice} Voice • {p.model.split('/')[1] || p.model}</p>
-                {p.place && <p className="text-[11px] text-gray-500 mt-0.5">Location: {p.place}</p>}
-              </div>
-            </div>
-
-            <div className="space-y-3 mb-6 h-20 overflow-hidden">
-              <div>
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">System Prompt</p>
-                <p className="text-sm text-gray-300 line-clamp-3 leading-relaxed">
-                  {p.system_prompt || "Uses default global system prompt."}
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 pt-4 border-t border-white/10">
-              {!p.is_default && (
-                <button 
-                  onClick={() => handleSetDefault(p.id)}
-                  className="flex-1 py-2 bg-white/5 hover:bg-white/10 text-white text-xs font-medium rounded-lg transition-colors"
-                >
-                  Make Default
-                </button>
-              )}
-              <button 
-                onClick={() => handleOpenEdit(p)}
-                className="flex-1 py-2 bg-white/5 hover:bg-white/10 text-white text-xs font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
-              >
-                <Edit2 className="w-3 h-3" /> Edit
-              </button>
-              <button 
-                onClick={() => handleDelete(p.id)}
-                className="w-10 h-8 flex items-center justify-center bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-300">
-          <div className="bg-[#1C1C1E] border border-white/10 rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl">
-            <div className="p-6 border-b border-white/10 flex items-center justify-between">
-              <h3 className="text-xl font-medium text-white">{editingProfile ? "Edit Profile" : "Create Agent Profile"}</h3>
-              <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-white">
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-            
-            <form onSubmit={handleSave} className="p-6 space-y-4 overflow-y-auto max-h-[calc(90vh-80px)]">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {activeTab === "speech" && (
+              <div className="space-y-6">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-400">Agent Name</label>
-                  <input 
-                    required
-                    type="text" 
-                    value={formData.name}
-                    onChange={e => setFormData({...formData, name: e.target.value})}
-                    placeholder="e.g. Sales Assistant"
-                    className="w-full bg-[#0A0A0A] border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-[#FFD166]/50"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-400">Voice</label>
+                  <label className="text-xs font-medium text-gray-400 uppercase">Voice Selection</label>
                   <select 
                     value={formData.voice}
                     onChange={e => setFormData({...formData, voice: e.target.value})}
-                    className="w-full bg-[#0A0A0A] border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-[#FFD166]/50"
+                    className="w-full bg-[#0A0A0A] border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-[#FFD166]/50 text-sm"
                   >
                     <option value="Aoede">Aoede</option>
                     <option value="Charon">Charon</option>
@@ -444,187 +251,53 @@ export function AgentProfiles() {
                     <option value="Puck">Puck</option>
                   </select>
                 </div>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-400">AI Model</label>
-                <input 
-                  type="text" 
-                  value={formData.model}
-                  onChange={e => setFormData({...formData, model: e.target.value})}
-                  className="w-full bg-[#0A0A0A] border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-[#FFD166]/50"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-400">Default Place / Location (Optional)</label>
-                <input 
-                  type="text" 
-                  value={formData.place}
-                  onChange={e => setFormData({...formData, place: e.target.value})}
-                  placeholder="e.g. Ernakulam"
-                  className="w-full bg-[#0A0A0A] border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-[#FFD166]/50"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-400">System Prompt (Optional)</label>
-                <textarea 
-                  rows={6}
-                  value={formData.system_prompt}
-                  onChange={e => setFormData({...formData, system_prompt: e.target.value})}
-                  placeholder="Override global system prompt for this agent..."
-                  className="w-full bg-[#0A0A0A] border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-[#FFD166]/50 resize-none text-sm leading-relaxed"
-                />
-              </div>
-
-              <div className="flex items-center gap-2 pt-2">
-                <input 
-                  type="checkbox" 
-                  id="is_default"
-                  checked={formData.is_default}
-                  onChange={e => setFormData({...formData, is_default: e.target.checked})}
-                  className="w-4 h-4 accent-[#FFD166]"
-                />
-                <label htmlFor="is_default" className="text-sm text-gray-300">Set as default agent profile</label>
-              </div>
-
-              {editingProfile && (
-                <div className="pt-6 border-t border-white/10 space-y-4">
-                  <div>
-                    <h4 className="text-sm font-semibold text-white mb-1">Knowledge Base Resources</h4>
-                    <p className="text-xs text-gray-500">Provide reference documentation, links, or context for the voice agent.</p>
-                  </div>
-
-                  {/* Document upload and link form */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {/* File Upload */}
-                    <div className="border border-dashed border-white/10 rounded-xl p-4 flex flex-col items-center justify-center bg-[#0A0A0A] text-center space-y-2">
-                      <Upload className="w-6 h-6 text-gray-500" />
-                      <span className="text-[11px] text-gray-300">Upload Reference Document (PDF/Text)</span>
-                      <label className="bg-white/5 hover:bg-white/10 border border-white/10 text-white font-medium py-1.5 px-3 rounded-lg text-xs cursor-pointer transition-colors">
-                        Select File
-                        <input 
-                          type="file"
-                          accept=".pdf,.txt"
-                          onChange={handleDocUpload}
-                          className="hidden"
-                        />
-                      </label>
+                <div className="pt-4 border-t border-white/10 space-y-4">
+                  <h4 className="text-sm font-medium text-white">Human-like Behavior</h4>
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input 
+                      type="checkbox" 
+                      checked={formData.speech_settings.fillers}
+                      onChange={e => setFormData({...formData, speech_settings: {...formData.speech_settings, fillers: e.target.checked}})}
+                      className="accent-[#FFD166] w-4 h-4"
+                    />
+                    <div>
+                      <div className="text-sm text-white">Filler Words</div>
+                      <div className="text-xs text-gray-500">Agent will say "um", "uh", "ah" while thinking.</div>
                     </div>
-
-                    {/* Link upload */}
-                    <div className="border border-white/10 rounded-xl p-4 bg-[#0A0A0A] flex flex-col justify-between space-y-3">
-                      <div className="space-y-1.5">
-                        <span className="text-xs font-medium text-gray-300 flex items-center gap-1.5"><LinkIcon className="w-3.5 h-3.5" /> Add External / Video Link</span>
-                        <input 
-                          type="text" 
-                          placeholder="https://youtube.com/... or Doc URL" 
-                          value={linkUrl}
-                          onChange={e => setLinkUrl(e.target.value)}
-                          className="w-full bg-[#1C1C1E] border border-white/5 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-[#FFD166]/50"
-                        />
-                        <input 
-                          type="text" 
-                          placeholder="Link Description (e.g. Tutorial Video)" 
-                          value={linkDesc}
-                          onChange={e => setLinkDesc(e.target.value)}
-                          className="w-full bg-[#1C1C1E] border border-white/5 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-[#FFD166]/50"
-                        />
-                      </div>
-                      <button
-                        type="button"
-                        onClick={handleAddLink}
-                        className="w-full py-1.5 bg-[#FFD166] text-black font-semibold text-xs rounded-lg transition-colors"
-                      >
-                        Add Link
-                      </button>
+                  </label>
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input 
+                      type="checkbox" 
+                      checked={formData.speech_settings.laugh}
+                      onChange={e => setFormData({...formData, speech_settings: {...formData.speech_settings, laugh: e.target.checked}})}
+                      className="accent-[#FFD166] w-4 h-4"
+                    />
+                    <div>
+                      <div className="text-sm text-white">Laughing & Chuckling</div>
+                      <div className="text-xs text-gray-500">Agent will subtly laugh at appropriate moments.</div>
                     </div>
-                  </div>
-
-                  {/* List of uploaded resources */}
-                  {fetchingDocs ? (
-                    <div className="flex justify-center py-4">
-                      <div className="w-4 h-4 border border-white/10 border-t-[#FFD166] rounded-full animate-spin" />
-                    </div>
-                  ) : (docsList.documents.length > 0 || docsList.links.length > 0) ? (
-                    <div className="space-y-2">
-                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Uploaded Resources</p>
-                      
-                      <div className="max-h-[160px] overflow-y-auto space-y-1.5">
-                        {docsList.documents.map((doc: any, idx: number) => (
-                          <div key={idx} className="flex items-center justify-between p-2.5 bg-[#0A0A0A] border border-white/5 rounded-lg">
-                            <div className="flex items-center gap-2">
-                              <FileText className="w-4 h-4 text-[#FFD166]" />
-                              <span className="text-xs text-white truncate max-w-[250px]">{doc.name}</span>
-                              <span className="text-[10px] text-gray-500">({(doc.size / 1024).toFixed(1)} KB)</span>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteDoc(doc.name)}
-                              className="p-1.5 hover:bg-red-500/10 rounded text-gray-500 hover:text-red-400 transition-colors"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        ))}
-
-                        {docsList.links.map((link: any, idx: number) => (
-                          <div key={idx} className="flex items-center justify-between p-2.5 bg-[#0A0A0A] border border-white/5 rounded-lg">
-                            <div className="flex items-center gap-2">
-                              <LinkIcon className="w-4 h-4 text-blue-400" />
-                              <div className="flex flex-col">
-                                <a href={link.url} target="_blank" rel="noopener noreferrer" className="text-xs text-white hover:underline truncate max-w-[200px]">{link.url}</a>
-                                {link.description && <span className="text-[10px] text-gray-500 truncate max-w-[200px]">{link.description}</span>}
-                              </div>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteLink(link.url)}
-                              className="p-1.5 hover:bg-red-500/10 rounded text-gray-500 hover:text-red-400 transition-colors"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ) : (
-                    <p className="text-xs text-gray-500 text-center py-2">No documents or links uploaded yet.</p>
-                  )}
+                  </label>
                 </div>
-              )}
-
-              {!editingProfile && (
-                <div className="pt-6 border-t border-white/10">
-                  <div className="bg-[#FFD166]/10 border border-[#FFD166]/20 rounded-xl p-4 text-center">
-                    <h4 className="text-sm font-semibold text-[#FFD166] mb-1">Knowledge Base Resources</h4>
-                    <p className="text-xs text-[#FFD166]/80">You must save the profile first before you can upload documents or add links.</p>
-                  </div>
+                <div className="pt-4 border-t border-white/10 space-y-2">
+                  <label className="text-xs font-medium text-gray-400 uppercase">Custom Speech Instructions</label>
+                  <input 
+                    type="text" 
+                    value={formData.speech_settings.custom_instructions}
+                    onChange={e => setFormData({...formData, speech_settings: {...formData.speech_settings, custom_instructions: e.target.value}})}
+                    placeholder="e.g. Speak slowly and clearly. Always sound energetic."
+                    className="w-full bg-[#0A0A0A] border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-[#FFD166]/50 text-sm"
+                  />
                 </div>
-              )}
-
-              <div className="pt-6 border-t border-white/10 flex justify-end gap-3">
-                <button 
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-6 py-2.5 rounded-xl border border-white/10 text-gray-400 hover:text-white hover:bg-white/5 font-medium transition-all"
-                >
-                  Cancel
-                </button>
-                <button 
-                  type="submit"
-                  disabled={saving}
-                  className="bg-[#FFD166] hover:bg-[#FFD166]/90 text-black font-semibold py-2.5 px-8 rounded-xl flex items-center gap-2 transition-all disabled:opacity-50"
-                >
-                  {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
-                  {saving ? "Saving..." : editingProfile ? "Update Profile" : "Create Profile"}
-                </button>
               </div>
-            </form>
+            )}
           </div>
         </div>
-      )}
+
+        {/* RIGHT COLUMN: Test Agent (LiveKit Component) */}
+        <div className="h-full">
+           <TestAgentWidget agentId={editingProfile?.id || ""} />
+        </div>
+      </div>
     </div>
   );
 }

@@ -127,6 +127,9 @@ class AgentProfileRequest(BaseModel):
     enabled_tools: str = "[]"
     is_default: bool = False
     place: Optional[str] = None
+    welcome_message: Optional[str] = None
+    speech_settings: Optional[str] = None
+    call_settings: Optional[str] = None
 
 
 class PromptRequest(BaseModel):
@@ -221,7 +224,95 @@ async def init_demo_data():
         logger.error(f"Error initializing demo data: {e}")
         return JSONResponse({"status": "error", "detail": str(e)}, status_code=500)
 
-# ── Call dispatch ─────────────────────────────────────────────────────────────
+# ── Call dispatch & LiveKit ───────────────────────────────────────────────────
+
+@app.get("/api/livekit/rooms")
+async def api_get_livekit_rooms():
+    url = await eff("LIVEKIT_URL")
+    key = await eff("LIVEKIT_API_KEY")
+    secret = await eff("LIVEKIT_API_SECRET")
+    if not all([url, key, secret]):
+        return []
+    
+    try:
+        from livekit import api as lk_api
+        ctx = ssl.create_default_context()
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+        session = aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=ctx))
+        lk = lk_api.LiveKitAPI(url=url, api_key=key, api_secret=secret, session=session)
+        rooms_resp = await lk.room.list_rooms(lk_api.ListRoomsRequest())
+        rooms = []
+        for r in rooms_resp.rooms:
+            rooms.append({
+                "sid": r.sid, "name": r.name, "empty_timeout": r.empty_timeout,
+                "max_participants": r.max_participants, "creation_time": r.creation_time,
+                "num_participants": r.num_participants
+            })
+        await lk.aclose()
+        await session.close()
+        return rooms
+    except Exception as e:
+        logger.error(f"Error fetching rooms: {e}")
+        return []
+
+@app.post("/api/livekit/token")
+async def api_generate_livekit_token(req: dict):
+    room_name = req.get("room")
+    participant_name = req.get("participant_name", "Dashboard_Admin")
+    if not room_name:
+        raise HTTPException(400, "room is required")
+        
+    url = await eff("LIVEKIT_URL")
+    key = await eff("LIVEKIT_API_KEY")
+    secret = await eff("LIVEKIT_API_SECRET")
+    if not all([url, key, secret]):
+        raise HTTPException(400, "LiveKit credentials not configured")
+        
+    try:
+        from livekit.api import AccessToken, VideoGrants
+        grant = VideoGrants(room=room_name, room_join=True, can_publish=True, can_subscribe=True)
+        access_token = AccessToken(key, secret)
+        access_token.with_identity(participant_name).with_name(participant_name).with_grants(grant)
+        token = access_token.to_jwt()
+        return {"token": token, "url": url}
+    except Exception as e:
+        logger.error(f"Error generating token: {e}")
+        raise HTTPException(500, f"Token generation failed: {e}")
+
+@app.post("/api/agent/test")
+async def api_agent_test(req: dict):
+    room_name = req.get("room")
+    agent_profile_id = req.get("agent_profile_id")
+    if not room_name:
+        raise HTTPException(400, "room is required")
+        
+    url = await eff("LIVEKIT_URL")
+    key = await eff("LIVEKIT_API_KEY")
+    secret = await eff("LIVEKIT_API_SECRET")
+    if not all([url, key, secret]):
+        raise HTTPException(400, "LiveKit credentials not configured")
+        
+    try:
+        from livekit import api as lk_api
+        ctx = ssl.create_default_context()
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+        session = aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=ctx))
+        lk = lk_api.LiveKitAPI(url=url, api_key=key, api_secret=secret, session=session)
+        
+        await lk.agent_dispatch.create_dispatch(lk_api.CreateAgentDispatchRequest(
+            agent_name="outbound-caller",
+            room=room_name,
+            metadata=json.dumps({"agent_profile_id": agent_profile_id}) if agent_profile_id else "{}"
+        ))
+        
+        await lk.aclose()
+        await session.close()
+        return {"status": "agent_dispatched"}
+    except Exception as e:
+        logger.error(f"Error dispatching test agent: {e}")
+        raise HTTPException(500, f"Dispatch failed: {e}")
 
 @app.post("/api/call")
 async def api_dispatch_call(req: CallRequest):
@@ -553,7 +644,10 @@ async def api_create_profile(req: AgentProfileRequest):
     profile_id = await create_agent_profile(
         name=req.name, voice=req.voice, model=req.model,
         system_prompt=req.system_prompt, enabled_tools=req.enabled_tools,
-        is_default=req.is_default
+        is_default=req.is_default, place=req.place,
+        welcome_message=req.welcome_message,
+        speech_settings=req.speech_settings or "{}",
+        call_settings=req.call_settings or "{}"
     )
     return {"status": "created", "id": profile_id}
 

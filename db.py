@@ -613,7 +613,8 @@ async def get_agent_profile(profile_id: str) -> Optional[dict]:
 async def create_agent_profile(
     name: str, voice: str = "Aoede", model: str = "models/gemini-2.0-flash-exp",
     system_prompt: Optional[str] = None, enabled_tools: str = "[]", is_default: bool = False,
-    place: Optional[str] = None,
+    place: Optional[str] = None, welcome_message: Optional[str] = None,
+    speech_settings: str = "{}", call_settings: str = "{}"
 ) -> str:
     profile_id = str(uuid.uuid4())
     db = await _adb()
@@ -624,6 +625,8 @@ async def create_agent_profile(
         "id": profile_id, "name": name, "voice": voice, "model": model,
         "system_prompt": system_prompt, "enabled_tools": enabled_tools,
         "is_default": default_val, "created_at": datetime.now().isoformat(),
+        "welcome_message": welcome_message, "speech_settings": speech_settings,
+        "call_settings": call_settings
     }
     if place:
         row["place"] = place

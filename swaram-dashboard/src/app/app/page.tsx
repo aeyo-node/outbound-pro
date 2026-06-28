@@ -16,6 +16,7 @@ import { AgentProfiles } from "@/components/dashboard/views/AgentProfiles";
 import { EVStations } from "@/components/dashboard/views/EVStations";
 import { SystemPrompt } from "@/components/dashboard/views/SystemPrompt";
 import { Settings } from "@/components/dashboard/views/Settings";
+import { LiveOps } from "@/components/dashboard/views/LiveOps";
 
 export default function AppDashboard() {
   const [authed, setAuthed] = useState(false);
@@ -52,6 +53,7 @@ export default function AppDashboard() {
       case "incoming": return <IncomingCalls />;
       case "appointments": return <Appointments />;
       case "agent_profiles": return <AgentProfiles />;
+      case "live_ops": return <LiveOps />;
       case "system_prompt": return <SystemPrompt />;
       case "settings": return <Settings />;
       default:
