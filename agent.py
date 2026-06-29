@@ -308,7 +308,6 @@ async def entrypoint(ctx: agents.JobContext) -> None:
     # Inject speech settings if configured
     if profile and profile.get("speech_settings"):
         try:
-            import json
             sp = json.loads(profile["speech_settings"])
             if sp:
                 system_prompt += f"\n\n# SPEECH INSTRUCTIONS\n"
