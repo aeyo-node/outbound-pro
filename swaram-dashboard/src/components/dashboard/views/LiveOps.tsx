@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Mic, Phone, Loader2, Activity, Headset } from "lucide-react";
+import { Mic, Phone, Loader2, Activity, Headset, Shield } from "lucide-react";
 import { LiveKitRoom, RoomAudioRenderer, VoiceAssistantControlBar } from "@livekit/components-react";
 import "@livekit/components-styles";
 
