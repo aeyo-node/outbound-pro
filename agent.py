@@ -184,13 +184,10 @@ def _build_session(tools: list, system_prompt: str, voice_override: Optional[str
             realtime_kwargs["context_window_compression"] = _ctx_compression_cfg
 
         if greeting:
-            # Wrap system prompt in XML tags to force the AI to keep it hidden
             realtime_kwargs["instructions"] = (
-                "<system_instructions>\n"
-                f"{system_prompt}\n"
-                "</system_instructions>\n\n"
-                "TASK: The phone call has just connected. You must immediately speak out loud and say EXACTLY the following welcome message. Do NOT say anything else until the user replies.\n"
-                f"WELCOME MESSAGE: {greeting}"
+                system_prompt + "\n\n"
+                "IMPORTANT: You MUST begin the conversation immediately by speaking your greeting "
+                "out loud as your very first response. Do not wait for the user to speak first."
             )
 
         logger.error("FINAL REALTIME MODEL=%s", gemini_model)
@@ -396,8 +393,6 @@ async def entrypoint(ctx: agents.JobContext) -> None:
     default_outbound = f"The call just connected. Speak strictly in Malayalam. Start the call by greeting the lead and using the greeting defined in your system prompt for {industry}."
     
     greeting = default_outbound if phone_number else default_inbound
-    if profile and profile.get("welcome_message"):
-        greeting = profile['welcome_message']
 
     session = _build_session(tools=active_tools, system_prompt=system_prompt, voice_override=voice_override, greeting=greeting)
     tool_ctx.session = session
