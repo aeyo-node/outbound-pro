@@ -184,12 +184,13 @@ def _build_session(tools: list, system_prompt: str, voice_override: Optional[str
             realtime_kwargs["context_window_compression"] = _ctx_compression_cfg
 
         if greeting:
-            # Inject greeting into instructions so the model speaks first
+            # Wrap system prompt in XML tags to force the AI to keep it hidden
             realtime_kwargs["instructions"] = (
-                system_prompt + "\n\n"
-                "IMPORTANT: You MUST begin the conversation immediately by saying the following greeting "
-                "out loud as your very first response. Do not wait for the user to speak first.\n"
-                f"Greeting: {greeting}"
+                "<system_instructions>\n"
+                f"{system_prompt}\n"
+                "</system_instructions>\n\n"
+                "TASK: The phone call has just connected. You must immediately speak out loud and say EXACTLY the following welcome message. Do NOT say anything else until the user replies.\n"
+                f"WELCOME MESSAGE: {greeting}"
             )
 
         logger.error("FINAL REALTIME MODEL=%s", gemini_model)
@@ -396,9 +397,7 @@ async def entrypoint(ctx: agents.JobContext) -> None:
     
     greeting = default_outbound if phone_number else default_inbound
     if profile and profile.get("welcome_message"):
-        # Explicitly instruct the model to ignore any other greetings in the prompt
-        greeting = f"IMPORTANT: You MUST start the call EXACTLY with this welcome message: '{profile['welcome_message']}'"
-        system_prompt = "CRITICAL INSTRUCTION: Ignore any greeting instructions in the prompt below. Use ONLY the greeting provided at the end of these instructions.\n\n" + system_prompt
+        greeting = profile['welcome_message']
 
     session = _build_session(tools=active_tools, system_prompt=system_prompt, voice_override=voice_override, greeting=greeting)
     tool_ctx.session = session
