@@ -176,7 +176,6 @@ def _build_session(tools: list, system_prompt: str, voice_override: Optional[str
         realtime_kwargs: dict = dict(
             model=gemini_model,
             voice=gemini_voice,
-            instructions=system_prompt,
         )
         if _realtime_input_cfg is not None:
             realtime_kwargs["realtime_input_config"]      = _realtime_input_cfg
@@ -189,6 +188,8 @@ def _build_session(tools: list, system_prompt: str, voice_override: Optional[str
                 "IMPORTANT: You MUST begin the conversation immediately by speaking your greeting "
                 "out loud as your very first response. Do not wait for the user to speak first."
             )
+        else:
+            realtime_kwargs["instructions"] = system_prompt
 
         logger.error("FINAL REALTIME MODEL=%s", gemini_model)
         return AgentSession(llm=RealtimeClass(**realtime_kwargs), tools=tools)
@@ -455,7 +456,7 @@ async def entrypoint(ctx: agents.JobContext) -> None:
         from livekit.agents import RoomOptions as _RO
         _session_kwargs = dict(
             room=ctx.room,
-            agent=OutboundAssistant(instructions=system_prompt),
+            agent=OutboundAssistant(instructions=""),
             room_options=_RO(input_options=RoomInputOptions(
                 # noise_cancellation=noise_cancellation.BVCTelephony(),
                 close_on_disconnect=False,
@@ -464,7 +465,7 @@ async def entrypoint(ctx: agents.JobContext) -> None:
     else:
         _session_kwargs = dict(
             room=ctx.room,
-            agent=OutboundAssistant(instructions=system_prompt),
+            agent=OutboundAssistant(instructions=""),
             room_input_options=RoomInputOptions(
                 # noise_cancellation=noise_cancellation.BVCTelephony(),
                 close_on_disconnect=False,
