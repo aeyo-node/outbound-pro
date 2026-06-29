@@ -293,7 +293,8 @@ async def entrypoint(ctx: agents.JobContext) -> None:
         except Exception:
             pass
 
-    if profile and profile.get("system_prompt") and not custom_prompt:
+    # Agent profile system_prompt ALWAYS overrides env var / metadata
+    if profile and profile.get("system_prompt"):
         custom_prompt = profile.get("system_prompt")
 
     system_prompt = build_prompt(
