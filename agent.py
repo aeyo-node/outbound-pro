@@ -327,6 +327,8 @@ async def entrypoint(ctx: agents.JobContext) -> None:
     knowledge_base = os.environ.get("KNOWLEDGE_BASE", "").strip()
     if knowledge_base:
         system_prompt += f"\n\n# KNOWLEDGE BASE\n{knowledge_base}"
+        
+    await _log("info", f"FINAL SYSTEM PROMPT:\n{system_prompt}")
     
     tool_ctx = AppointmentTools(ctx, phone_number, lead_name, business_name, industry, place, agent_profile_id=agent_profile_id, campaign_id=campaign_id)
 
