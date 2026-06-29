@@ -396,7 +396,9 @@ async def entrypoint(ctx: agents.JobContext) -> None:
     
     greeting = default_outbound if phone_number else default_inbound
     if profile and profile.get("welcome_message"):
+        # Explicitly instruct the model to ignore any other greetings in the prompt
         greeting = f"IMPORTANT: You MUST start the call EXACTLY with this welcome message: '{profile['welcome_message']}'"
+        system_prompt = "CRITICAL INSTRUCTION: Ignore any greeting instructions in the prompt below. Use ONLY the greeting provided at the end of these instructions.\n\n" + system_prompt
 
     session = _build_session(tools=active_tools, system_prompt=system_prompt, voice_override=voice_override, greeting=greeting)
     tool_ctx.session = session
