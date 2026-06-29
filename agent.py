@@ -128,7 +128,7 @@ except ImportError:
 
 # ── Session factory ──────────────────────────────────────────────────────────
 
-def _build_session(tools: list, system_prompt: str, voice_override: Optional[str] = None, greeting: Optional[str] = None) -> AgentSession:
+def _build_session(tools: list, system_prompt: str, voice_override: Optional[str] = None) -> AgentSession:
     """
     Build AgentSession with Gemini Live realtime.
 
@@ -140,7 +140,7 @@ def _build_session(tools: list, system_prompt: str, voice_override: Optional[str
     ⚠️  EndSensitivity MUST use END_SENSITIVITY_LOW (full string — not .LOW)
     """
     # Override whatever is in the DB settings to ensure the realtime API works
-    gemini_model = "models/gemini-3.1-flash-live-preview"
+    gemini_model = os.getenv("GEMINI_MODEL", "models/gemini-2.0-flash-exp")
     gemini_voice = voice_override or os.getenv("GEMINI_TTS_VOICE", "Aoede")
     
     # Use Gemini Live Realtime — single model handles STT+LLM+TTS natively
@@ -176,20 +176,12 @@ def _build_session(tools: list, system_prompt: str, voice_override: Optional[str
         realtime_kwargs: dict = dict(
             model=gemini_model,
             voice=gemini_voice,
+            instructions=system_prompt,
         )
         if _realtime_input_cfg is not None:
             realtime_kwargs["realtime_input_config"]      = _realtime_input_cfg
             realtime_kwargs["session_resumption"]         = _session_resumption_cfg
             realtime_kwargs["context_window_compression"] = _ctx_compression_cfg
-
-        if greeting:
-            realtime_kwargs["instructions"] = (
-                system_prompt + "\n\n"
-                "IMPORTANT: You MUST begin the conversation immediately by speaking your greeting "
-                "out loud as your very first response. Do not wait for the user to speak first."
-            )
-        else:
-            realtime_kwargs["instructions"] = system_prompt
 
         logger.error("FINAL REALTIME MODEL=%s", gemini_model)
         return AgentSession(llm=RealtimeClass(**realtime_kwargs), tools=tools)
@@ -389,13 +381,7 @@ async def entrypoint(ctx: agents.JobContext) -> None:
     active_tools = tool_ctx.build_tool_list(enabled_tools)
     await _log("info", f"Active tools: {len(active_tools)} loaded")
 
-    # Build the greeting before starting the session
-    default_inbound = f"Speak strictly in Malayalam. Greet the caller warmly and help them with {industry}."
-    default_outbound = f"The call just connected. Speak strictly in Malayalam. Start the call by greeting the lead and using the greeting defined in your system prompt for {industry}."
-    
-    greeting = default_outbound if phone_number else default_inbound
-
-    session = _build_session(tools=active_tools, system_prompt=system_prompt, voice_override=voice_override, greeting=greeting)
+    session = _build_session(tools=active_tools, system_prompt=system_prompt, voice_override=voice_override)
     tool_ctx.session = session
 
     # ── Live transcript accumulator ───────────────────────────────────────────
