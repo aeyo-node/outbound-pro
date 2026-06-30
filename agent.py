@@ -140,10 +140,14 @@ def _build_session(tools: list, system_prompt: str, voice_override: Optional[str
     ⚠️  EndSensitivity MUST use END_SENSITIVITY_LOW (full string — not .LOW)
     """
     # CRITICAL FIX: Google has deprecated and removed old models like "gemini-2.0-flash-exp" 
-    # and "models/gemini-3.1-flash-live-preview" from the v1beta API, causing instant 1008 crashes.
-    # We MUST hardcode to the stable, fully supported GA realtime model: "gemini-2.0-flash"
-    # This overrides anything saved in older campaign or profile databases.
-    gemini_model = "gemini-2.0-flash"
+    # from the v1beta API. We default to the stable GA realtime model: "gemini-2.0-flash"
+    raw_model = model_override or os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
+    
+    # The Google GenAI SDK strictly rejects the "models/" prefix for bidiGenerateContent.
+    if raw_model.startswith("models/"):
+        gemini_model = raw_model.replace("models/", "")
+    else:
+        gemini_model = raw_model
     
     gemini_voice = voice_override or os.getenv("GEMINI_TTS_VOICE", "Aoede")
     
@@ -181,6 +185,7 @@ def _build_session(tools: list, system_prompt: str, voice_override: Optional[str
             model=gemini_model,
             voice=gemini_voice,
             instructions=system_prompt,
+            api_key=os.getenv("GEMINI_API_KEY"),
         )
         if _realtime_input_cfg is not None:
             realtime_kwargs["realtime_input_config"]      = _realtime_input_cfg
@@ -511,11 +516,11 @@ async def entrypoint(ctx: agents.JobContext) -> None:
                         s3=api.S3Upload(**s3_kwargs),
                     )],
                 )
-                # Use internal URL (ws://localhost:7880) for API calls — avoids Nginx/SSL and is more reliable
-                _lk_url    = os.getenv("LIVEKIT_URL", "ws://localhost:7880")
+                # Use internal URL (ws://livekit:7880) for API calls within docker network
+                _lk_url    = os.getenv("LIVEKIT_URL", "ws://livekit:7880")
                 _lk_key    = os.getenv("LIVEKIT_API_KEY", "")
                 _lk_secret = os.getenv("LIVEKIT_API_SECRET", "")
-                _internal_url = "http://localhost:7880" if "workflow-tech" in _lk_url else _lk_url
+                _internal_url = "http://livekit:7880" if "workflow-tech" in _lk_url else _lk_url
                 async with api.LiveKitAPI(url=_internal_url, api_key=_lk_key, api_secret=_lk_secret) as lkapi:
                     for attempt in range(5):
                         try:

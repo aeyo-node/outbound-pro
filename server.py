@@ -122,7 +122,7 @@ class CallRequest(BaseModel):
 class AgentProfileRequest(BaseModel):
     name: str
     voice: str = "Aoede"
-    model: str = "gemini-2.0-flash-exp"
+    model: str = "gemini-2.0-flash"
     system_prompt: Optional[str] = None
     enabled_tools: str = "[]"
     is_default: bool = False
@@ -209,7 +209,7 @@ async def init_demo_data():
                 "id": str(uuid.uuid4()),
                 "name": name,
                 "voice": voice,
-                "model": "gemini-2.0-flash-exp",
+                "model": "gemini-2.0-flash",
                 "system_prompt": prompt,
                 "enabled_tools": "[]",
                 "is_default": 0,
@@ -1439,14 +1439,14 @@ async def api_init_demo_data():
             await db.create_agent_profile(
                 name="Swaram AI (Default)", 
                 voice="Aoede", 
-                model="gemini-2.0-flash-exp",
+                model="gemini-2.0-flash",
                 system_prompt="You are Swaram, a friendly AI assistant for EV charging.",
                 is_default=1
             )
             await db.create_agent_profile(
                 name="Sales Closer", 
                 voice="Charon", 
-                model="gemini-2.0-flash-exp",
+                model="gemini-2.0-flash",
                 system_prompt="You are a professional sales closer.",
                 is_default=0
             )
