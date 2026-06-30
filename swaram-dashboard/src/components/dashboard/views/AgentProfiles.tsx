@@ -18,7 +18,7 @@ export function AgentProfiles() {
   const [formData, setFormData] = useState({
     name: "",
     voice: "Aoede",
-    model: "models/gemini-2.0-flash-exp",
+    model: "gemini-2.5-flash-native-audio-preview-09-2025",
     system_prompt: "",
     welcome_message: "",
     enabled_tools: "[]",
@@ -79,7 +79,7 @@ export function AgentProfiles() {
     setFormData({
       name: "New Agent",
       voice: "Aoede",
-      model: "models/gemini-2.0-flash-exp",
+      model: "gemini-2.5-flash-native-audio-preview-09-2025",
       system_prompt: "",
       welcome_message: "",
       enabled_tools: "[]",

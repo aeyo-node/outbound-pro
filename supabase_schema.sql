@@ -96,7 +96,7 @@ CREATE TABLE IF NOT EXISTS agent_profiles (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
     voice TEXT NOT NULL DEFAULT 'Aoede',
-    model TEXT NOT NULL DEFAULT 'models/gemini-2.0-flash-exp',
+    model TEXT NOT NULL DEFAULT 'gemini-2.5-flash-native-audio-preview-09-2025',
     system_prompt TEXT,
     enabled_tools TEXT DEFAULT '[]',
     is_default INTEGER DEFAULT 0,
