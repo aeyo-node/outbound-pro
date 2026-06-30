@@ -48,7 +48,7 @@ export async function GET() {
             id: crypto.randomUUID(),
             name: name,
             voice: "Aoede",
-            model: "gemini-2.5-flash-native-audio-preview-09-2025",
+            model: "gemini-2.0-flash-exp",
             system_prompt: prompt,
             enabled_tools: "[]",
             is_default: false,

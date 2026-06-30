@@ -132,7 +132,7 @@ class CallRequest(BaseModel):
 class AgentProfileRequest(BaseModel):
     name: str
     voice: str = "Aoede"
-    model: str = "gemini-2.5-flash-native-audio-preview-09-2025"
+    model: str = "gemini-2.0-flash-exp"
     system_prompt: Optional[str] = None
     enabled_tools: str = "[]"
     is_default: bool = False
@@ -219,7 +219,7 @@ async def init_demo_data():
                 "id": str(uuid.uuid4()),
                 "name": name,
                 "voice": voice,
-                "model": "gemini-2.5-flash-native-audio-preview-09-2025",
+                "model": "gemini-2.0-flash-exp",
                 "system_prompt": prompt,
                 "enabled_tools": "[]",
                 "is_default": 0,
@@ -1388,7 +1388,7 @@ async def api_chat_test(req: ChatRequest):
         
         # 3. Initialize model with tools
         try:
-            model_name = "gemini-2.5-flash-native-audio-preview-09-2025"
+            model_name = "gemini-2.0-flash-exp"
             model = genai.GenerativeModel(
                 model_name=model_name,
                 system_instruction=system_prompt,
@@ -1449,14 +1449,14 @@ async def api_init_demo_data():
             await db.create_agent_profile(
                 name="Swaram AI (Default)", 
                 voice="Aoede", 
-                model="gemini-2.5-flash-native-audio-preview-09-2025",
+                model="gemini-2.0-flash-exp",
                 system_prompt="You are Swaram, a friendly AI assistant for EV charging.",
                 is_default=1
             )
             await db.create_agent_profile(
                 name="Sales Closer", 
                 voice="Charon", 
-                model="gemini-2.5-flash-native-audio-preview-09-2025",
+                model="gemini-2.0-flash-exp",
                 system_prompt="You are a professional sales closer.",
                 is_default=0
             )

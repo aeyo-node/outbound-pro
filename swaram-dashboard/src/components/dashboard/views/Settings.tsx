@@ -422,7 +422,7 @@ export function Settings() {
                 <input 
                   type="text" 
                   name="GEMINI_MODEL"
-                  value={settings.GEMINI_MODEL || "gemini-2.5-flash-native-audio-preview-09-2025"}
+                  value={settings.GEMINI_MODEL || "gemini-2.0-flash-exp"}
                   onChange={handleChange}
                   className="w-full bg-[#0A0A0A] border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#FFD166]/50 transition-colors"
                 />
