@@ -139,16 +139,12 @@ def _build_session(tools: list, system_prompt: str, voice_override: Optional[str
 
     ⚠️  EndSensitivity MUST use END_SENSITIVITY_LOW (full string — not .LOW)
     """
-    # Prioritize model_override from DB/job, fallback to env var
-    raw_model = model_override or os.getenv("GEMINI_MODEL", "gemini-2.0-flash-exp")
+    # CRITICAL FIX: Google has deprecated and removed old models like "gemini-2.0-flash-exp" 
+    # and "models/gemini-3.1-flash-live-preview" from the v1beta API, causing instant 1008 crashes.
+    # We MUST hardcode to the stable, fully supported GA realtime model: "gemini-2.0-flash"
+    # This overrides anything saved in older campaign or profile databases.
+    gemini_model = "gemini-2.0-flash"
     
-    # CRITICAL FIX: The Google GenAI SDK strictly rejects the "models/" prefix for bidiGenerateContent.
-    # It must be exactly "gemini-2.0-flash-exp" or "gemini-2.0-flash".
-    if raw_model.startswith("models/"):
-        gemini_model = raw_model.replace("models/", "")
-    else:
-        gemini_model = raw_model
-        
     gemini_voice = voice_override or os.getenv("GEMINI_TTS_VOICE", "Aoede")
     
     # Use Gemini Live Realtime — single model handles STT+LLM+TTS natively
