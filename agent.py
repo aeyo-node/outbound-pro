@@ -140,7 +140,7 @@ def _build_session(tools: list, system_prompt: str, voice_override: Optional[str
     ⚠️  EndSensitivity MUST use END_SENSITIVITY_LOW (full string — not .LOW)
     """
     # Override whatever is in the DB settings to ensure the realtime API works
-    gemini_model = "gemini-2.0-flash-exp"
+    gemini_model = os.getenv("GEMINI_MODEL", "models/gemini-3.1-flash-live-preview")
     gemini_voice = voice_override or os.getenv("GEMINI_TTS_VOICE", "Aoede")
     
     # Use Gemini Live Realtime — single model handles STT+LLM+TTS natively
