@@ -87,6 +87,8 @@ def load_db_settings_to_env() -> None:
                 except:
                     pass
                 
+                if row["key"].startswith("LIVEKIT_"):
+                    continue
                 os.environ[row["key"]] = val
     except Exception as exc:
         logger.warning("Could not load settings from Supabase: %s", exc)
