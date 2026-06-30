@@ -30,7 +30,7 @@ try:
     _HAS_ROOM_OPTIONS = True
 except ImportError:
     _HAS_ROOM_OPTIONS = False
-from livekit.plugins import noise_cancellation, silero
+from livekit.plugins import silero
 
 from db import init_db, log_error, get_enabled_tools, get_all_settings
 from prompts import build_prompt
@@ -187,7 +187,7 @@ def _build_session(tools: list, system_prompt: str, voice_override: Optional[str
             model=gemini_model,
             voice=gemini_voice,
             instructions=system_prompt,
-            api_key=os.getenv("GEMINI_API_KEY"),
+            api_key=os.getenv("GOOGLE_API_KEY"),
         )
         if _realtime_input_cfg is not None:
             realtime_kwargs["realtime_input_config"]      = _realtime_input_cfg
@@ -465,7 +465,6 @@ async def entrypoint(ctx: agents.JobContext) -> None:
             room=ctx.room,
             agent=OutboundAssistant(instructions=""),
             room_options=_RO(input_options=RoomInputOptions(
-                # noise_cancellation=noise_cancellation.BVCTelephony(),
                 close_on_disconnect=False,
             )),
         )
@@ -474,7 +473,6 @@ async def entrypoint(ctx: agents.JobContext) -> None:
             room=ctx.room,
             agent=OutboundAssistant(instructions=""),
             room_input_options=RoomInputOptions(
-                # noise_cancellation=noise_cancellation.BVCTelephony(),
                 close_on_disconnect=False,
             ),
         )
