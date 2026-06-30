@@ -305,7 +305,12 @@ async def entrypoint(ctx: agents.JobContext) -> None:
     if not phone_number:
         system_prompt += "\n\nNOTE: This is an INBOUND call. The user called YOU. Do not ask 'Am I speaking with...'. Instead, greet them warmly and ask how you can help."
     else:
-        system_prompt += "\n\nGreeting: 'ഹലോ... (Introduce yourself and your business based on your system instructions above, then ask how you can help).'"
+        agent_name = profile.get("name", "സ്വരം AI") if profile else "സ്വരം AI"
+        
+        # If there is a welcome_message in the profile, use it. Otherwise, use a default literal string.
+        greeting_text = profile.get("welcome_message") if profile and profile.get("welcome_message") else f"ഹലോ, ഞാൻ {agent_name} ആണ്. എനിക്ക് നിങ്ങളെ എങ്ങനെ സഹായിക്കാൻ കഴിയും?"
+        
+        system_prompt += f"\n\nGreeting: '{greeting_text}'"
         system_prompt += "\n(CRITICAL INSTRUCTION: Read the Greeting exactly as written above IMMEDIATELY when the call connects! Do not wait for the user!)"
 
     # Inject speech settings if configured
