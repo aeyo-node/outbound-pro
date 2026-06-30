@@ -304,6 +304,8 @@ async def entrypoint(ctx: agents.JobContext) -> None:
     # Add inbound awareness to the prompt
     if not phone_number:
         system_prompt += "\n\nNOTE: This is an INBOUND call. The user called YOU. Do not ask 'Am I speaking with...'. Instead, greet them warmly and ask how you can help."
+    else:
+        system_prompt += "\n\nCRITICAL OUTBOUND INSTRUCTION: The customer just picked up the phone. YOU MUST SPEAK FIRST! Start the conversation IMMEDIATELY with a short, natural Malayalam greeting. DO NOT WAIT for the user to say anything."
 
     # Inject speech settings if configured
     if profile and profile.get("speech_settings"):
