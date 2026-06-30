@@ -129,7 +129,7 @@ except ImportError:
 # ── Session factory ──────────────────────────────────────────────────────────
 
 def _build_session(tools: list, system_prompt: str, voice_override: Optional[str] = None, model_override: Optional[str] = None) -> AgentSession:
-    \"\"\"
+    """
     Build AgentSession with Gemini Live realtime.
 
     SILENCE-PREVENTION — all 3 configs required:
@@ -138,7 +138,7 @@ def _build_session(tools: list, system_prompt: str, voice_override: Optional[str
     3. RealtimeInputConfig(END_SENSITIVITY_LOW)    → 2s VAD silence threshold
 
     ⚠️  EndSensitivity MUST use END_SENSITIVITY_LOW (full string — not .LOW)
-    \"\"\"
+    """
     # Prioritize model_override from DB/job, fallback to env var
     raw_model = model_override or os.getenv("GEMINI_MODEL", "gemini-2.0-flash-exp")
     
