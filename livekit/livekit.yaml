@@ -4,6 +4,8 @@ rtc:
   port_range_end: 50200
   use_external_ip: true
 
+keys:
+  "${LIVEKIT_API_KEY}": "${LIVEKIT_API_SECRET}"
 
 logging:
   level: info
