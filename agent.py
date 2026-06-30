@@ -140,7 +140,7 @@ def _build_session(tools: list, system_prompt: str, voice_override: Optional[str
     ⚠️  EndSensitivity MUST use END_SENSITIVITY_LOW (full string — not .LOW)
     """
     # Override whatever is in the DB settings to ensure the realtime API works
-    gemini_model = "models/gemini-2.0-flash"
+    gemini_model = "gemini-2.0-flash-exp"
     gemini_voice = voice_override or os.getenv("GEMINI_TTS_VOICE", "Aoede")
     
     # Use Gemini Live Realtime — single model handles STT+LLM+TTS natively
@@ -305,7 +305,8 @@ async def entrypoint(ctx: agents.JobContext) -> None:
     if not phone_number:
         system_prompt += "\n\nNOTE: This is an INBOUND call. The user called YOU. Do not ask 'Am I speaking with...'. Instead, greet them warmly and ask how you can help."
     else:
-        system_prompt += "\n\nCRITICAL OUTBOUND INSTRUCTION: The customer just picked up the phone. YOU MUST SPEAK FIRST! Start the conversation IMMEDIATELY with a short, natural Malayalam greeting. DO NOT WAIT for the user to say anything."
+        system_prompt += "\n\nGreeting: 'ഹലോ... (Introduce yourself and your business based on your system instructions above, then ask how you can help).'"
+        system_prompt += "\n(CRITICAL INSTRUCTION: Read the Greeting exactly as written above IMMEDIATELY when the call connects! Do not wait for the user!)"
 
     # Inject speech settings if configured
     if profile and profile.get("speech_settings"):
