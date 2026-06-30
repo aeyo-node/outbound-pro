@@ -4,9 +4,6 @@ rtc:
   port_range_end: 50200
   use_external_ip: true
 
-# Replace with your generated keys from: docker run --rm livekit/livekit-server generate-keys
-keys:
-  REPLACE_WITH_API_KEY: REPLACE_WITH_API_SECRET
 
 logging:
   level: info

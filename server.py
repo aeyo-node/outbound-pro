@@ -38,6 +38,16 @@ from db import (
 from prompts import DEFAULT_SYSTEM_PROMPT
 
 load_dotenv(".env", override=True)
+
+# ── Startup Validation ──
+_lk_key = os.getenv("LIVEKIT_API_KEY", "")
+_lk_secret = os.getenv("LIVEKIT_API_SECRET", "")
+if not _lk_key or _lk_key == "REPLACE_WITH_API_KEY":
+    import sys
+    sys.exit("FATAL: LIVEKIT_API_KEY is unconfigured or set to REPLACE_WITH_API_KEY placeholder.")
+if not _lk_secret or _lk_secret == "REPLACE_WITH_API_SECRET":
+    import sys
+    sys.exit("FATAL: LIVEKIT_API_SECRET is unconfigured or set to REPLACE_WITH_API_SECRET placeholder.")
 DATA_DIR = "/data" if os.path.exists("/data") else "data"
 log_path = os.path.join(DATA_DIR, "app.log")
 logging.basicConfig(

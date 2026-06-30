@@ -618,6 +618,15 @@ if __name__ == "__main__":
     init_db()
     load_db_settings_to_env()
     
+    import sys
+    # ── Startup Validation ──
+    lk_key = os.getenv("LIVEKIT_API_KEY", "")
+    lk_secret = os.getenv("LIVEKIT_API_SECRET", "")
+    
+    if not lk_key or lk_key == "REPLACE_WITH_API_KEY":
+        sys.exit("FATAL: LIVEKIT_API_KEY is unconfigured or set to REPLACE_WITH_API_KEY placeholder.")
+    if not lk_secret or lk_secret == "REPLACE_WITH_API_SECRET":
+        sys.exit("FATAL: LIVEKIT_API_SECRET is unconfigured or set to REPLACE_WITH_API_SECRET placeholder.")
     # ── Pre-flight check for LiveKit keys ────────────────────────────────────
     # If keys are missing (like on a fresh install), don't crash. 
     # Sleep instead so the Dashboard stays up, allowing the user to add keys in the UI.
