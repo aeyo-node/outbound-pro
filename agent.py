@@ -486,20 +486,21 @@ async def entrypoint(ctx: agents.JobContext) -> None:
                 close_on_disconnect=False,
             ),
         )
-
     await session.start(**_session_kwargs)
     await _log("info", "Agent session started — Gemini Live active")
 
     # ── Trigger immediate greeting for outbound calls ─────────────────────────
-    # With gemini-2.5-flash-native-audio-latest, system prompt instructions alone
-    # are not enough to trigger the model to speak first — we must explicitly say().
+    # RealtimeModel (gemini-2.5-flash-native-audio-latest) does NOT support say().
+    # Instead we inject the greeting as a user turn to force the model to respond immediately.
     if phone_number and greeting_text:
         try:
             await asyncio.sleep(0.5)  # tiny buffer for session to fully initialise
-            await session.say(greeting_text)
-            await _log("info", f"Greeting injected via session.say(): {greeting_text[:60]}")
+            await session.generate_reply(
+                instructions=f"The call just connected. Say EXACTLY this greeting now: \"{greeting_text}\""
+            )
+            await _log("info", f"Greeting triggered via generate_reply(): {greeting_text[:60]}")
         except Exception as _greet_err:
-            await _log("warning", f"session.say() failed (non-fatal): {_greet_err}")
+            await _log("warning", f"generate_reply() failed (non-fatal): {_greet_err}")
 
     # ── Optional S3 call recording via LiveKit Egress ─────────────────────────
     if phone_number:
