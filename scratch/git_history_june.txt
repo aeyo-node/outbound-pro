@@ -1,0 +1,107 @@
+commit a301efe4596e28e7af648a269a0ea8c3526c505d
+Author: xtend <alph.cthomas@gmail.com>
+Date:   Sun Jun 28 01:07:56 2026 +0530
+
+    fix: use internal LiveKit URL for egress, add 2s delay, fix dousdfble logging
+
+diff --git a/agent.py b/agent.py
+index 3d1a95f..0211d95 100644
+--- a/agent.py
++++ b/agent.py
+@@ -187,7 +187,7 @@ def _build_session(tools: list, system_prompt: str, voice_override: Optional[str
+             try:
+                 from livekit.agents.llm import ChatContext, ChatMessage
+                 chat_ctx = ChatContext()
+-                chat_ctx.messages.append(ChatMessage(role="user", content=greeting))
++                chat_ctx.append(role="system", text=greeting)
+                 realtime_kwargs["chat_ctx"] = chat_ctx
+             except Exception as _ctx_err:
+                 logger.warning("Could not build initial chat context: %s", _ctx_err)
+@@ -486,7 +486,7 @@ async def entrypoint(ctx: agents.JobContext) -> None:
+                 _lk_url    = os.getenv("LIVEKIT_URL", "ws://localhost:7880")
+                 _lk_key    = os.getenv("LIVEKIT_API_KEY", "")
+                 _lk_secret = os.getenv("LIVEKIT_API_SECRET", "")
+-                _internal_url = _lk_url.replace("wss://", "ws://").replace("lk.workflow-tech.info", "localhost") if "workflow-tech" in _lk_url else _lk_url
++                _internal_url = "http://localhost:7880" if "workflow-tech" in _lk_url else _lk_url
+                 async with api.LiveKitAPI(url=_internal_url, api_key=_lk_key, api_secret=_lk_secret) as lkapi:
+                     for attempt in range(5):
+                         try:
+
+commit ebbccb29174afb379413491e8c0ca601add1af2e
+Author: xtend <alph.cthomas@gmail.com>
+Date:   Sat Jun 27 22:06:40 2026 +0530
+
+    fix: use internal LiveKit URL for egress, add 2s delay, fix double logging
+
+diff --git a/agent.py b/agent.py
+index 7c9e84c..3d1a95f 100644
+--- a/agent.py
++++ b/agent.py
+@@ -455,9 +455,11 @@ async def entrypoint(ctx: agents.JobContext) -> None:
+         _s3_region   = os.getenv("S3_REGION") or os.getenv("AWS_REGION", "ap-south-1")
+         if _aws_key and _aws_secret and _aws_bucket:
+             try:
+-                # 'api' is already imported globally, importing it locally shadows it and causes UnboundLocalError earlier in the function
++                # Wait 2s for SIP participant to fully join the room before starting egress
++                await asyncio.sleep(2)
++
+                 _recording_path = f"recordings/{ctx.room.name}.mp4"
+-                
++
+                 s3_kwargs = {
+                     "access_key": _aws_key,
+                     "secret": _aws_secret,
+@@ -480,14 +482,19 @@ async def entrypoint(ctx: agents.JobContext) -> None:
+                         s3=api.S3Upload(**s3_kwargs),
+                     )],
+                 )
+-                async with api.LiveKitAPI() as lkapi:
+-                    # Retry logic for LiveKit API limits
++                # Use internal URL (ws://localhost:7880) for API calls — avoids Nginx/SSL and is more reliable
++                _lk_url    = os.getenv("LIVEKIT_URL", "ws://localhost:7880")
++                _lk_key    = os.getenv("LIVEKIT_API_KEY", "")
++                _lk_secret = os.getenv("LIVEKIT_API_SECRET", "")
++                _internal_url = _lk_url.replace("wss://", "ws://").replace("lk.workflow-tech.info", "localhost") if "workflow-tech" in _lk_url else _lk_url
++                async with api.LiveKitAPI(url=_internal_url, api_key=_lk_key, api_secret=_lk_secret) as lkapi:
+                     for attempt in range(5):
+                         try:
+                             _egress = await lkapi.egress.start_room_composite_egress(_egress_req)
+                             await _log("info", f"Recording started: egress={_egress.egress_id}")
+                             break
+                         except Exception as egress_exc:
++                            await _log("warning", f"Egress attempt {attempt+1} failed: {egress_exc}")
+                             if attempt == 4:
+                                 raise egress_exc
+                             await asyncio.sleep(2 ** attempt)
+@@ -516,8 +523,10 @@ async def entrypoint(ctx: agents.JobContext) -> None:
+             await _log("warning", "Call reached 1-hour safety timeout — shutting down")
+ 
+         await _log("info", f"SIP participant disconnected — ending session for {phone_number}")
+-        
++
+         # Log the call if the LLM didn't get a chance to call end_call()
++        # Use a small delay to let end_call() finish setting _call_logged if it's running concurrently
++        await asyncio.sleep(0.5)
+         if not getattr(tool_ctx, "_call_logged", False):
+             try:
+                 import time
+
+commit 5a693dc5c7bf9b0bae92ddc1d329da4a961c054f
+Author: xtend <alph.cthomas@gmail.com>
+Date:   Sat Jun 27 14:43:03 2026 +0530
+
+    fix: change greeting role to user to prevent 15s delay
+
+diff --git a/agent.py b/agent.py
+index 074a36a..7c9e84c 100644
+--- a/agent.py
++++ b/agent.py
+@@ -187,7 +187,7 @@ def _build_session(tools: list, system_prompt: str, voice_override: Optional[str
+             try:
+                 from livekit.agents.llm import ChatContext, ChatMessage
+                 chat_ctx = ChatContext()
+-                chat_ctx.messages.append(ChatMessage(role="system", content=greeting))
++                chat_ctx.messages.append(ChatMessage(role="user", content=greeting))
+                 realtime_kwargs["chat_ctx"] = chat_ctx
+             except Exception as _ctx_err:
+                 logger.warning("Could not build initial chat context: %s", _ctx_err)

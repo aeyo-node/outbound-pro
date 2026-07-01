@@ -1,0 +1,3046 @@
+commit aae8e79039c29c6da0160bbc73036c29f57dc78b
+Author: xtend <alph.cthomas@gmail.com>
+Date:   Wed Jul 1 03:39:58 2026 +0530
+
+    Fix: switch Gemini model to gemini-2.0-flash-exp across all files
+
+diff --git a/agent.py b/agent.py
+index 16034e6..eb8775c 100644
+--- a/agent.py
++++ b/agent.py
+@@ -143,7 +143,7 @@ def _build_session(tools: list, system_prompt: str, voice_override: Optional[str
+     """
+     # CRITICAL FIX: We default to the Gemini Live compatible model:
+     # "gemini-2.5-flash-native-audio-preview-09-2025"
+-    raw_model = model_override or os.getenv("GEMINI_MODEL", "gemini-2.5-flash-native-audio-preview-09-2025")
++    raw_model = model_override or os.getenv("GEMINI_MODEL", "gemini-2.0-flash-exp")
+     
+     # The Google GenAI SDK strictly rejects the "models/" prefix for bidiGenerateContent.
+     if raw_model.startswith("models/"):
+@@ -207,7 +207,7 @@ def _build_session(tools: list, system_prompt: str, voice_override: Optional[str
+     tts = _google_tts(voice_name="en-US-Journey-O") if _google_tts else None
+     return AgentSession(
+         stt=stt,
+-        llm=_google_llm(model="gemini-2.5-flash-native-audio-preview-09-2025"),
++        llm=_google_llm(model="gemini-2.0-flash-exp"),
+         tts=tts,
+         vad=silero.VAD.load(),
+         tools=tools,
+@@ -397,7 +397,7 @@ async def entrypoint(ctx: agents.JobContext) -> None:
+         _call_start_time = time.time()
+ 
+     # ── Build and start Gemini Live session ───────────────────────────────────
+-    gemini_model = os.getenv("GEMINI_MODEL", "gemini-2.5-flash-native-audio-preview-09-2025")
++    gemini_model = os.getenv("GEMINI_MODEL", "gemini-2.0-flash-exp")
+     await _log("info", f"Building Gemini Live session — model={gemini_model}")
+     active_tools = tool_ctx.build_tool_list(enabled_tools)
+     await _log("info", f"Active tools: {len(active_tools)} loaded")
+
+commit 9d8e03c7b69af0d6d7c3e2f197194955b396c787
+Author: xtend <alph.cthomas@gmail.com>
+Date:   Wed Jul 1 03:16:08 2026 +0530
+
+    Permanently remove LiveKit YAML placeholder keys and add startup validation
+
+diff --git a/agent.py b/agent.py
+index 480485c..16034e6 100644
+--- a/agent.py
++++ b/agent.py
+@@ -618,6 +618,15 @@ if __name__ == "__main__":
+     init_db()
+     load_db_settings_to_env()
+     
++    import sys
++    # ── Startup Validation ──
++    lk_key = os.getenv("LIVEKIT_API_KEY", "")
++    lk_secret = os.getenv("LIVEKIT_API_SECRET", "")
++    
++    if not lk_key or lk_key == "REPLACE_WITH_API_KEY":
++        sys.exit("FATAL: LIVEKIT_API_KEY is unconfigured or set to REPLACE_WITH_API_KEY placeholder.")
++    if not lk_secret or lk_secret == "REPLACE_WITH_API_SECRET":
++        sys.exit("FATAL: LIVEKIT_API_SECRET is unconfigured or set to REPLACE_WITH_API_SECRET placeholder.")
+     # ── Pre-flight check for LiveKit keys ────────────────────────────────────
+     # If keys are missing (like on a fresh install), don't crash. 
+     # Sleep instead so the Dashboard stays up, allowing the user to add keys in the UI.
+
+commit 5bef81a368fb8f2b1a5078b7254fc526b1137a11
+Author: xtend <alph.cthomas@gmail.com>
+Date:   Tue Jun 30 20:04:53 2026 +0530
+
+    Fix Gemini realtime models, auth, and Docker LiveKitdsdffsdcvcvdfgf networking
+
+diff --git a/agent.py b/agent.py
+index 4c4a7c3..480485c 100644
+--- a/agent.py
++++ b/agent.py
+@@ -141,9 +141,9 @@ def _build_session(tools: list, system_prompt: str, voice_override: Optional[str
+ 
+     ⚠️  EndSensitivity MUST use END_SENSITIVITY_LOW (full string — not .LOW)
+     """
+-    # CRITICAL FIX: Google has deprecated and removed old models like "gemini-2.0-flash-exp" 
+-    # from the v1beta API. We default to the stable GA realtime model: "gemini-2.0-flash"
+-    raw_model = model_override or os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
++    # CRITICAL FIX: We default to the Gemini Live compatible model:
++    # "gemini-2.5-flash-native-audio-preview-09-2025"
++    raw_model = model_override or os.getenv("GEMINI_MODEL", "gemini-2.5-flash-native-audio-preview-09-2025")
+     
+     # The Google GenAI SDK strictly rejects the "models/" prefix for bidiGenerateContent.
+     if raw_model.startswith("models/"):
+@@ -187,7 +187,7 @@ def _build_session(tools: list, system_prompt: str, voice_override: Optional[str
+             model=gemini_model,
+             voice=gemini_voice,
+             instructions=system_prompt,
+-            api_key=os.getenv("GOOGLE_API_KEY"),
++            api_key=os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY"),
+         )
+         if _realtime_input_cfg is not None:
+             realtime_kwargs["realtime_input_config"]      = _realtime_input_cfg
+@@ -207,7 +207,7 @@ def _build_session(tools: list, system_prompt: str, voice_override: Optional[str
+     tts = _google_tts(voice_name="en-US-Journey-O") if _google_tts else None
+     return AgentSession(
+         stt=stt,
+-        llm=_google_llm(model="gemini-2.0-flash"),
++        llm=_google_llm(model="gemini-2.5-flash-native-audio-preview-09-2025"),
+         tts=tts,
+         vad=silero.VAD.load(),
+         tools=tools,
+@@ -397,7 +397,7 @@ async def entrypoint(ctx: agents.JobContext) -> None:
+         _call_start_time = time.time()
+ 
+     # ── Build and start Gemini Live session ───────────────────────────────────
+-    gemini_model = os.getenv("GEMINI_MODEL", "models/gemini-2.0-flash-exp")
++    gemini_model = os.getenv("GEMINI_MODEL", "gemini-2.5-flash-native-audio-preview-09-2025")
+     await _log("info", f"Building Gemini Live session — model={gemini_model}")
+     active_tools = tool_ctx.build_tool_list(enabled_tools)
+     await _log("info", f"Active tools: {len(active_tools)} loaded")
+
+commit c838b7e2f70fe97ed7ca8bc34933198153176b01
+Author: xtend <alph.cthomas@gmail.com>
+Date:   Tue Jun 30 19:28:34 2026 +0530
+
+    Fix Gemini realtime models, auth, and Docker LiveKitdsdffsdcvcvf networking
+
+diff --git a/agent.py b/agent.py
+index 802fb51..4c4a7c3 100644
+--- a/agent.py
++++ b/agent.py
+@@ -30,7 +30,7 @@ try:
+     _HAS_ROOM_OPTIONS = True
+ except ImportError:
+     _HAS_ROOM_OPTIONS = False
+-from livekit.plugins import noise_cancellation, silero
++from livekit.plugins import silero
+ 
+ from db import init_db, log_error, get_enabled_tools, get_all_settings
+ from prompts import build_prompt
+@@ -187,7 +187,7 @@ def _build_session(tools: list, system_prompt: str, voice_override: Optional[str
+             model=gemini_model,
+             voice=gemini_voice,
+             instructions=system_prompt,
+-            api_key=os.getenv("GEMINI_API_KEY"),
++            api_key=os.getenv("GOOGLE_API_KEY"),
+         )
+         if _realtime_input_cfg is not None:
+             realtime_kwargs["realtime_input_config"]      = _realtime_input_cfg
+@@ -465,7 +465,6 @@ async def entrypoint(ctx: agents.JobContext) -> None:
+             room=ctx.room,
+             agent=OutboundAssistant(instructions=""),
+             room_options=_RO(input_options=RoomInputOptions(
+-                # noise_cancellation=noise_cancellation.BVCTelephony(),
+                 close_on_disconnect=False,
+             )),
+         )
+@@ -474,7 +473,6 @@ async def entrypoint(ctx: agents.JobContext) -> None:
+             room=ctx.room,
+             agent=OutboundAssistant(instructions=""),
+             room_input_options=RoomInputOptions(
+-                # noise_cancellation=noise_cancellation.BVCTelephony(),
+                 close_on_disconnect=False,
+             ),
+         )
+
+commit ec794d2bf0918a339a072fcd136358e87c96d1e2
+Author: xtend <alph.cthomas@gmail.com>
+Date:   Tue Jun 30 19:00:53 2026 +0530
+
+    Fix Gemini realtime models, auth, and Docker LiveKitdfsdf networking
+
+diff --git a/agent.py b/agent.py
+index bcdd4c7..802fb51 100644
+--- a/agent.py
++++ b/agent.py
+@@ -87,6 +87,8 @@ def load_db_settings_to_env() -> None:
+                 except:
+                     pass
+                 
++                if row["key"].startswith("LIVEKIT_"):
++                    continue
+                 os.environ[row["key"]] = val
+     except Exception as exc:
+         logger.warning("Could not load settings from Supabase: %s", exc)
+
+commit 286c4a7605b9dccf7c7afb448d551a1ffcdf70ff
+Author: xtend <alph.cthomas@gmail.com>
+Date:   Tue Jun 30 11:22:55 2026 +0530
+
+    Fix Gemini realtime models, auth, and Docker LiveKit networking
+
+diff --git a/agent.py b/agent.py
+index 04f4792..bcdd4c7 100644
+--- a/agent.py
++++ b/agent.py
+@@ -140,10 +140,14 @@ def _build_session(tools: list, system_prompt: str, voice_override: Optional[str
+     ⚠️  EndSensitivity MUST use END_SENSITIVITY_LOW (full string — not .LOW)
+     """
+     # CRITICAL FIX: Google has deprecated and removed old models like "gemini-2.0-flash-exp" 
+-    # and "models/gemini-3.1-flash-live-preview" from the v1beta API, causing instant 1008 crashes.
+-    # We MUST hardcode to the stable, fully supported GA realtime model: "gemini-2.0-flash"
+-    # This overrides anything saved in older campaign or profile databases.
+-    gemini_model = "gemini-2.0-flash"
++    # from the v1beta API. We default to the stable GA realtime model: "gemini-2.0-flash"
++    raw_model = model_override or os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
++    
++    # The Google GenAI SDK strictly rejects the "models/" prefix for bidiGenerateContent.
++    if raw_model.startswith("models/"):
++        gemini_model = raw_model.replace("models/", "")
++    else:
++        gemini_model = raw_model
+     
+     gemini_voice = voice_override or os.getenv("GEMINI_TTS_VOICE", "Aoede")
+     
+@@ -181,6 +185,7 @@ def _build_session(tools: list, system_prompt: str, voice_override: Optional[str
+             model=gemini_model,
+             voice=gemini_voice,
+             instructions=system_prompt,
++            api_key=os.getenv("GEMINI_API_KEY"),
+         )
+         if _realtime_input_cfg is not None:
+             realtime_kwargs["realtime_input_config"]      = _realtime_input_cfg
+@@ -511,11 +516,11 @@ async def entrypoint(ctx: agents.JobContext) -> None:
+                         s3=api.S3Upload(**s3_kwargs),
+                     )],
+                 )
+-                # Use internal URL (ws://localhost:7880) for API calls — avoids Nginx/SSL and is more reliable
+-                _lk_url    = os.getenv("LIVEKIT_URL", "ws://localhost:7880")
++                # Use internal URL (ws://livekit:7880) for API calls within docker network
++                _lk_url    = os.getenv("LIVEKIT_URL", "ws://livekit:7880")
+                 _lk_key    = os.getenv("LIVEKIT_API_KEY", "")
+                 _lk_secret = os.getenv("LIVEKIT_API_SECRET", "")
+-                _internal_url = "http://localhost:7880" if "workflow-tech" in _lk_url else _lk_url
++                _internal_url = "http://livekit:7880" if "workflow-tech" in _lk_url else _lk_url
+                 async with api.LiveKitAPI(url=_internal_url, api_key=_lk_key, api_secret=_lk_secret) as lkapi:
+                     for attempt in range(5):
+                         try:
+
+commit e299b5d659b9088e14765f76a829b5f21fb34cc6
+Author: xtend <alph.cthomas@gmail.com>
+Date:   Tue Jun 30 10:57:20 2026 +0530
+
+    Hardcode stable gemini-2.0-flash model to fix 1008 crash
+
+diff --git a/agent.py b/agent.py
+index 95eccd2..04f4792 100644
+--- a/agent.py
++++ b/agent.py
+@@ -139,16 +139,12 @@ def _build_session(tools: list, system_prompt: str, voice_override: Optional[str
+ 
+     ⚠️  EndSensitivity MUST use END_SENSITIVITY_LOW (full string — not .LOW)
+     """
+-    # Prioritize model_override from DB/job, fallback to env var
+-    raw_model = model_override or os.getenv("GEMINI_MODEL", "gemini-2.0-flash-exp")
++    # CRITICAL FIX: Google has deprecated and removed old models like "gemini-2.0-flash-exp" 
++    # and "models/gemini-3.1-flash-live-preview" from the v1beta API, causing instant 1008 crashes.
++    # We MUST hardcode to the stable, fully supported GA realtime model: "gemini-2.0-flash"
++    # This overrides anything saved in older campaign or profile databases.
++    gemini_model = "gemini-2.0-flash"
+     
+-    # CRITICAL FIX: The Google GenAI SDK strictly rejects the "models/" prefix for bidiGenerateContent.
+-    # It must be exactly "gemini-2.0-flash-exp" or "gemini-2.0-flash".
+-    if raw_model.startswith("models/"):
+-        gemini_model = raw_model.replace("models/", "")
+-    else:
+-        gemini_model = raw_model
+-        
+     gemini_voice = voice_override or os.getenv("GEMINI_TTS_VOICE", "Aoede")
+     
+     # Use Gemini Live Realtime — single model handles STT+LLM+TTS natively
+
+commit 6c803fc6c65cbbd9cb71646193552fb97635cf4d
+Author: xtend <alph.cthomas@gmail.com>
+Date:   Tue Jun 30 10:48:29 2026 +0530
+
+    Fix python syntax error
+
+diff --git a/agent.py b/agent.py
+index 68e544c..95eccd2 100644
+--- a/agent.py
++++ b/agent.py
+@@ -129,7 +129,7 @@ except ImportError:
+ # ── Session factory ──────────────────────────────────────────────────────────
+ 
+ def _build_session(tools: list, system_prompt: str, voice_override: Optional[str] = None, model_override: Optional[str] = None) -> AgentSession:
+-    \"\"\"
++    """
+     Build AgentSession with Gemini Live realtime.
+ 
+     SILENCE-PREVENTION — all 3 configs required:
+@@ -138,7 +138,7 @@ def _build_session(tools: list, system_prompt: str, voice_override: Optional[str
+     3. RealtimeInputConfig(END_SENSITIVITY_LOW)    → 2s VAD silence threshold
+ 
+     ⚠️  EndSensitivity MUST use END_SENSITIVITY_LOW (full string — not .LOW)
+-    \"\"\"
++    """
+     # Prioritize model_override from DB/job, fallback to env var
+     raw_model = model_override or os.getenv("GEMINI_MODEL", "gemini-2.0-flash-exp")
+     
+
+commit cc441288bab0f46300d47ec73fe98b8a5b371372
+Author: xtend <alph.cthomas@gmail.com>
+Date:   Tue Jun 30 10:44:36 2026 +0530
+
+    Auto-strip models/ prefix from all incoming model strings
+
+diff --git a/agent.py b/agent.py
+index f2cd195..68e544c 100644
+--- a/agent.py
++++ b/agent.py
+@@ -128,8 +128,8 @@ except ImportError:
+ 
+ # ── Session factory ──────────────────────────────────────────────────────────
+ 
+-def _build_session(tools: list, system_prompt: str, voice_override: Optional[str] = None) -> AgentSession:
+-    """
++def _build_session(tools: list, system_prompt: str, voice_override: Optional[str] = None, model_override: Optional[str] = None) -> AgentSession:
++    \"\"\"
+     Build AgentSession with Gemini Live realtime.
+ 
+     SILENCE-PREVENTION — all 3 configs required:
+@@ -138,9 +138,17 @@ def _build_session(tools: list, system_prompt: str, voice_override: Optional[str
+     3. RealtimeInputConfig(END_SENSITIVITY_LOW)    → 2s VAD silence threshold
+ 
+     ⚠️  EndSensitivity MUST use END_SENSITIVITY_LOW (full string — not .LOW)
+-    """
+-    # Override whatever is in the DB settings to ensure the realtime API works
+-    gemini_model = os.getenv("GEMINI_MODEL", "models/gemini-3.1-flash-live-preview")
++    \"\"\"
++    # Prioritize model_override from DB/job, fallback to env var
++    raw_model = model_override or os.getenv("GEMINI_MODEL", "gemini-2.0-flash-exp")
++    
++    # CRITICAL FIX: The Google GenAI SDK strictly rejects the "models/" prefix for bidiGenerateContent.
++    # It must be exactly "gemini-2.0-flash-exp" or "gemini-2.0-flash".
++    if raw_model.startswith("models/"):
++        gemini_model = raw_model.replace("models/", "")
++    else:
++        gemini_model = raw_model
++        
+     gemini_voice = voice_override or os.getenv("GEMINI_TTS_VOICE", "Aoede")
+     
+     # Use Gemini Live Realtime — single model handles STT+LLM+TTS natively
+@@ -391,7 +399,7 @@ async def entrypoint(ctx: agents.JobContext) -> None:
+     active_tools = tool_ctx.build_tool_list(enabled_tools)
+     await _log("info", f"Active tools: {len(active_tools)} loaded")
+ 
+-    session = _build_session(tools=active_tools, system_prompt=system_prompt, voice_override=voice_override)
++    session = _build_session(tools=active_tools, system_prompt=system_prompt, voice_override=voice_override, model_override=model_override)
+     tool_ctx.session = session
+ 
+     # ── Live transcript accumulator ───────────────────────────────────────────
+
+commit 8b5759ccc98ef70c442eee724e59b33101feea7a
+Author: xtend <alph.cthomas@gmail.com>
+Date:   Tue Jun 30 10:38:15 2026 +0530
+
+    Fix literal greeting string for Gemini Live
+
+diff --git a/agent.py b/agent.py
+index 4f5d0c3..f2cd195 100644
+--- a/agent.py
++++ b/agent.py
+@@ -305,7 +305,12 @@ async def entrypoint(ctx: agents.JobContext) -> None:
+     if not phone_number:
+         system_prompt += "\n\nNOTE: This is an INBOUND call. The user called YOU. Do not ask 'Am I speaking with...'. Instead, greet them warmly and ask how you can help."
+     else:
+-        system_prompt += "\n\nGreeting: 'ഹലോ... (Introduce yourself and your business based on your system instructions above, then ask how you can help).'"
++        agent_name = profile.get("name", "സ്വരം AI") if profile else "സ്വരം AI"
++        
++        # If there is a welcome_message in the profile, use it. Otherwise, use a default literal string.
++        greeting_text = profile.get("welcome_message") if profile and profile.get("welcome_message") else f"ഹലോ, ഞാൻ {agent_name} ആണ്. എനിക്ക് നിങ്ങളെ എങ്ങനെ സഹായിക്കാൻ കഴിയും?"
++        
++        system_prompt += f"\n\nGreeting: '{greeting_text}'"
+         system_prompt += "\n(CRITICAL INSTRUCTION: Read the Greeting exactly as written above IMMEDIATELY when the call connects! Do not wait for the user!)"
+ 
+     # Inject speech settings if configured
+
+commit e2b03c3b2270e1c157e37548b31dde34977da97f
+Author: xtend <alph.cthomas@gmail.com>
+Date:   Tue Jun 30 10:32:00 2026 +0530
+
+    Restore correct working model
+
+diff --git a/agent.py b/agent.py
+index 71286a0..4f5d0c3 100644
+--- a/agent.py
++++ b/agent.py
+@@ -140,7 +140,7 @@ def _build_session(tools: list, system_prompt: str, voice_override: Optional[str
+     ⚠️  EndSensitivity MUST use END_SENSITIVITY_LOW (full string — not .LOW)
+     """
+     # Override whatever is in the DB settings to ensure the realtime API works
+-    gemini_model = "gemini-2.0-flash-exp"
++    gemini_model = os.getenv("GEMINI_MODEL", "models/gemini-3.1-flash-live-preview")
+     gemini_voice = voice_override or os.getenv("GEMINI_TTS_VOICE", "Aoede")
+     
+     # Use Gemini Live Realtime — single model handles STT+LLM+TTS natively
+
+commit 3856648633b308c14067dc80a1278d782ca8f0a5
+Author: xtend <alph.cthomas@gmail.com>
+Date:   Tue Jun 30 10:25:08 2026 +0530
+
+    Fix Gemini realtime model prefix
+
+diff --git a/agent.py b/agent.py
+index b34975f..71286a0 100644
+--- a/agent.py
++++ b/agent.py
+@@ -140,7 +140,7 @@ def _build_session(tools: list, system_prompt: str, voice_override: Optional[str
+     ⚠️  EndSensitivity MUST use END_SENSITIVITY_LOW (full string — not .LOW)
+     """
+     # Override whatever is in the DB settings to ensure the realtime API works
+-    gemini_model = "models/gemini-2.0-flash"
++    gemini_model = "gemini-2.0-flash-exp"
+     gemini_voice = voice_override or os.getenv("GEMINI_TTS_VOICE", "Aoede")
+     
+     # Use Gemini Live Realtime — single model handles STT+LLM+TTS natively
+@@ -305,7 +305,8 @@ async def entrypoint(ctx: agents.JobContext) -> None:
+     if not phone_number:
+         system_prompt += "\n\nNOTE: This is an INBOUND call. The user called YOU. Do not ask 'Am I speaking with...'. Instead, greet them warmly and ask how you can help."
+     else:
+-        system_prompt += "\n\nCRITICAL OUTBOUND INSTRUCTION: The customer just picked up the phone. YOU MUST SPEAK FIRST! Start the conversation IMMEDIATELY with a short, natural Malayalam greeting. DO NOT WAIT for the user to say anything."
++        system_prompt += "\n\nGreeting: 'ഹലോ... (Introduce yourself and your business based on your system instructions above, then ask how you can help).'"
++        system_prompt += "\n(CRITICAL INSTRUCTION: Read the Greeting exactly as written above IMMEDIATELY when the call connects! Do not wait for the user!)"
+ 
+     # Inject speech settings if configured
+     if profile and profile.get("speech_settings"):
+
+commit 74a05293664d3a4d68d6b598ab0411a0df000473
+Author: xtend <alph.cthomas@gmail.com>
+Date:   Tue Jun 30 09:39:50 2026 +0530
+
+    Fix outbound silence
+
+diff --git a/agent.py b/agent.py
+index 2f9067f..b34975f 100644
+--- a/agent.py
++++ b/agent.py
+@@ -304,6 +304,8 @@ async def entrypoint(ctx: agents.JobContext) -> None:
+     # Add inbound awareness to the prompt
+     if not phone_number:
+         system_prompt += "\n\nNOTE: This is an INBOUND call. The user called YOU. Do not ask 'Am I speaking with...'. Instead, greet them warmly and ask how you can help."
++    else:
++        system_prompt += "\n\nCRITICAL OUTBOUND INSTRUCTION: The customer just picked up the phone. YOU MUST SPEAK FIRST! Start the conversation IMMEDIATELY with a short, natural Malayalam greeting. DO NOT WAIT for the user to say anything."
+ 
+     # Inject speech settings if configured
+     if profile and profile.get("speech_settings"):
+
+commit 673ef4ad6eff4e649da78bcb53b05db1d79f181a
+Author: xtend <alph.cthomas@gmail.com>
+Date:   Tue Jun 30 09:34:35 2026 +0530
+
+    Strip Mathew greeting fromdfghjkl;sfghjkdfg prompts
+
+diff --git a/agent.py b/agent.py
+index 9e21608..2f9067f 100644
+--- a/agent.py
++++ b/agent.py
+@@ -140,7 +140,7 @@ def _build_session(tools: list, system_prompt: str, voice_override: Optional[str
+     ⚠️  EndSensitivity MUST use END_SENSITIVITY_LOW (full string — not .LOW)
+     """
+     # Override whatever is in the DB settings to ensure the realtime API works
+-    gemini_model = os.getenv("GEMINI_MODEL", "models/gemini-2.0-flash-exp")
++    gemini_model = "models/gemini-2.0-flash"
+     gemini_voice = voice_override or os.getenv("GEMINI_TTS_VOICE", "Aoede")
+     
+     # Use Gemini Live Realtime — single model handles STT+LLM+TTS natively
+
+commit 4982b1ec8134af4cdbcfce7fa65f07bc83c4a71c
+Author: xtend <alph.cthomas@gmail.com>
+Date:   Mon Jun 29 13:15:07 2026 +0530
+
+    Strip Mathew greeting fromdfghjkl;sdfg prompts
+
+diff --git a/agent.py b/agent.py
+index 6999510..9e21608 100644
+--- a/agent.py
++++ b/agent.py
+@@ -308,7 +308,6 @@ async def entrypoint(ctx: agents.JobContext) -> None:
+     # Inject speech settings if configured
+     if profile and profile.get("speech_settings"):
+         try:
+-            import json
+             sp = json.loads(profile["speech_settings"])
+             if sp:
+                 system_prompt += f"\n\n# SPEECH INSTRUCTIONS\n"
+
+commit b93b67a3637a31bc2e254c062a4242a2ab6bb150
+Author: xtend <alph.cthomas@gmail.com>
+Date:   Mon Jun 29 12:51:58 2026 +0530
+
+    Add final prompt logging
+
+diff --git a/agent.py b/agent.py
+index 943b46f..6999510 100644
+--- a/agent.py
++++ b/agent.py
+@@ -327,6 +327,8 @@ async def entrypoint(ctx: agents.JobContext) -> None:
+     knowledge_base = os.environ.get("KNOWLEDGE_BASE", "").strip()
+     if knowledge_base:
+         system_prompt += f"\n\n# KNOWLEDGE BASE\n{knowledge_base}"
++        
++    await _log("info", f"FINAL SYSTEM PROMPT:\n{system_prompt}")
+     
+     tool_ctx = AppointmentTools(ctx, phone_number, lead_name, business_name, industry, place, agent_profile_id=agent_profile_id, campaign_id=campaign_id)
+ 
+
+commit 2e6c362f958a1aa2ea44ff82a2acb74179414786
+Author: xtend <alph.cthomas@gmail.com>
+Date:   Mon Jun 29 12:32:33 2026 +0530
+
+    Fix: agent profile system_prompt now overrides env var SYSTEM_PROMPT
+
+diff --git a/agent.py b/agent.py
+index 0e0bb8f..943b46f 100644
+--- a/agent.py
++++ b/agent.py
+@@ -293,7 +293,8 @@ async def entrypoint(ctx: agents.JobContext) -> None:
+         except Exception:
+             pass
+ 
+-    if profile and profile.get("system_prompt") and not custom_prompt:
++    # Agent profile system_prompt ALWAYS overrides env var / metadata
++    if profile and profile.get("system_prompt"):
+         custom_prompt = profile.get("system_prompt")
+ 
+     system_prompt = build_prompt(
+
+commit 78c8c26e550e72bf17447fb8ec9cf65b1008d815
+Author: xtend <alph.cthomas@gmail.com>
+Date:   Mon Jun 29 12:26:19 2026 +0530
+
+    Remove all greeting injection, just use system prompt directly
+
+diff --git a/agent.py b/agent.py
+index 99d7faf..0e0bb8f 100644
+--- a/agent.py
++++ b/agent.py
+@@ -128,7 +128,7 @@ except ImportError:
+ 
+ # ── Session factory ──────────────────────────────────────────────────────────
+ 
+-def _build_session(tools: list, system_prompt: str, voice_override: Optional[str] = None, greeting: Optional[str] = None) -> AgentSession:
++def _build_session(tools: list, system_prompt: str, voice_override: Optional[str] = None) -> AgentSession:
+     """
+     Build AgentSession with Gemini Live realtime.
+ 
+@@ -140,7 +140,7 @@ def _build_session(tools: list, system_prompt: str, voice_override: Optional[str
+     ⚠️  EndSensitivity MUST use END_SENSITIVITY_LOW (full string — not .LOW)
+     """
+     # Override whatever is in the DB settings to ensure the realtime API works
+-    gemini_model = "models/gemini-3.1-flash-live-preview"
++    gemini_model = os.getenv("GEMINI_MODEL", "models/gemini-2.0-flash-exp")
+     gemini_voice = voice_override or os.getenv("GEMINI_TTS_VOICE", "Aoede")
+     
+     # Use Gemini Live Realtime — single model handles STT+LLM+TTS natively
+@@ -176,21 +176,13 @@ def _build_session(tools: list, system_prompt: str, voice_override: Optional[str
+         realtime_kwargs: dict = dict(
+             model=gemini_model,
+             voice=gemini_voice,
++            instructions=system_prompt,
+         )
+         if _realtime_input_cfg is not None:
+             realtime_kwargs["realtime_input_config"]      = _realtime_input_cfg
+             realtime_kwargs["session_resumption"]         = _session_resumption_cfg
+             realtime_kwargs["context_window_compression"] = _ctx_compression_cfg
+ 
+-        if greeting:
+-            realtime_kwargs["instructions"] = (
+-                system_prompt + "\n\n"
+-                "IMPORTANT: You MUST begin the conversation immediately by speaking your greeting "
+-                "out loud as your very first response. Do not wait for the user to speak first."
+-            )
+-        else:
+-            realtime_kwargs["instructions"] = system_prompt
+-
+         logger.error("FINAL REALTIME MODEL=%s", gemini_model)
+         return AgentSession(llm=RealtimeClass(**realtime_kwargs), tools=tools)
+ 
+@@ -389,13 +381,7 @@ async def entrypoint(ctx: agents.JobContext) -> None:
+     active_tools = tool_ctx.build_tool_list(enabled_tools)
+     await _log("info", f"Active tools: {len(active_tools)} loaded")
+ 
+-    # Build the greeting before starting the session
+-    default_inbound = f"Speak strictly in Malayalam. Greet the caller warmly and help them with {industry}."
+-    default_outbound = f"The call just connected. Speak strictly in Malayalam. Start the call by greeting the lead and using the greeting defined in your system prompt for {industry}."
+-    
+-    greeting = default_outbound if phone_number else default_inbound
+-
+-    session = _build_session(tools=active_tools, system_prompt=system_prompt, voice_override=voice_override, greeting=greeting)
++    session = _build_session(tools=active_tools, system_prompt=system_prompt, voice_override=voice_override)
+     tool_ctx.session = session
+ 
+     # ── Live transcript accumulator ───────────────────────────────────────────
+
+commit ccf0d539e2610060b7f89a701308914d1f6b6179
+Author: xtend <alph.cthomas@gmail.com>
+Date:   Mon Jun 29 12:19:20 2026 +0530
+
+    Fix double greeting: system_prompt was sent to Gemini twice
+
+diff --git a/agent.py b/agent.py
+index e3fb310..99d7faf 100644
+--- a/agent.py
++++ b/agent.py
+@@ -176,7 +176,6 @@ def _build_session(tools: list, system_prompt: str, voice_override: Optional[str
+         realtime_kwargs: dict = dict(
+             model=gemini_model,
+             voice=gemini_voice,
+-            instructions=system_prompt,
+         )
+         if _realtime_input_cfg is not None:
+             realtime_kwargs["realtime_input_config"]      = _realtime_input_cfg
+@@ -189,6 +188,8 @@ def _build_session(tools: list, system_prompt: str, voice_override: Optional[str
+                 "IMPORTANT: You MUST begin the conversation immediately by speaking your greeting "
+                 "out loud as your very first response. Do not wait for the user to speak first."
+             )
++        else:
++            realtime_kwargs["instructions"] = system_prompt
+ 
+         logger.error("FINAL REALTIME MODEL=%s", gemini_model)
+         return AgentSession(llm=RealtimeClass(**realtime_kwargs), tools=tools)
+@@ -455,7 +456,7 @@ async def entrypoint(ctx: agents.JobContext) -> None:
+         from livekit.agents import RoomOptions as _RO
+         _session_kwargs = dict(
+             room=ctx.room,
+-            agent=OutboundAssistant(instructions=system_prompt),
++            agent=OutboundAssistant(instructions=""),
+             room_options=_RO(input_options=RoomInputOptions(
+                 # noise_cancellation=noise_cancellation.BVCTelephony(),
+                 close_on_disconnect=False,
+@@ -464,7 +465,7 @@ async def entrypoint(ctx: agents.JobContext) -> None:
+     else:
+         _session_kwargs = dict(
+             room=ctx.room,
+-            agent=OutboundAssistant(instructions=system_prompt),
++            agent=OutboundAssistant(instructions=""),
+             room_input_options=RoomInputOptions(
+                 # noise_cancellation=noise_cancellation.BVCTelephony(),
+                 close_on_disconnect=False,
+
+commit 86c66aca7886c7af1f4f203f1081f6a04440b4dc
+Author: xtend <alph.cthomas@gmail.com>
+Date:   Mon Jun 29 12:13:38 2026 +0530
+
+    Fix: just use system prompt directly, no extra greeting injection
+
+diff --git a/agent.py b/agent.py
+index 9f07c21..e3fb310 100644
+--- a/agent.py
++++ b/agent.py
+@@ -184,13 +184,10 @@ def _build_session(tools: list, system_prompt: str, voice_override: Optional[str
+             realtime_kwargs["context_window_compression"] = _ctx_compression_cfg
+ 
+         if greeting:
+-            # Wrap system prompt in XML tags to force the AI to keep it hidden
+             realtime_kwargs["instructions"] = (
+-                "<system_instructions>\n"
+-                f"{system_prompt}\n"
+-                "</system_instructions>\n\n"
+-                "TASK: The phone call has just connected. You must immediately speak out loud and say EXACTLY the following welcome message. Do NOT say anything else until the user replies.\n"
+-                f"WELCOME MESSAGE: {greeting}"
++                system_prompt + "\n\n"
++                "IMPORTANT: You MUST begin the conversation immediately by speaking your greeting "
++                "out loud as your very first response. Do not wait for the user to speak first."
+             )
+ 
+         logger.error("FINAL REALTIME MODEL=%s", gemini_model)
+@@ -396,8 +393,6 @@ async def entrypoint(ctx: agents.JobContext) -> None:
+     default_outbound = f"The call just connected. Speak strictly in Malayalam. Start the call by greeting the lead and using the greeting defined in your system prompt for {industry}."
+     
+     greeting = default_outbound if phone_number else default_inbound
+-    if profile and profile.get("welcome_message"):
+-        greeting = profile['welcome_message']
+ 
+     session = _build_session(tools=active_tools, system_prompt=system_prompt, voice_override=voice_override, greeting=greeting)
+     tool_ctx.session = session
+
+commit a48789394dc3de6dc9e9968d16d324f15c2649f8
+Author: xtend <alph.cthomas@gmail.com>
+Date:   Mon Jun 29 11:51:56 2026 +0530
+
+    Wrap system prompt in XML tags to fix double greeting
+
+diff --git a/agent.py b/agent.py
+index 07f19f9..9f07c21 100644
+--- a/agent.py
++++ b/agent.py
+@@ -184,12 +184,13 @@ def _build_session(tools: list, system_prompt: str, voice_override: Optional[str
+             realtime_kwargs["context_window_compression"] = _ctx_compression_cfg
+ 
+         if greeting:
+-            # Inject greeting into instructions so the model speaks first
++            # Wrap system prompt in XML tags to force the AI to keep it hidden
+             realtime_kwargs["instructions"] = (
+-                system_prompt + "\n\n"
+-                "IMPORTANT: You MUST begin the conversation immediately by saying the following greeting "
+-                "out loud as your very first response. Do not wait for the user to speak first.\n"
+-                f"Greeting: {greeting}"
++                "<system_instructions>\n"
++                f"{system_prompt}\n"
++                "</system_instructions>\n\n"
++                "TASK: The phone call has just connected. You must immediately speak out loud and say EXACTLY the following welcome message. Do NOT say anything else until the user replies.\n"
++                f"WELCOME MESSAGE: {greeting}"
+             )
+ 
+         logger.error("FINAL REALTIME MODEL=%s", gemini_model)
+@@ -396,9 +397,7 @@ async def entrypoint(ctx: agents.JobContext) -> None:
+     
+     greeting = default_outbound if phone_number else default_inbound
+     if profile and profile.get("welcome_message"):
+-        # Explicitly instruct the model to ignore any other greetings in the prompt
+-        greeting = f"IMPORTANT: You MUST start the call EXACTLY with this welcome message: '{profile['welcome_message']}'"
+-        system_prompt = "CRITICAL INSTRUCTION: Ignore any greeting instructions in the prompt below. Use ONLY the greeting provided at the end of these instructions.\n\n" + system_prompt
++        greeting = profile['welcome_message']
+ 
+     session = _build_session(tools=active_tools, system_prompt=system_prompt, voice_override=voice_override, greeting=greeting)
+     tool_ctx.session = session
+
+commit d336da698c3898585dc3bcdfaf411620df289b3f
+Author: xtend <alph.cthomas@gmail.com>
+Date:   Mon Jun 29 11:07:50 2026 +0530
+
+    fix: use internal LiveKit URL for egress, add 2s delay, fix dousdfblesdfghjkl logging
+
+diff --git a/agent.py b/agent.py
+index 1333ee1..07f19f9 100644
+--- a/agent.py
++++ b/agent.py
+@@ -396,7 +396,9 @@ async def entrypoint(ctx: agents.JobContext) -> None:
+     
+     greeting = default_outbound if phone_number else default_inbound
+     if profile and profile.get("welcome_message"):
++        # Explicitly instruct the model to ignore any other greetings in the prompt
+         greeting = f"IMPORTANT: You MUST start the call EXACTLY with this welcome message: '{profile['welcome_message']}'"
++        system_prompt = "CRITICAL INSTRUCTION: Ignore any greeting instructions in the prompt below. Use ONLY the greeting provided at the end of these instructions.\n\n" + system_prompt
+ 
+     session = _build_session(tools=active_tools, system_prompt=system_prompt, voice_override=voice_override, greeting=greeting)
+     tool_ctx.session = session
+
+commit fb6a15c2a82221205005f410ab7bd1ca1b0785b0
+Author: xtend <alph.cthomas@gmail.com>
+Date:   Sun Jun 28 20:55:24 2026 +0530
+
+    fix: use internal LiveKit URL for egress, add 2s delay, fix dousdfbleghjkl logging
+
+diff --git a/agent.py b/agent.py
+index 0211d95..1333ee1 100644
+--- a/agent.py
++++ b/agent.py
+@@ -36,7 +36,7 @@ from db import init_db, log_error, get_enabled_tools, get_all_settings
+ from prompts import build_prompt
+ from tools import AppointmentTools
+ 
+-load_dotenv(".env", override=True)
++# load_dotenv(".env", override=True)
+ log_path = "/data/app.log" if os.path.exists("/data") else "app.log"
+ logging.basicConfig(
+     level=logging.INFO,
+@@ -184,13 +184,13 @@ def _build_session(tools: list, system_prompt: str, voice_override: Optional[str
+             realtime_kwargs["context_window_compression"] = _ctx_compression_cfg
+ 
+         if greeting:
+-            try:
+-                from livekit.agents.llm import ChatContext, ChatMessage
+-                chat_ctx = ChatContext()
+-                chat_ctx.append(role="system", text=greeting)
+-                realtime_kwargs["chat_ctx"] = chat_ctx
+-            except Exception as _ctx_err:
+-                logger.warning("Could not build initial chat context: %s", _ctx_err)
++            # Inject greeting into instructions so the model speaks first
++            realtime_kwargs["instructions"] = (
++                system_prompt + "\n\n"
++                "IMPORTANT: You MUST begin the conversation immediately by saying the following greeting "
++                "out loud as your very first response. Do not wait for the user to speak first.\n"
++                f"Greeting: {greeting}"
++            )
+ 
+         logger.error("FINAL REALTIME MODEL=%s", gemini_model)
+         return AgentSession(llm=RealtimeClass(**realtime_kwargs), tools=tools)
+@@ -293,6 +293,18 @@ async def entrypoint(ctx: agents.JobContext) -> None:
+         except Exception:
+             pass
+ 
++    # Fetch full profile from DB
++    profile = None
++    if agent_profile_id:
++        from db import get_agent_profile
++        try:
++            profile = await get_agent_profile(agent_profile_id)
++        except Exception:
++            pass
++
++    if profile and profile.get("system_prompt") and not custom_prompt:
++        custom_prompt = profile.get("system_prompt")
++
+     system_prompt = build_prompt(
+         lead_name=lead_name, business_name=business_name,
+         industry=industry, place=place, custom_prompt=custom_prompt,
+@@ -301,6 +313,24 @@ async def entrypoint(ctx: agents.JobContext) -> None:
+     if not phone_number:
+         system_prompt += "\n\nNOTE: This is an INBOUND call. The user called YOU. Do not ask 'Am I speaking with...'. Instead, greet them warmly and ask how you can help."
+ 
++    # Inject speech settings if configured
++    if profile and profile.get("speech_settings"):
++        try:
++            import json
++            sp = json.loads(profile["speech_settings"])
++            if sp:
++                system_prompt += f"\n\n# SPEECH INSTRUCTIONS\n"
++                if sp.get("fillers"):
++                    system_prompt += "- Use conversational filler words (um, uh, ah) naturally while thinking to sound human.\n"
++                if sp.get("laugh"):
++                    system_prompt += "- Laugh slightly or chuckle appropriately during the conversation to build rapport.\n"
++                if sp.get("speed"):
++                    system_prompt += f"- Speak at a speed modifier of {sp.get('speed')}.\n"
++                if sp.get("custom_instructions"):
++                    system_prompt += f"- {sp.get('custom_instructions')}\n"
++        except Exception:
++            pass
++
+     # Append knowledge base if configured
+     knowledge_base = os.environ.get("KNOWLEDGE_BASE", "").strip()
+     if knowledge_base:
+@@ -361,10 +391,12 @@ async def entrypoint(ctx: agents.JobContext) -> None:
+     await _log("info", f"Active tools: {len(active_tools)} loaded")
+ 
+     # Build the greeting before starting the session
+-    greeting = (
+-        f"The call just connected. Speak strictly in Malayalam. Start the call by greeting the lead and using the greeting defined in your system prompt for {industry}."
+-        if phone_number else f"Speak strictly in Malayalam. Greet the caller warmly and help them with {industry}."
+-    )
++    default_inbound = f"Speak strictly in Malayalam. Greet the caller warmly and help them with {industry}."
++    default_outbound = f"The call just connected. Speak strictly in Malayalam. Start the call by greeting the lead and using the greeting defined in your system prompt for {industry}."
++    
++    greeting = default_outbound if phone_number else default_inbound
++    if profile and profile.get("welcome_message"):
++        greeting = f"IMPORTANT: You MUST start the call EXACTLY with this welcome message: '{profile['welcome_message']}'"
+ 
+     session = _build_session(tools=active_tools, system_prompt=system_prompt, voice_override=voice_override, greeting=greeting)
+     tool_ctx.session = session
+@@ -429,7 +461,7 @@ async def entrypoint(ctx: agents.JobContext) -> None:
+             room=ctx.room,
+             agent=OutboundAssistant(instructions=system_prompt),
+             room_options=_RO(input_options=RoomInputOptions(
+-                noise_cancellation=noise_cancellation.BVCTelephony(),
++                # noise_cancellation=noise_cancellation.BVCTelephony(),
+                 close_on_disconnect=False,
+             )),
+         )
+@@ -438,7 +470,7 @@ async def entrypoint(ctx: agents.JobContext) -> None:
+             room=ctx.room,
+             agent=OutboundAssistant(instructions=system_prompt),
+             room_input_options=RoomInputOptions(
+-                noise_cancellation=noise_cancellation.BVCTelephony(),
++                # noise_cancellation=noise_cancellation.BVCTelephony(),
+                 close_on_disconnect=False,
+             ),
+         )
+
+commit a301efe4596e28e7af648a269a0ea8c3526c505d
+Author: xtend <alph.cthomas@gmail.com>
+Date:   Sun Jun 28 01:07:56 2026 +0530
+
+    fix: use internal LiveKit URL for egress, add 2s delay, fix dousdfble logging
+
+diff --git a/agent.py b/agent.py
+index 3d1a95f..0211d95 100644
+--- a/agent.py
++++ b/agent.py
+@@ -187,7 +187,7 @@ def _build_session(tools: list, system_prompt: str, voice_override: Optional[str
+             try:
+                 from livekit.agents.llm import ChatContext, ChatMessage
+                 chat_ctx = ChatContext()
+-                chat_ctx.messages.append(ChatMessage(role="user", content=greeting))
++                chat_ctx.append(role="system", text=greeting)
+                 realtime_kwargs["chat_ctx"] = chat_ctx
+             except Exception as _ctx_err:
+                 logger.warning("Could not build initial chat context: %s", _ctx_err)
+@@ -486,7 +486,7 @@ async def entrypoint(ctx: agents.JobContext) -> None:
+                 _lk_url    = os.getenv("LIVEKIT_URL", "ws://localhost:7880")
+                 _lk_key    = os.getenv("LIVEKIT_API_KEY", "")
+                 _lk_secret = os.getenv("LIVEKIT_API_SECRET", "")
+-                _internal_url = _lk_url.replace("wss://", "ws://").replace("lk.workflow-tech.info", "localhost") if "workflow-tech" in _lk_url else _lk_url
++                _internal_url = "http://localhost:7880" if "workflow-tech" in _lk_url else _lk_url
+                 async with api.LiveKitAPI(url=_internal_url, api_key=_lk_key, api_secret=_lk_secret) as lkapi:
+                     for attempt in range(5):
+                         try:
+
+commit ebbccb29174afb379413491e8c0ca601add1af2e
+Author: xtend <alph.cthomas@gmail.com>
+Date:   Sat Jun 27 22:06:40 2026 +0530
+
+    fix: use internal LiveKit URL for egress, add 2s delay, fix double logging
+
+diff --git a/agent.py b/agent.py
+index 7c9e84c..3d1a95f 100644
+--- a/agent.py
++++ b/agent.py
+@@ -455,9 +455,11 @@ async def entrypoint(ctx: agents.JobContext) -> None:
+         _s3_region   = os.getenv("S3_REGION") or os.getenv("AWS_REGION", "ap-south-1")
+         if _aws_key and _aws_secret and _aws_bucket:
+             try:
+-                # 'api' is already imported globally, importing it locally shadows it and causes UnboundLocalError earlier in the function
++                # Wait 2s for SIP participant to fully join the room before starting egress
++                await asyncio.sleep(2)
++
+                 _recording_path = f"recordings/{ctx.room.name}.mp4"
+-                
++
+                 s3_kwargs = {
+                     "access_key": _aws_key,
+                     "secret": _aws_secret,
+@@ -480,14 +482,19 @@ async def entrypoint(ctx: agents.JobContext) -> None:
+                         s3=api.S3Upload(**s3_kwargs),
+                     )],
+                 )
+-                async with api.LiveKitAPI() as lkapi:
+-                    # Retry logic for LiveKit API limits
++                # Use internal URL (ws://localhost:7880) for API calls — avoids Nginx/SSL and is more reliable
++                _lk_url    = os.getenv("LIVEKIT_URL", "ws://localhost:7880")
++                _lk_key    = os.getenv("LIVEKIT_API_KEY", "")
++                _lk_secret = os.getenv("LIVEKIT_API_SECRET", "")
++                _internal_url = _lk_url.replace("wss://", "ws://").replace("lk.workflow-tech.info", "localhost") if "workflow-tech" in _lk_url else _lk_url
++                async with api.LiveKitAPI(url=_internal_url, api_key=_lk_key, api_secret=_lk_secret) as lkapi:
+                     for attempt in range(5):
+                         try:
+                             _egress = await lkapi.egress.start_room_composite_egress(_egress_req)
+                             await _log("info", f"Recording started: egress={_egress.egress_id}")
+                             break
+                         except Exception as egress_exc:
++                            await _log("warning", f"Egress attempt {attempt+1} failed: {egress_exc}")
+                             if attempt == 4:
+                                 raise egress_exc
+                             await asyncio.sleep(2 ** attempt)
+@@ -516,8 +523,10 @@ async def entrypoint(ctx: agents.JobContext) -> None:
+             await _log("warning", "Call reached 1-hour safety timeout — shutting down")
+ 
+         await _log("info", f"SIP participant disconnected — ending session for {phone_number}")
+-        
++
+         # Log the call if the LLM didn't get a chance to call end_call()
++        # Use a small delay to let end_call() finish setting _call_logged if it's running concurrently
++        await asyncio.sleep(0.5)
+         if not getattr(tool_ctx, "_call_logged", False):
+             try:
+                 import time
+
+commit 5a693dc5c7bf9b0bae92ddc1d329da4a961c054f
+Author: xtend <alph.cthomas@gmail.com>
+Date:   Sat Jun 27 14:43:03 2026 +0530
+
+    fix: change greeting role to user to prevent 15s delay
+
+diff --git a/agent.py b/agent.py
+index 074a36a..7c9e84c 100644
+--- a/agent.py
++++ b/agent.py
+@@ -187,7 +187,7 @@ def _build_session(tools: list, system_prompt: str, voice_override: Optional[str
+             try:
+                 from livekit.agents.llm import ChatContext, ChatMessage
+                 chat_ctx = ChatContext()
+-                chat_ctx.messages.append(ChatMessage(role="system", content=greeting))
++                chat_ctx.messages.append(ChatMessage(role="user", content=greeting))
+                 realtime_kwargs["chat_ctx"] = chat_ctx
+             except Exception as _ctx_err:
+                 logger.warning("Could not build initial chat context: %s", _ctx_err)
+
+commit e447f5e21f8de4e3556cd1af7cf5ecc3c43e0a4e
+Author: xtend <alph.cthomas@gmail.com>
+Date:   Wed Jun 24 21:43:16 2026 +0530
+
+    dfghjkfghjsdsdffsdfasdfvsdsdfsdsdsdfsdff
+
+diff --git a/agent.py b/agent.py
+index 6cf45f4..074a36a 100644
+--- a/agent.py
++++ b/agent.py
+@@ -300,6 +300,11 @@ async def entrypoint(ctx: agents.JobContext) -> None:
+     # Add inbound awareness to the prompt
+     if not phone_number:
+         system_prompt += "\n\nNOTE: This is an INBOUND call. The user called YOU. Do not ask 'Am I speaking with...'. Instead, greet them warmly and ask how you can help."
++
++    # Append knowledge base if configured
++    knowledge_base = os.environ.get("KNOWLEDGE_BASE", "").strip()
++    if knowledge_base:
++        system_prompt += f"\n\n# KNOWLEDGE BASE\n{knowledge_base}"
+     
+     tool_ctx = AppointmentTools(ctx, phone_number, lead_name, business_name, industry, place, agent_profile_id=agent_profile_id, campaign_id=campaign_id)
+ 
+
+commit dd4608983fa8f71ba0dbbbae1d79f1edd9b56228
+Author: xtend <alph.cthomas@gmail.com>
+Date:   Wed Jun 24 01:34:48 2026 +0530
+
+    fix: remove db_settings dict parsing that crashed S3 egsdcfvress
+
+diff --git a/agent.py b/agent.py
+index f60b4fb..6cf45f4 100644
+--- a/agent.py
++++ b/agent.py
+@@ -324,10 +324,6 @@ async def entrypoint(ctx: agents.JobContext) -> None:
+     if phone_number:
+         # Strip \r to fix CRLF docker issues on Windows
+         trunk_id = os.getenv("OUTBOUND_TRUNK_ID", "").strip()
+-        
+-        # FAILSAFE: If the old broken Vobiz UUID is still stuck in memory, override it!
+-        if "53eeb610" in trunk_id:
+-            trunk_id = "ST_puExWSEydrQF"
+             
+         if not trunk_id:
+             await _log("error", "OUTBOUND_TRUNK_ID not set — cannot place outbound call")
+
+commit ecc2b6f68b1ba9c4681ddd5245cfbf4f84829c56
+Author: xtend <alph.cthomas@gmail.com>
+Date:   Tue Jun 23 20:02:15 2026 +0530
+
+    fix: remove db_settings dict parsing that crashed S3 egress
+
+diff --git a/agent.py b/agent.py
+index cfce52f..f60b4fb 100644
+--- a/agent.py
++++ b/agent.py
+@@ -447,13 +447,11 @@ async def entrypoint(ctx: agents.JobContext) -> None:
+ 
+     # ── Optional S3 call recording via LiveKit Egress ─────────────────────────
+     if phone_number:
+-        db_settings = await get_all_settings()
+-        
+-        _aws_key     = db_settings.get("S3_ACCESS_KEY_ID") or os.getenv("S3_ACCESS_KEY_ID") or os.getenv("AWS_ACCESS_KEY_ID", "")
+-        _aws_secret  = db_settings.get("S3_SECRET_ACCESS_KEY") or os.getenv("S3_SECRET_ACCESS_KEY") or os.getenv("AWS_SECRET_ACCESS_KEY", "")
+-        _aws_bucket  = db_settings.get("S3_BUCKET") or os.getenv("S3_BUCKET") or os.getenv("AWS_BUCKET_NAME", "")
+-        _s3_endpoint = db_settings.get("S3_ENDPOINT_URL") or os.getenv("S3_ENDPOINT_URL") or os.getenv("S3_ENDPOINT", "")
+-        _s3_region   = db_settings.get("S3_REGION") or os.getenv("S3_REGION") or os.getenv("AWS_REGION", "ap-south-1")
++        _aws_key     = os.getenv("S3_ACCESS_KEY_ID") or os.getenv("AWS_ACCESS_KEY_ID", "")
++        _aws_secret  = os.getenv("S3_SECRET_ACCESS_KEY") or os.getenv("AWS_SECRET_ACCESS_KEY", "")
++        _aws_bucket  = os.getenv("S3_BUCKET") or os.getenv("AWS_BUCKET_NAME", "")
++        _s3_endpoint = os.getenv("S3_ENDPOINT_URL") or os.getenv("S3_ENDPOINT", "")
++        _s3_region   = os.getenv("S3_REGION") or os.getenv("AWS_REGION", "ap-south-1")
+         if _aws_key and _aws_secret and _aws_bucket:
+             try:
+                 # 'api' is already imported globally, importing it locally shadows it and causes UnboundLocalError earlier in the function
+
+commit 557d2b19b8bd73fe8d36bc09fc334e768484c02b
+Author: xtend <alph.cthomas@gmail.com>
+Date:   Tue Jun 23 19:16:02 2026 +0530
+
+    fix: Add exponential backoff retry for LiveKit Egress API to handle campaign bursts
+
+diff --git a/agent.py b/agent.py
+index 024e8b3..cfce52f 100644
+--- a/agent.py
++++ b/agent.py
+@@ -468,6 +468,12 @@ async def entrypoint(ctx: agents.JobContext) -> None:
+                 if _s3_endpoint:
+                     s3_kwargs["endpoint"] = _s3_endpoint
+ 
++                _s3_ep = _s3_endpoint.rstrip("/")
++                tool_ctx.recording_url = (
++                    f"{_s3_ep}/{_aws_bucket}/{_recording_path}"
++                    if _s3_ep else f"https://{_aws_bucket}.s3.{_s3_region}.amazonaws.com/{_recording_path}"
++                )
++
+                 _egress_req = api.RoomCompositeEgressRequest(
+                     room_name=ctx.room.name, audio_only=True,
+                     file_outputs=[api.EncodedFileOutput(
+@@ -476,14 +482,16 @@ async def entrypoint(ctx: agents.JobContext) -> None:
+                     )],
+                 )
+                 async with api.LiveKitAPI() as lkapi:
+-                    _egress = await lkapi.egress.start_room_composite_egress(_egress_req)
+-                    
+-                _s3_ep = _s3_endpoint.rstrip("/")
+-                tool_ctx.recording_url = (
+-                    f"{_s3_ep}/{_aws_bucket}/{_recording_path}"
+-                    if _s3_ep else f"https://{_aws_bucket}.s3.{_s3_region}.amazonaws.com/{_recording_path}"
+-                )
+-                await _log("info", f"Recording started: egress={_egress.egress_id}")
++                    # Retry logic for LiveKit API limits
++                    for attempt in range(5):
++                        try:
++                            _egress = await lkapi.egress.start_room_composite_egress(_egress_req)
++                            await _log("info", f"Recording started: egress={_egress.egress_id}")
++                            break
++                        except Exception as egress_exc:
++                            if attempt == 4:
++                                raise egress_exc
++                            await asyncio.sleep(2 ** attempt)
+             except Exception as _exc:
+                 await _log("warning", f"Recording start failed (non-fatal): {_exc}")
+ 
+
+commit 600aa0cbb82830ae04101ca516cc4dd6acc1a259
+Author: xtend <alph.cthomas@gmail.com>
+Date:   Tue Jun 23 18:42:49 2026 +0530
+
+    sdf
+
+diff --git a/agent.py b/agent.py
+index fb242e7..024e8b3 100644
+--- a/agent.py
++++ b/agent.py
+@@ -32,7 +32,7 @@ except ImportError:
+     _HAS_ROOM_OPTIONS = False
+ from livekit.plugins import noise_cancellation, silero
+ 
+-from db import init_db, log_error, get_enabled_tools
++from db import init_db, log_error, get_enabled_tools, get_all_settings
+ from prompts import build_prompt
+ from tools import AppointmentTools
+ 
+@@ -447,11 +447,13 @@ async def entrypoint(ctx: agents.JobContext) -> None:
+ 
+     # ── Optional S3 call recording via LiveKit Egress ─────────────────────────
+     if phone_number:
+-        _aws_key     = os.getenv("S3_ACCESS_KEY_ID") or os.getenv("AWS_ACCESS_KEY_ID", "")
+-        _aws_secret  = os.getenv("S3_SECRET_ACCESS_KEY") or os.getenv("AWS_SECRET_ACCESS_KEY", "")
+-        _aws_bucket  = os.getenv("S3_BUCKET") or os.getenv("AWS_BUCKET_NAME", "")
+-        _s3_endpoint = os.getenv("S3_ENDPOINT_URL") or os.getenv("S3_ENDPOINT", "")
+-        _s3_region   = os.getenv("S3_REGION") or os.getenv("AWS_REGION", "ap-south-1")
++        db_settings = await get_all_settings()
++        
++        _aws_key     = db_settings.get("S3_ACCESS_KEY_ID") or os.getenv("S3_ACCESS_KEY_ID") or os.getenv("AWS_ACCESS_KEY_ID", "")
++        _aws_secret  = db_settings.get("S3_SECRET_ACCESS_KEY") or os.getenv("S3_SECRET_ACCESS_KEY") or os.getenv("AWS_SECRET_ACCESS_KEY", "")
++        _aws_bucket  = db_settings.get("S3_BUCKET") or os.getenv("S3_BUCKET") or os.getenv("AWS_BUCKET_NAME", "")
++        _s3_endpoint = db_settings.get("S3_ENDPOINT_URL") or os.getenv("S3_ENDPOINT_URL") or os.getenv("S3_ENDPOINT", "")
++        _s3_region   = db_settings.get("S3_REGION") or os.getenv("S3_REGION") or os.getenv("AWS_REGION", "ap-south-1")
+         if _aws_key and _aws_secret and _aws_bucket:
+             try:
+                 # 'api' is already imported globally, importing it locally shadows it and causes UnboundLocalError earlier in the function
+
+commit a47da200943a584431e0fe0279f68a0133200a89
+Author: xtend <alph.cthomas@gmail.com>
+Date:   Mon Jun 22 19:28:25 2026 +0530
+
+    dfghjkfghjsdsdffsdfasdfv
+
+diff --git a/agent.py b/agent.py
+index a96f135..fb242e7 100644
+--- a/agent.py
++++ b/agent.py
+@@ -357,7 +357,7 @@ async def entrypoint(ctx: agents.JobContext) -> None:
+     gemini_model = os.getenv("GEMINI_MODEL", "models/gemini-2.0-flash-exp")
+     await _log("info", f"Building Gemini Live session — model={gemini_model}")
+     active_tools = tool_ctx.build_tool_list(enabled_tools)
+-    await _log("info", f"Active tools: {[t.name for t in active_tools]}")
++    await _log("info", f"Active tools: {len(active_tools)} loaded")
+ 
+     # Build the greeting before starting the session
+     greeting = (
+
+commit a85b07d520163bb9f55ffe89ad97aac778a82347
+Author: xtend <alph.cthomas@gmail.com>
+Date:   Mon Jun 22 19:23:00 2026 +0530
+
+    dfghjkfghjsdsdffsdfv
+
+diff --git a/agent.py b/agent.py
+index cc9ae81..a96f135 100644
+--- a/agent.py
++++ b/agent.py
+@@ -128,7 +128,7 @@ except ImportError:
+ 
+ # ── Session factory ──────────────────────────────────────────────────────────
+ 
+-def _build_session(tools: list, system_prompt: str, voice_override: Optional[str] = None) -> AgentSession:
++def _build_session(tools: list, system_prompt: str, voice_override: Optional[str] = None, greeting: Optional[str] = None) -> AgentSession:
+     """
+     Build AgentSession with Gemini Live realtime.
+ 
+@@ -183,6 +183,15 @@ def _build_session(tools: list, system_prompt: str, voice_override: Optional[str
+             realtime_kwargs["session_resumption"]         = _session_resumption_cfg
+             realtime_kwargs["context_window_compression"] = _ctx_compression_cfg
+ 
++        if greeting:
++            try:
++                from livekit.agents.llm import ChatContext, ChatMessage
++                chat_ctx = ChatContext()
++                chat_ctx.messages.append(ChatMessage(role="system", content=greeting))
++                realtime_kwargs["chat_ctx"] = chat_ctx
++            except Exception as _ctx_err:
++                logger.warning("Could not build initial chat context: %s", _ctx_err)
++
+         logger.error("FINAL REALTIME MODEL=%s", gemini_model)
+         return AgentSession(llm=RealtimeClass(**realtime_kwargs), tools=tools)
+ 
+@@ -348,9 +357,15 @@ async def entrypoint(ctx: agents.JobContext) -> None:
+     gemini_model = os.getenv("GEMINI_MODEL", "models/gemini-2.0-flash-exp")
+     await _log("info", f"Building Gemini Live session — model={gemini_model}")
+     active_tools = tool_ctx.build_tool_list(enabled_tools)
+-    await _log("info", f"Active tools: {[t.__name__ for t in active_tools]}")
++    await _log("info", f"Active tools: {[t.name for t in active_tools]}")
++
++    # Build the greeting before starting the session
++    greeting = (
++        f"The call just connected. Speak strictly in Malayalam. Start the call by greeting the lead and using the greeting defined in your system prompt for {industry}."
++        if phone_number else f"Speak strictly in Malayalam. Greet the caller warmly and help them with {industry}."
++    )
+ 
+-    session = _build_session(tools=active_tools, system_prompt=system_prompt, voice_override=voice_override)
++    session = _build_session(tools=active_tools, system_prompt=system_prompt, voice_override=voice_override, greeting=greeting)
+     tool_ctx.session = session
+ 
+     # ── Live transcript accumulator ───────────────────────────────────────────
+@@ -413,7 +428,8 @@ async def entrypoint(ctx: agents.JobContext) -> None:
+             room=ctx.room,
+             agent=OutboundAssistant(instructions=system_prompt),
+             room_options=_RO(input_options=RoomInputOptions(
+-                noise_cancellation=noise_cancellation.BVCTelephony()
++                noise_cancellation=noise_cancellation.BVCTelephony(),
++                close_on_disconnect=False,
+             )),
+         )
+     else:
+@@ -421,7 +437,8 @@ async def entrypoint(ctx: agents.JobContext) -> None:
+             room=ctx.room,
+             agent=OutboundAssistant(instructions=system_prompt),
+             room_input_options=RoomInputOptions(
+-                noise_cancellation=noise_cancellation.BVCTelephony()
++                noise_cancellation=noise_cancellation.BVCTelephony(),
++                close_on_disconnect=False,
+             ),
+         )
+ 
+@@ -468,22 +485,6 @@ async def entrypoint(ctx: agents.JobContext) -> None:
+             except Exception as _exc:
+                 await _log("warning", f"Recording start failed (non-fatal): {_exc}")
+ 
+-    # ── Greeting ─────────────────────────────────────────────────────────────
+-    greeting = (
+-        f"The call just connected. Speak strictly in Malayalam. Start the call by greeting the lead and using the greeting defined in your system prompt for {industry}."
+-        if phone_number else f"Speak strictly in Malayalam. Greet the caller warmly and help them with {industry}."
+-    )
+-    try:
+-        if hasattr(session, "chat_ctx"):
+-            # LiveKit 1.5+ AgentSession context
+-            session.chat_ctx.append(role="user", text=f"[SYSTEM: {greeting}]")
+-        elif hasattr(session, "agent") and hasattr(session.agent, "chat_ctx"):
+-            session.agent.chat_ctx.append(role="user", text=f"[SYSTEM: {greeting}]")
+-        else:
+-            await _log("warning", "No chat_ctx found on session - greeting may be delayed")
+-    except Exception as _gr_exc:
+-        await _log("warning", f"Greeting trigger failed: {_gr_exc}")
+-
+     # ── Keep session alive until SIP participant leaves ───────────────────────
+     # Without this the entrypoint returns and the worker spins down.
+     if phone_number:
+
+commit bfd8390db6480cfd07eaf41f6561cccb6502b3b0
+Author: xtend <alph.cthomas@gmail.com>
+Date:   Mon Jun 22 19:06:17 2026 +0530
+
+    dfghjkfghjsdsdff
+
+diff --git a/agent.py b/agent.py
+index c0e4d3f..cc9ae81 100644
+--- a/agent.py
++++ b/agent.py
+@@ -437,7 +437,7 @@ async def entrypoint(ctx: agents.JobContext) -> None:
+         _s3_region   = os.getenv("S3_REGION") or os.getenv("AWS_REGION", "ap-south-1")
+         if _aws_key and _aws_secret and _aws_bucket:
+             try:
+-                from livekit import api
++                # 'api' is already imported globally, importing it locally shadows it and causes UnboundLocalError earlier in the function
+                 _recording_path = f"recordings/{ctx.room.name}.mp4"
+                 
+                 s3_kwargs = {
+
+commit b36c0b9787fbb1caca60062868796d0996be3bb8
+Author: xtend <alph.cthomas@gmail.com>
+Date:   Mon Jun 22 18:20:47 2026 +0530
+
+    dfghjkfghjsdf
+
+diff --git a/agent.py b/agent.py
+index a5125d3..c0e4d3f 100644
+--- a/agent.py
++++ b/agent.py
+@@ -437,18 +437,28 @@ async def entrypoint(ctx: agents.JobContext) -> None:
+         _s3_region   = os.getenv("S3_REGION") or os.getenv("AWS_REGION", "ap-south-1")
+         if _aws_key and _aws_secret and _aws_bucket:
+             try:
++                from livekit import api
+                 _recording_path = f"recordings/{ctx.room.name}.mp4"
++                
++                s3_kwargs = {
++                    "access_key": _aws_key,
++                    "secret": _aws_secret,
++                    "bucket": _aws_bucket,
++                    "region": _s3_region,
++                }
++                if _s3_endpoint:
++                    s3_kwargs["endpoint"] = _s3_endpoint
++
+                 _egress_req = api.RoomCompositeEgressRequest(
+                     room_name=ctx.room.name, audio_only=True,
+                     file_outputs=[api.EncodedFileOutput(
+                         file_type=api.EncodedFileType.MP4, filepath=_recording_path,
+-                        s3=api.S3Upload(
+-                            access_key=_aws_key, secret=_aws_secret,
+-                            bucket=_aws_bucket, region=_s3_region, endpoint=_s3_endpoint,
+-                        ),
++                        s3=api.S3Upload(**s3_kwargs),
+                     )],
+                 )
+-                _egress = await ctx.api.egress.start_room_composite_egress(_egress_req)
++                async with api.LiveKitAPI() as lkapi:
++                    _egress = await lkapi.egress.start_room_composite_egress(_egress_req)
++                    
+                 _s3_ep = _s3_endpoint.rstrip("/")
+                 tool_ctx.recording_url = (
+                     f"{_s3_ep}/{_aws_bucket}/{_recording_path}"
+
+commit e6198f6e05bb78ca7e8ab09cfa408097c7146930
+Author: xtend <alph.cthomas@gmail.com>
+Date:   Mon Jun 22 17:49:39 2026 +0530
+
+    dfghjkfghjsdf
+
+diff --git a/agent.py b/agent.py
+index 692baa0..a5125d3 100644
+--- a/agent.py
++++ b/agent.py
+@@ -452,7 +452,7 @@ async def entrypoint(ctx: agents.JobContext) -> None:
+                 _s3_ep = _s3_endpoint.rstrip("/")
+                 tool_ctx.recording_url = (
+                     f"{_s3_ep}/{_aws_bucket}/{_recording_path}"
+-                    if _s3_ep else f"s3://{_aws_bucket}/{_recording_path}"
++                    if _s3_ep else f"https://{_aws_bucket}.s3.{_s3_region}.amazonaws.com/{_recording_path}"
+                 )
+                 await _log("info", f"Recording started: egress={_egress.egress_id}")
+             except Exception as _exc:
+
+commit ac24ac1f75f45c9fb61192d939c6530955034ad7
+Author: xtend <alph.cthomas@gmail.com>
+Date:   Mon Jun 22 17:32:06 2026 +0530
+
+    dfghjkfghjsdf
+
+diff --git a/agent.py b/agent.py
+index a20c650..692baa0 100644
+--- a/agent.py
++++ b/agent.py
+@@ -437,11 +437,11 @@ async def entrypoint(ctx: agents.JobContext) -> None:
+         _s3_region   = os.getenv("S3_REGION") or os.getenv("AWS_REGION", "ap-south-1")
+         if _aws_key and _aws_secret and _aws_bucket:
+             try:
+-                _recording_path = f"recordings/{ctx.room.name}.ogg"
++                _recording_path = f"recordings/{ctx.room.name}.mp4"
+                 _egress_req = api.RoomCompositeEgressRequest(
+                     room_name=ctx.room.name, audio_only=True,
+                     file_outputs=[api.EncodedFileOutput(
+-                        file_type=api.EncodedFileType.OGG, filepath=_recording_path,
++                        file_type=api.EncodedFileType.MP4, filepath=_recording_path,
+                         s3=api.S3Upload(
+                             access_key=_aws_key, secret=_aws_secret,
+                             bucket=_aws_bucket, region=_s3_region, endpoint=_s3_endpoint,
+
+commit 4808b76ed8008259154c82eec32e0937c04846ae
+Author: xtend <alph.cthomas@gmail.com>
+Date:   Mon Jun 22 14:32:44 2026 +0530
+
+    dfghjk
+
+diff --git a/agent.py b/agent.py
+index 8736854..a20c650 100644
+--- a/agent.py
++++ b/agent.py
+@@ -507,15 +507,19 @@ async def entrypoint(ctx: agents.JobContext) -> None:
+                 # Use live-captured transcript lines (works with Gemini Realtime)
+                 transcript = "\n".join(_transcript_lines) if _transcript_lines else ""
+                 
++                transcript_summary = ""
+                 if transcript:
+-                    from tools import translate_transcript_to_english
+-                    transcript = await translate_transcript_to_english(transcript)
++                    from tools import summarize_call_transcript
++                    transcript_summary = await summarize_call_transcript(transcript)
+ 
+                 if duration < 15:
+                     prefix = "[COLD] User hung up prematurely."
+                 else:
+                     prefix = "[UNRATED] Call disconnected by user."
+-                final_notes = f"{prefix}\n\nTranscript:\n{transcript}" if transcript else prefix
++                
++                final_notes = prefix
++                if transcript_summary:
++                    final_notes += f"\n\nCall Summary:\n{transcript_summary}"
+ 
+                 await log_call(
+                     phone_number=phone_number,
+
+commit 2b6898843b072a602f20aa746e83f1a4ea0838ab
+Author: xtend <alph.cthomas@gmail.com>
+Date:   Sat Jun 20 13:16:58 2026 +0530
+
+    dfghjksdfsdf
+
+diff --git a/agent.py b/agent.py
+index 49bf80f..8736854 100644
+--- a/agent.py
++++ b/agent.py
+@@ -507,6 +507,10 @@ async def entrypoint(ctx: agents.JobContext) -> None:
+                 # Use live-captured transcript lines (works with Gemini Realtime)
+                 transcript = "\n".join(_transcript_lines) if _transcript_lines else ""
+                 
++                if transcript:
++                    from tools import translate_transcript_to_english
++                    transcript = await translate_transcript_to_english(transcript)
++
+                 if duration < 15:
+                     prefix = "[COLD] User hung up prematurely."
+                 else:
+
+commit 9d39357a84136b88d2060f65c373403bfcf272ec
+Author: xtend <alph.cthomas@gmail.com>
+Date:   Sat Jun 20 12:57:46 2026 +0530
+
+    dfghjksdf
+
+diff --git a/agent.py b/agent.py
+index 4bafed1..49bf80f 100644
+--- a/agent.py
++++ b/agent.py
+@@ -353,6 +353,58 @@ async def entrypoint(ctx: agents.JobContext) -> None:
+     session = _build_session(tools=active_tools, system_prompt=system_prompt, voice_override=voice_override)
+     tool_ctx.session = session
+ 
++    # ── Live transcript accumulator ───────────────────────────────────────────
++    # Gemini Live (realtime) does NOT populate chat_ctx.messages like a pipeline.
++    # We must hook session events to build the transcript on the fly.
++    _transcript_lines: list = []
++
++    def _on_conversation_item(event):
++        try:
++            role = getattr(event, "role", None) or getattr(event, "type", "?")
++            content = getattr(event, "content", None) or getattr(event, "text", "")
++            if not content:
++                return
++            if isinstance(content, list):
++                # Some versions return a list of content items
++                for item in content:
++                    if isinstance(item, str):
++                        text = item.strip()
++                    elif hasattr(item, "text"):
++                        text = (item.text or "").strip()
++                    else:
++                        text = str(item).strip()
++                    if text and text != "[SYSTEM:" and "Speak strictly" not in text:
++                        _transcript_lines.append(f"[{str(role).upper()}]: {text}")
++            else:
++                text = str(content).strip()
++                if text and "Speak strictly" not in text:
++                    _transcript_lines.append(f"[{str(role).upper()}]: {text}")
++        except Exception:
++            pass
++
++    def _on_user_transcribed(event):
++        try:
++            is_final = getattr(event, "is_final", True)
++            if not is_final:
++                return  # Skip interim results
++            text = (getattr(event, "transcript", "") or "").strip()
++            if text:
++                _transcript_lines.append(f"[USER]: {text}")
++        except Exception:
++            pass
++
++    try:
++        session.on("conversation_item_added", _on_conversation_item)
++    except Exception:
++        pass
++    try:
++        session.on("user_input_transcribed", _on_user_transcribed)
++    except Exception:
++        pass
++    
++    # Share the same accumulator list with tool_ctx so end_call() uses it too
++    tool_ctx._transcript_lines = _transcript_lines
++
+     # Use RoomOptions if available (non-deprecated), else fall back
+     # NEVER use close_on_disconnect=True with SIP
+     if _HAS_ROOM_OPTIONS:
+@@ -452,22 +504,8 @@ async def entrypoint(ctx: agents.JobContext) -> None:
+                 from db import log_call
+                 duration = int(time.time() - _call_start_time)
+                 
+-                transcript = ""
+-                try:
+-                    c_ctx = getattr(session, "chat_ctx", None)
+-                    if not c_ctx and hasattr(session, "agent"):
+-                        c_ctx = getattr(session.agent, "chat_ctx", None)
+-                    if c_ctx and hasattr(c_ctx, "messages"):
+-                        lines = []
+-                        for m in c_ctx.messages:
+-                            if m.role in ("user", "assistant", "system") and m.content:
+-                                text = m.content if isinstance(m.content, str) else str(m.content)
+-                                # Filter out prompt injection system messages if needed, or keep for context
+-                                if m.role == "system" and "Speak strictly" in text: continue
+-                                lines.append(f"[{m.role.upper()}]: {text}")
+-                        transcript = "\n".join(lines)
+-                except Exception:
+-                    pass
++                # Use live-captured transcript lines (works with Gemini Realtime)
++                transcript = "\n".join(_transcript_lines) if _transcript_lines else ""
+                 
+                 if duration < 15:
+                     prefix = "[COLD] User hung up prematurely."
+
+commit 7b08ec1eadd4294e4ba53f8af71e4d479622151c
+Author: xtend <alph.cthomas@gmail.com>
+Date:   Sat Jun 20 12:17:05 2026 +0530
+
+    dfghjk
+
+diff --git a/agent.py b/agent.py
+index 88145e0..4bafed1 100644
+--- a/agent.py
++++ b/agent.py
+@@ -351,6 +351,7 @@ async def entrypoint(ctx: agents.JobContext) -> None:
+     await _log("info", f"Active tools: {[t.__name__ for t in active_tools]}")
+ 
+     session = _build_session(tools=active_tools, system_prompt=system_prompt, voice_override=voice_override)
++    tool_ctx.session = session
+ 
+     # Use RoomOptions if available (non-deprecated), else fall back
+     # NEVER use close_on_disconnect=True with SIP
+@@ -468,7 +469,11 @@ async def entrypoint(ctx: agents.JobContext) -> None:
+                 except Exception:
+                     pass
+                 
+-                final_notes = f"[COLD] User hung up prematurely.\n\nTranscript:\n{transcript}" if transcript else "[COLD] User hung up prematurely."
++                if duration < 15:
++                    prefix = "[COLD] User hung up prematurely."
++                else:
++                    prefix = "[UNRATED] Call disconnected by user."
++                final_notes = f"{prefix}\n\nTranscript:\n{transcript}" if transcript else prefix
+ 
+                 await log_call(
+                     phone_number=phone_number,
+
+commit f5ccc01270a5a75313d255ccb8f0da151c4a160c
+Author: xtend <alph.cthomas@gmail.com>
+Date:   Fri Jun 19 22:42:28 2026 +0530
+
+    sdfghjk
+
+diff --git a/agent.py b/agent.py
+index 4476e34..88145e0 100644
+--- a/agent.py
++++ b/agent.py
+@@ -450,6 +450,26 @@ async def entrypoint(ctx: agents.JobContext) -> None:
+                 import time
+                 from db import log_call
+                 duration = int(time.time() - _call_start_time)
++                
++                transcript = ""
++                try:
++                    c_ctx = getattr(session, "chat_ctx", None)
++                    if not c_ctx and hasattr(session, "agent"):
++                        c_ctx = getattr(session.agent, "chat_ctx", None)
++                    if c_ctx and hasattr(c_ctx, "messages"):
++                        lines = []
++                        for m in c_ctx.messages:
++                            if m.role in ("user", "assistant", "system") and m.content:
++                                text = m.content if isinstance(m.content, str) else str(m.content)
++                                # Filter out prompt injection system messages if needed, or keep for context
++                                if m.role == "system" and "Speak strictly" in text: continue
++                                lines.append(f"[{m.role.upper()}]: {text}")
++                        transcript = "\n".join(lines)
++                except Exception:
++                    pass
++                
++                final_notes = f"[COLD] User hung up prematurely.\n\nTranscript:\n{transcript}" if transcript else "[COLD] User hung up prematurely."
++
+                 await log_call(
+                     phone_number=phone_number,
+                     lead_name=lead_name,
+@@ -457,7 +477,11 @@ async def entrypoint(ctx: agents.JobContext) -> None:
+                     reason="User hung up",
+                     duration_seconds=duration,
+                     recording_url=getattr(tool_ctx, "recording_url", None),
+-                    campaign_id=campaign_id
++                    campaign_id=campaign_id,
++                    business_name=business_name,
++                    industry=industry,
++                    place=place,
++                    notes=final_notes
+                 )
+             except Exception as e:
+                 await _log("warning", f"Failed to log call on disconnect: {e}")
+
+commit 6601360ec0d409ec5b63e0248dd65c33de94829f
+Author: xtend <alph.cthomas@gmail.com>
+Date:   Wed Jun 17 01:29:07 2026 +0530
+
+    dfghjklsdfg
+
+diff --git a/agent.py b/agent.py
+index ffac38a..4476e34 100644
+--- a/agent.py
++++ b/agent.py
+@@ -407,8 +407,8 @@ async def entrypoint(ctx: agents.JobContext) -> None:
+ 
+     # ── Greeting ─────────────────────────────────────────────────────────────
+     greeting = (
+-        f"The call just connected. Speak strictly in Malayalam. Start the call by greeting the lead and using the greeting defined in your system prompt for {service_type}."
+-        if phone_number else f"Speak strictly in Malayalam. Greet the caller warmly and help them with {service_type}."
++        f"The call just connected. Speak strictly in Malayalam. Start the call by greeting the lead and using the greeting defined in your system prompt for {industry}."
++        if phone_number else f"Speak strictly in Malayalam. Greet the caller warmly and help them with {industry}."
+     )
+     try:
+         if hasattr(session, "chat_ctx"):
+
+commit 0567914339e613512c27333f16480b6693a2cb4d
+Author: xtend <alph.cthomas@gmail.com>
+Date:   Wed Jun 17 01:00:42 2026 +0530
+
+    added place, business name , industry to data intake
+
+diff --git a/agent.py b/agent.py
+index 02172f0..ffac38a 100644
+--- a/agent.py
++++ b/agent.py
+@@ -226,7 +226,8 @@ async def entrypoint(ctx: agents.JobContext) -> None:
+     phone_number: Optional[str] = None
+     lead_name = "there"
+     business_name = "our company"
+-    service_type = "our service"
++    industry = "our service"
++    place = "your area"
+     custom_prompt: Optional[str] = None
+     voice_override: Optional[str] = None
+     model_override: Optional[str] = None
+@@ -240,7 +241,8 @@ async def entrypoint(ctx: agents.JobContext) -> None:
+             phone_number   = data.get("phone_number")
+             lead_name      = data.get("lead_name", lead_name)
+             business_name  = data.get("business_name", business_name)
+-            service_type   = data.get("service_type", service_type)
++            industry       = data.get("industry", industry)
++            place          = data.get("place", place)
+             custom_prompt  = data.get("system_prompt")
+             voice_override = data.get("voice_override")
+             model_override = data.get("model_override")
+@@ -284,13 +286,13 @@ async def entrypoint(ctx: agents.JobContext) -> None:
+ 
+     system_prompt = build_prompt(
+         lead_name=lead_name, business_name=business_name,
+-        service_type=service_type, custom_prompt=custom_prompt,
++        industry=industry, place=place, custom_prompt=custom_prompt,
+     )
+     # Add inbound awareness to the prompt
+     if not phone_number:
+         system_prompt += "\n\nNOTE: This is an INBOUND call. The user called YOU. Do not ask 'Am I speaking with...'. Instead, greet them warmly and ask how you can help."
+     
+-    tool_ctx = AppointmentTools(ctx, phone_number, lead_name, agent_profile_id=agent_profile_id, campaign_id=campaign_id)
++    tool_ctx = AppointmentTools(ctx, phone_number, lead_name, business_name, industry, place, agent_profile_id=agent_profile_id, campaign_id=campaign_id)
+ 
+     if voice_override:
+         os.environ["GEMINI_TTS_VOICE"] = voice_override
+
+commit b2165ba7854d0420b7534078aa9e20bc48a93e66
+Author: xtend <alph.cthomas@gmail.com>
+Date:   Tue Jun 16 21:39:19 2026 +0530
+
+    bach  call troubleshootqwsdfge
+
+diff --git a/agent.py b/agent.py
+index 7954db7..02172f0 100644
+--- a/agent.py
++++ b/agent.py
+@@ -232,6 +232,7 @@ async def entrypoint(ctx: agents.JobContext) -> None:
+     model_override: Optional[str] = None
+     tools_override: Optional[str] = None
+     agent_profile_id: Optional[str] = None
++    campaign_id: Optional[str] = None
+ 
+     if ctx.job.metadata:
+         try:
+@@ -245,6 +246,7 @@ async def entrypoint(ctx: agents.JobContext) -> None:
+             model_override = data.get("model_override")
+             tools_override = data.get("tools_override")
+             agent_profile_id = data.get("agent_profile_id")
++            campaign_id = data.get("campaign_id")
+         except (json.JSONDecodeError, AttributeError):
+             await _log("warning", "Invalid JSON in job metadata")
+ 
+@@ -288,7 +290,7 @@ async def entrypoint(ctx: agents.JobContext) -> None:
+     if not phone_number:
+         system_prompt += "\n\nNOTE: This is an INBOUND call. The user called YOU. Do not ask 'Am I speaking with...'. Instead, greet them warmly and ask how you can help."
+     
+-    tool_ctx = AppointmentTools(ctx, phone_number, lead_name, agent_profile_id=agent_profile_id)
++    tool_ctx = AppointmentTools(ctx, phone_number, lead_name, agent_profile_id=agent_profile_id, campaign_id=campaign_id)
+ 
+     if voice_override:
+         os.environ["GEMINI_TTS_VOICE"] = voice_override
+@@ -452,7 +454,8 @@ async def entrypoint(ctx: agents.JobContext) -> None:
+                     outcome="no_answer" if duration < 10 else "completed",
+                     reason="User hung up",
+                     duration_seconds=duration,
+-                    recording_url=getattr(tool_ctx, "recording_url", None)
++                    recording_url=getattr(tool_ctx, "recording_url", None),
++                    campaign_id=campaign_id
+                 )
+             except Exception as e:
+                 await _log("warning", f"Failed to log call on disconnect: {e}")
+
+commit 36423eb1278b15e7c5fa2de2097703ab9842e76f
+Author: xtend <alph.cthomas@gmail.com>
+Date:   Tue Jun 16 20:02:50 2026 +0530
+
+    fix: replace Deepgram STT with Google STT to fix caljl crash
+
+diff --git a/agent.py b/agent.py
+index 58bb6f6..7954db7 100644
+--- a/agent.py
++++ b/agent.py
+@@ -143,10 +143,10 @@ def _build_session(tools: list, system_prompt: str, voice_override: Optional[str
+     gemini_model = "models/gemini-3.1-flash-live-preview"
+     gemini_voice = voice_override or os.getenv("GEMINI_TTS_VOICE", "Aoede")
+     
+-    # FORCED PIPELINE: Google explicitly denied WebSocket access to your project
+-    use_realtime = False
++    # Use Gemini Live Realtime — single model handles STT+LLM+TTS natively
++    use_realtime = True
+ 
+-    RealtimeClass = _google_realtime or (_google_beta_realtime if use_realtime else None)
++    RealtimeClass = _google_realtime or _google_beta_realtime
+ 
+     if use_realtime and RealtimeClass is not None:
+         logger.info("SESSION MODE: Gemini Live realtime (%s, voice=%s)", gemini_model, gemini_voice)
+
+commit 4c64533ada99014d0a1a635ace1049825092060b
+Author: xtend <alph.cthomas@gmail.com>
+Date:   Tue Jun 16 19:48:44 2026 +0530
+
+    fix: replace Deepgram STT with Google STT to fix call crash
+
+diff --git a/agent.py b/agent.py
+index 294dc85..58bb6f6 100644
+--- a/agent.py
++++ b/agent.py
+@@ -97,6 +97,7 @@ _google_realtime = None
+ _google_beta_realtime = None
+ _google_llm = None
+ _google_tts = None
++_google_stt = None
+ 
+ try:
+     from livekit.plugins import google as _gp
+@@ -116,17 +117,14 @@ try:
+         _google_tts = _gp.TTS
+     except AttributeError:
+         pass
++    try:
++        _google_stt = _gp.STT
++        logger.info("Loaded Google STT for pipeline mode")
++    except AttributeError:
++        pass
+ except ImportError:
+     logger.warning("livekit-plugins-google not installed — run: pip install livekit-plugins-google>=1.0")
+ 
+-# Deepgram STT as pipeline fallback (optional)
+-_deepgram_stt = None
+-try:
+-    from livekit.plugins import deepgram as _dg
+-    _deepgram_stt = _dg.STT
+-except ImportError:
+-    pass
+-
+ 
+ # ── Session factory ──────────────────────────────────────────────────────────
+ 
+@@ -188,17 +186,17 @@ def _build_session(tools: list, system_prompt: str, voice_override: Optional[str
+         logger.error("FINAL REALTIME MODEL=%s", gemini_model)
+         return AgentSession(llm=RealtimeClass(**realtime_kwargs), tools=tools)
+ 
+-    # ── Pipeline fallback (Deepgram STT + Gemini LLM + Google TTS) ───────────
++    # ── Pipeline fallback (Google STT + Gemini LLM + Google TTS) ──────────────
+     if _google_llm is None:
+         raise RuntimeError(
+             "No Google AI backend found. Install: pip install 'livekit-plugins-google>=1.0'"
+         )
+-    logger.info("SESSION MODE: pipeline (Deepgram STT + Gemini LLM + Google TTS)")
+-    stt = _deepgram_stt(model="nova-3", language="multi") if _deepgram_stt else None
++    logger.info("SESSION MODE: pipeline (Google STT + Gemini LLM + Google TTS)")
++    stt = _google_stt(model="chirp_2", languages=["en-US"]) if _google_stt else None
+     tts = _google_tts(voice_name="en-US-Journey-O") if _google_tts else None
+     return AgentSession(
+         stt=stt,
+-        llm=_google_llm(model="gemini-3.5-flash"),
++        llm=_google_llm(model="gemini-2.0-flash"),
+         tts=tts,
+         vad=silero.VAD.load(),
+         tools=tools,
+
+commit 29558e51abbc9b4f35688dd9a01379a73af090f4
+Author: xtend <alph.cthomas@gmail.com>
+Date:   Tue Jun 16 14:22:08 2026 +0530
+
+    feat: complete web agency transition, add KB retrieval, WhatsApp collection, and Notes UI
+
+diff --git a/agent.py b/agent.py
+index 09e1e97..294dc85 100644
+--- a/agent.py
++++ b/agent.py
+@@ -145,7 +145,8 @@ def _build_session(tools: list, system_prompt: str, voice_override: Optional[str
+     gemini_model = "models/gemini-3.1-flash-live-preview"
+     gemini_voice = voice_override or os.getenv("GEMINI_TTS_VOICE", "Aoede")
+     
+-    use_realtime = True
++    # FORCED PIPELINE: Google explicitly denied WebSocket access to your project
++    use_realtime = False
+ 
+     RealtimeClass = _google_realtime or (_google_beta_realtime if use_realtime else None)
+ 
+@@ -232,6 +233,7 @@ async def entrypoint(ctx: agents.JobContext) -> None:
+     voice_override: Optional[str] = None
+     model_override: Optional[str] = None
+     tools_override: Optional[str] = None
++    agent_profile_id: Optional[str] = None
+ 
+     if ctx.job.metadata:
+         try:
+@@ -244,6 +246,7 @@ async def entrypoint(ctx: agents.JobContext) -> None:
+             voice_override = data.get("voice_override")
+             model_override = data.get("model_override")
+             tools_override = data.get("tools_override")
++            agent_profile_id = data.get("agent_profile_id")
+         except (json.JSONDecodeError, AttributeError):
+             await _log("warning", "Invalid JSON in job metadata")
+ 
+@@ -270,6 +273,15 @@ async def entrypoint(ctx: agents.JobContext) -> None:
+             except Exception:
+                 pass
+ 
++    if not agent_profile_id:
++        from db import get_default_agent_profile
++        try:
++            default_prof = await get_default_agent_profile()
++            if default_prof:
++                agent_profile_id = default_prof.get("id")
++        except Exception:
++            pass
++
+     system_prompt = build_prompt(
+         lead_name=lead_name, business_name=business_name,
+         service_type=service_type, custom_prompt=custom_prompt,
+@@ -278,7 +290,7 @@ async def entrypoint(ctx: agents.JobContext) -> None:
+     if not phone_number:
+         system_prompt += "\n\nNOTE: This is an INBOUND call. The user called YOU. Do not ask 'Am I speaking with...'. Instead, greet them warmly and ask how you can help."
+     
+-    tool_ctx = AppointmentTools(ctx, phone_number, lead_name)
++    tool_ctx = AppointmentTools(ctx, phone_number, lead_name, agent_profile_id=agent_profile_id)
+ 
+     if voice_override:
+         os.environ["GEMINI_TTS_VOICE"] = voice_override
+
+commit 5633fb8063ffbbc421875e72613c6fd20d660aee
+Author: xtend <alph.cthomas@gmail.com>
+Date:   Sun May 31 21:42:33 2026 +0530
+
+    add diagnostic logging and test gemini-3.1-flash-live-preview
+
+diff --git a/agent.py b/agent.py
+index 28b635c..09e1e97 100644
+--- a/agent.py
++++ b/agent.py
+@@ -184,6 +184,7 @@ def _build_session(tools: list, system_prompt: str, voice_override: Optional[str
+             realtime_kwargs["session_resumption"]         = _session_resumption_cfg
+             realtime_kwargs["context_window_compression"] = _ctx_compression_cfg
+ 
++        logger.error("FINAL REALTIME MODEL=%s", gemini_model)
+         return AgentSession(llm=RealtimeClass(**realtime_kwargs), tools=tools)
+ 
+     # ── Pipeline fallback (Deepgram STT + Gemini LLM + Google TTS) ───────────
+
+commit f9c90a3bc54ffc7937aca22d72876388645b3cde
+Author: xtend <alph.cthomas@gmail.com>
+Date:   Sun May 31 21:25:02 2026 +0530
+
+    test: trying gemini-3.1-flash-live-preview
+
+diff --git a/agent.py b/agent.py
+index a09cae0..28b635c 100644
+--- a/agent.py
++++ b/agent.py
+@@ -142,10 +142,9 @@ def _build_session(tools: list, system_prompt: str, voice_override: Optional[str
+     ⚠️  EndSensitivity MUST use END_SENSITIVITY_LOW (full string — not .LOW)
+     """
+     # Override whatever is in the DB settings to ensure the realtime API works
+-    gemini_model = "models/gemini-2.5-flash"
++    gemini_model = "models/gemini-3.1-flash-live-preview"
+     gemini_voice = voice_override or os.getenv("GEMINI_TTS_VOICE", "Aoede")
+     
+-    # Revert to standard realtime since user wants native Gemini Live
+     use_realtime = True
+ 
+     RealtimeClass = _google_realtime or (_google_beta_realtime if use_realtime else None)
+
+commit ff5090efef2c2b786acace54c2df61508e69287a
+Author: xtend <alph.cthomas@gmail.com>
+Date:   Sun May 31 17:12:50 2026 +0530
+
+    fix: use gemini-2.5-flash for native multimodal realtime
+
+diff --git a/agent.py b/agent.py
+index 9f29506..a09cae0 100644
+--- a/agent.py
++++ b/agent.py
+@@ -142,9 +142,11 @@ def _build_session(tools: list, system_prompt: str, voice_override: Optional[str
+     ⚠️  EndSensitivity MUST use END_SENSITIVITY_LOW (full string — not .LOW)
+     """
+     # Override whatever is in the DB settings to ensure the realtime API works
+-    gemini_model = "models/gemini-3.5-flash"
++    gemini_model = "models/gemini-2.5-flash"
+     gemini_voice = voice_override or os.getenv("GEMINI_TTS_VOICE", "Aoede")
+-    use_realtime = os.getenv("USE_GEMINI_REALTIME", "true").lower() != "false"
++    
++    # Revert to standard realtime since user wants native Gemini Live
++    use_realtime = True
+ 
+     RealtimeClass = _google_realtime or (_google_beta_realtime if use_realtime else None)
+ 
+@@ -192,10 +194,10 @@ def _build_session(tools: list, system_prompt: str, voice_override: Optional[str
+         )
+     logger.info("SESSION MODE: pipeline (Deepgram STT + Gemini LLM + Google TTS)")
+     stt = _deepgram_stt(model="nova-3", language="multi") if _deepgram_stt else None
+-    tts = _google_tts() if _google_tts else None
++    tts = _google_tts(voice_name="en-US-Journey-O") if _google_tts else None
+     return AgentSession(
+         stt=stt,
+-        llm=_google_llm(model="gemini-2.0-flash"),
++        llm=_google_llm(model="gemini-3.5-flash"),
+         tts=tts,
+         vad=silero.VAD.load(),
+         tools=tools,
+
+commit e957a9bce30f2fc23e1650776833f03ec0884576
+Author: xtend <alph.cthomas@gmail.com>
+Date:   Sun May 31 16:59:25 2026 +0530
+
+    fix: update to gemini-3.5-flash to support new API key requirements
+
+diff --git a/agent.py b/agent.py
+index b7b1f17..9f29506 100644
+--- a/agent.py
++++ b/agent.py
+@@ -142,7 +142,7 @@ def _build_session(tools: list, system_prompt: str, voice_override: Optional[str
+     ⚠️  EndSensitivity MUST use END_SENSITIVITY_LOW (full string — not .LOW)
+     """
+     # Override whatever is in the DB settings to ensure the realtime API works
+-    gemini_model = "models/gemini-2.0-flash"
++    gemini_model = "models/gemini-3.5-flash"
+     gemini_voice = voice_override or os.getenv("GEMINI_TTS_VOICE", "Aoede")
+     use_realtime = os.getenv("USE_GEMINI_REALTIME", "true").lower() != "false"
+ 
+
+commit 333b4a4cd3105c9a1b9fffb24a95173e54ec50ce
+Author: xtend <alph.cthomas@gmail.com>
+Date:   Sun May 31 16:42:16 2026 +0530
+
+    fix: restore missing docstring closing quote that caused SyntaxError crash
+
+diff --git a/agent.py b/agent.py
+index df974fe..b7b1f17 100644
+--- a/agent.py
++++ b/agent.py
+@@ -140,6 +140,7 @@ def _build_session(tools: list, system_prompt: str, voice_override: Optional[str
+     3. RealtimeInputConfig(END_SENSITIVITY_LOW)    → 2s VAD silence threshold
+ 
+     ⚠️  EndSensitivity MUST use END_SENSITIVITY_LOW (full string — not .LOW)
++    """
+     # Override whatever is in the DB settings to ensure the realtime API works
+     gemini_model = "models/gemini-2.0-flash"
+     gemini_voice = voice_override or os.getenv("GEMINI_TTS_VOICE", "Aoede")
+
+commit e710af7f28b8abd5f62c8d1659c34cdf023d180d
+Author: xtend <alph.cthomas@gmail.com>
+Date:   Sun May 31 16:29:27 2026 +0530
+
+    fix: update to GA gemini-2.0-flash model and fix instant greeting trigger
+
+diff --git a/agent.py b/agent.py
+index d96a9eb..df974fe 100644
+--- a/agent.py
++++ b/agent.py
+@@ -140,9 +140,8 @@ def _build_session(tools: list, system_prompt: str, voice_override: Optional[str
+     3. RealtimeInputConfig(END_SENSITIVITY_LOW)    → 2s VAD silence threshold
+ 
+     ⚠️  EndSensitivity MUST use END_SENSITIVITY_LOW (full string — not .LOW)
+-    """
+     # Override whatever is in the DB settings to ensure the realtime API works
+-    gemini_model = "models/gemini-2.0-flash-exp"
++    gemini_model = "models/gemini-2.0-flash"
+     gemini_voice = voice_override or os.getenv("GEMINI_TTS_VOICE", "Aoede")
+     use_realtime = os.getenv("USE_GEMINI_REALTIME", "true").lower() != "false"
+ 
+@@ -395,20 +394,15 @@ async def entrypoint(ctx: agents.JobContext) -> None:
+         if phone_number else f"Speak strictly in Malayalam. Greet the caller warmly and help them with {service_type}."
+     )
+     try:
+-        # Access the agent's chat context. RealtimeSession (session.llm) context is separate
+-        # but AgentSession manages the high-level chat context.
+-        if hasattr(session, "agent") and hasattr(session.agent, "chat_ctx"):
+-            session.agent.chat_ctx.add_message(role="user", text=f"[SYSTEM: {greeting}]")
++        if hasattr(session, "chat_ctx"):
++            # LiveKit 1.5+ AgentSession context
++            session.chat_ctx.append(role="user", text=f"[SYSTEM: {greeting}]")
++        elif hasattr(session, "agent") and hasattr(session.agent, "chat_ctx"):
++            session.agent.chat_ctx.append(role="user", text=f"[SYSTEM: {greeting}]")
+         else:
+-            # Fallback for Gemini Live specific session
+-            await _log("info", "No chat_ctx on agent - greeting skipped")
++            await _log("warning", "No chat_ctx found on session - greeting may be delayed")
+     except Exception as _gr_exc:
+         await _log("warning", f"Greeting trigger failed: {_gr_exc}")
+-        # Final fallback: just push a message to context if possible
+-        try:
+-            if hasattr(session, "chat_ctx"):
+-                session.chat_ctx.add_message(role="user", text="Hello")
+-        except: pass
+ 
+     # ── Keep session alive until SIP participant leaves ───────────────────────
+     # Without this the entrypoint returns and the worker spins down.
+
+commit b218ea4dfeb45c4788865a68408ce2afd7131777
+Author: xtend <alph.cthomas@gmail.com>
+Date:   Sun May 31 16:17:12 2026 +0530
+
+    gcloud api key2
+
+diff --git a/agent.py b/agent.py
+index 693b625..d96a9eb 100644
+--- a/agent.py
++++ b/agent.py
+@@ -141,7 +141,8 @@ def _build_session(tools: list, system_prompt: str, voice_override: Optional[str
+ 
+     ⚠️  EndSensitivity MUST use END_SENSITIVITY_LOW (full string — not .LOW)
+     """
+-    gemini_model = os.getenv("GEMINI_MODEL", "models/gemini-2.0-flash-exp")
++    # Override whatever is in the DB settings to ensure the realtime API works
++    gemini_model = "models/gemini-2.0-flash-exp"
+     gemini_voice = voice_override or os.getenv("GEMINI_TTS_VOICE", "Aoede")
+     use_realtime = os.getenv("USE_GEMINI_REALTIME", "true").lower() != "false"
+ 
+
+commit 93aef2d5c1d883ec1a3dd2ede4bc0944656d1f36
+Author: xtend <alph.cthomas@gmail.com>
+Date:   Wed May 20 01:18:13 2026 +0530
+
+    feat: Cal.com v2 + EV playbook + all domain prompts633
+
+diff --git a/agent.py b/agent.py
+index 52bce17..693b625 100644
+--- a/agent.py
++++ b/agent.py
+@@ -130,7 +130,7 @@ except ImportError:
+ 
+ # ── Session factory ──────────────────────────────────────────────────────────
+ 
+-def _build_session(tools: list, system_prompt: str) -> AgentSession:
++def _build_session(tools: list, system_prompt: str, voice_override: Optional[str] = None) -> AgentSession:
+     """
+     Build AgentSession with Gemini Live realtime.
+ 
+@@ -142,7 +142,7 @@ def _build_session(tools: list, system_prompt: str) -> AgentSession:
+     ⚠️  EndSensitivity MUST use END_SENSITIVITY_LOW (full string — not .LOW)
+     """
+     gemini_model = os.getenv("GEMINI_MODEL", "models/gemini-2.0-flash-exp")
+-    gemini_voice = os.getenv("GEMINI_TTS_VOICE", "Aoede")
++    gemini_voice = voice_override or os.getenv("GEMINI_TTS_VOICE", "Aoede")
+     use_realtime = os.getenv("USE_GEMINI_REALTIME", "true").lower() != "false"
+ 
+     RealtimeClass = _google_realtime or (_google_beta_realtime if use_realtime else None)
+@@ -333,7 +333,7 @@ async def entrypoint(ctx: agents.JobContext) -> None:
+     active_tools = tool_ctx.build_tool_list(enabled_tools)
+     await _log("info", f"Active tools: {[t.__name__ for t in active_tools]}")
+ 
+-    session = _build_session(tools=active_tools, system_prompt=system_prompt)
++    session = _build_session(tools=active_tools, system_prompt=system_prompt, voice_override=voice_override)
+ 
+     # Use RoomOptions if available (non-deprecated), else fall back
+     # NEVER use close_on_disconnect=True with SIP
+
+commit 10e934b08846feb996416daf0f97ccc135063501
+Author: xtend <alph.cthomas@gmail.com>
+Date:   Tue May 19 18:24:49 2026 +0530
+
+    Configure Malayalam agent personas, set up 8 new domains, and remove Voice Experience section
+
+diff --git a/agent.py b/agent.py
+index 8c8a3eb..52bce17 100644
+--- a/agent.py
++++ b/agent.py
+@@ -390,8 +390,8 @@ async def entrypoint(ctx: agents.JobContext) -> None:
+ 
+     # ── Greeting ─────────────────────────────────────────────────────────────
+     greeting = (
+-        f"The call just connected. Greet the lead warmly and ask if you're speaking with {lead_name}. Use Malayalam."
+-        if phone_number else "Greet the caller warmly and ask how you can help. Use Malayalam."
++        f"The call just connected. Speak strictly in Malayalam. Start the call by greeting the lead and using the greeting defined in your system prompt for {service_type}."
++        if phone_number else f"Speak strictly in Malayalam. Greet the caller warmly and help them with {service_type}."
+     )
+     try:
+         # Access the agent's chat context. RealtimeSession (session.llm) context is separate
+
+commit 086029d2c25bd8e06a12a276df4d9048b657fca1
+Author: xtend <alph.cthomas@gmail.com>
+Date:   Sat May 16 17:46:27 2026 +0530
+
+    fix: prevent agent crash when keys are missing
+
+diff --git a/agent.py b/agent.py
+index 2a8170c..8c8a3eb 100644
+--- a/agent.py
++++ b/agent.py
+@@ -466,10 +466,25 @@ async def entrypoint(ctx: agents.JobContext) -> None:
+ if __name__ == "__main__":
+     init_db()
+     load_db_settings_to_env()
+-    agents.cli.run_app(
+-        agents.WorkerOptions(
+-            entrypoint_fnc=entrypoint,
+-            agent_name="outbound-caller",
+-            num_idle_processes=1,
++    
++    # ── Pre-flight check for LiveKit keys ────────────────────────────────────
++    # If keys are missing (like on a fresh install), don't crash. 
++    # Sleep instead so the Dashboard stays up, allowing the user to add keys in the UI.
++    url = os.getenv("LIVEKIT_URL", "").strip()
++    key = os.getenv("LIVEKIT_API_KEY", "").strip()
++    secret = os.getenv("LIVEKIT_API_SECRET", "").strip()
++    
++    if not url or not key or not secret:
++        logger.error("⚠️ LiveKit credentials missing! Agent worker is paused.")
++        logger.error("👉 Please open the Dashboard, go to Settings, and save your LiveKit keys.")
++        import time
++        while True:
++            time.sleep(60)
++    else:
++        agents.cli.run_app(
++            agents.WorkerOptions(
++                entrypoint_fnc=entrypoint,
++                agent_name="outbound-caller",
++                num_idle_processes=1,
++            )
+         )
+-    )
+
+commit fbdc3f6f159be6790d6270696b670ddcfef01c29
+Author: xtend <alph.cthomas@gmail.com>
+Date:   Fri May 15 23:09:27 2026 +0530
+
+    fix settings serialization
+
+diff --git a/agent.py b/agent.py
+index 8544f28..2a8170c 100644
+--- a/agent.py
++++ b/agent.py
+@@ -73,8 +73,21 @@ def load_db_settings_to_env() -> None:
+         result = client.table("settings").select("key, value").execute()
+         for row in (result.data or []):
+             if row.get("value"):
+-                # Always override so UI changes take effect immediately
+-                os.environ[row["key"]] = row["value"].strip()
++                val = row["value"].strip()
++                # Defensive: if the value is a stringified JSON object (common corruption symptom),
++                # try to unwrap it until we hit a real string.
++                import ast
++                try:
++                    while val.startswith("{") and "value" in val:
++                        parsed = ast.literal_eval(val)
++                        if isinstance(parsed, dict) and "value" in parsed:
++                            val = str(parsed["value"]).strip()
++                        else:
++                            break
++                except:
++                    pass
++                
++                os.environ[row["key"]] = val
+     except Exception as exc:
+         logger.warning("Could not load settings from Supabase: %s", exc)
+ 
+
+commit 034191d987c29f2b529bbbe39ae13faf78883ab9
+Author: xtend <alph.cthomas@gmail.com>
+Date:   Tue May 12 21:03:29 2026 +0530
+
+    Fix greeting and upgrade wallet tool with phone argument
+
+diff --git a/agent.py b/agent.py
+index f6929a5..8544f28 100644
+--- a/agent.py
++++ b/agent.py
+@@ -381,8 +381,13 @@ async def entrypoint(ctx: agents.JobContext) -> None:
+         if phone_number else "Greet the caller warmly and ask how you can help. Use Malayalam."
+     )
+     try:
+-        # Push a system instruction to trigger the first word
+-        session.chat_ctx.add_message(role="user", text=f"[SYSTEM: {greeting}]")
++        # Access the agent's chat context. RealtimeSession (session.llm) context is separate
++        # but AgentSession manages the high-level chat context.
++        if hasattr(session, "agent") and hasattr(session.agent, "chat_ctx"):
++            session.agent.chat_ctx.add_message(role="user", text=f"[SYSTEM: {greeting}]")
++        else:
++            # Fallback for Gemini Live specific session
++            await _log("info", "No chat_ctx on agent - greeting skipped")
+     except Exception as _gr_exc:
+         await _log("warning", f"Greeting trigger failed: {_gr_exc}")
+         # Final fallback: just push a message to context if possible
+
+commit be79df4ed33825f29bc04981042c2d0d14033066
+Author: xtend <alph.cthomas@gmail.com>
+Date:   Tue May 12 20:48:45 2026 +0530
+
+    Aggressive token optimization and force-enable MCP tools
+
+diff --git a/agent.py b/agent.py
+index 77bb867..f6929a5 100644
+--- a/agent.py
++++ b/agent.py
+@@ -377,24 +377,14 @@ async def entrypoint(ctx: agents.JobContext) -> None:
+ 
+     # ── Greeting ─────────────────────────────────────────────────────────────
+     greeting = (
+-        f"The call just connected. Greet the lead and ask if you're speaking with {lead_name}."
+-        if phone_number else "Greet the caller warmly and ask how you can help."
++        f"The call just connected. Greet the lead warmly and ask if you're speaking with {lead_name}. Use Malayalam."
++        if phone_number else "Greet the caller warmly and ask how you can help. Use Malayalam."
+     )
+     try:
+-        # Check if the model is Gemini Live (3.1, 2.5, 2.0)
+-        _active_model = os.getenv("GEMINI_MODEL", "")
+-        is_gemini_live = any(v in _active_model for v in ["3.1", "2.5", "2.0"])
+-
+-        if is_gemini_live:
+-            # For Gemini Live, we often need to "push" a text prompt into the context to get a reply
+-            if hasattr(session, "say"):
+-                await session.say(greeting)
+-            else:
+-                session.chat_ctx.add_message(role="user", text=f"[SYSTEM: {greeting}]")
+-        else:
+-            await session.generate_reply(instructions=greeting)
++        # Push a system instruction to trigger the first word
++        session.chat_ctx.add_message(role="user", text=f"[SYSTEM: {greeting}]")
+     except Exception as _gr_exc:
+-        await _log("warning", f"Greeting failed: {_gr_exc}")
++        await _log("warning", f"Greeting trigger failed: {_gr_exc}")
+         # Final fallback: just push a message to context if possible
+         try:
+             if hasattr(session, "chat_ctx"):
+
+commit 28331c2c7a8241377d29fe9035ac37d4275bcb89
+Author: xtend <alph.cthomas@gmail.com>
+Date:   Tue May 12 16:39:04 2026 +0530
+
+    Use session.say for Gemini Live greeting
+
+diff --git a/agent.py b/agent.py
+index 54fb03f..77bb867 100644
+--- a/agent.py
++++ b/agent.py
+@@ -381,15 +381,25 @@ async def entrypoint(ctx: agents.JobContext) -> None:
+         if phone_number else "Greet the caller warmly and ask how you can help."
+     )
+     try:
+-        await session.generate_reply(instructions=greeting)
++        # Check if the model is Gemini Live (3.1, 2.5, 2.0)
++        _active_model = os.getenv("GEMINI_MODEL", "")
++        is_gemini_live = any(v in _active_model for v in ["3.1", "2.5", "2.0"])
++
++        if is_gemini_live:
++            # For Gemini Live, we often need to "push" a text prompt into the context to get a reply
++            if hasattr(session, "say"):
++                await session.say(greeting)
++            else:
++                session.chat_ctx.add_message(role="user", text=f"[SYSTEM: {greeting}]")
++        else:
++            await session.generate_reply(instructions=greeting)
+     except Exception as _gr_exc:
+-        await _log("warning", f"generate_reply not supported: {_gr_exc}")
+-        # Fallback for models that don't support generate_reply: push a user message
++        await _log("warning", f"Greeting failed: {_gr_exc}")
++        # Final fallback: just push a message to context if possible
+         try:
+             if hasattr(session, "chat_ctx"):
+-                session.chat_ctx.add_message(role="user", text="[The call just connected. Please greet the caller.]")
+-        except Exception:
+-            pass
++                session.chat_ctx.add_message(role="user", text="Hello")
++        except: pass
+ 
+     # ── Keep session alive until SIP participant leaves ───────────────────────
+     # Without this the entrypoint returns and the worker spins down.
+
+commit e9b72b67aeb0eb7d8e92a88b02632a384a139c1e
+Author: xtend <alph.cthomas@gmail.com>
+Date:   Tue May 12 16:35:32 2026 +0530
+
+    Force agent greeting to fix silence
+
+diff --git a/agent.py b/agent.py
+index fa09d34..54fb03f 100644
+--- a/agent.py
++++ b/agent.py
+@@ -376,20 +376,20 @@ async def entrypoint(ctx: agents.JobContext) -> None:
+                 await _log("warning", f"Recording start failed (non-fatal): {_exc}")
+ 
+     # ── Greeting ─────────────────────────────────────────────────────────────
+-    # gemini-2.0 native-audio speak autonomously from system prompt.
+-    # generate_reply() is blocked by the plugin for these models — skip entirely.
+-    _active_model = os.getenv("GEMINI_MODEL", "")
+-    if "3.1" in _active_model or "2.5" in _active_model or "2.0" in _active_model:
+-        await _log("info", "Gemini native-audio model: will greet autonomously from system prompt")
+-    else:
+-        greeting = (
+-            f"The call just connected. Greet the lead and ask if you're speaking with {lead_name}."
+-            if phone_number else "Greet the caller warmly."
+-        )
++    greeting = (
++        f"The call just connected. Greet the lead and ask if you're speaking with {lead_name}."
++        if phone_number else "Greet the caller warmly and ask how you can help."
++    )
++    try:
++        await session.generate_reply(instructions=greeting)
++    except Exception as _gr_exc:
++        await _log("warning", f"generate_reply not supported: {_gr_exc}")
++        # Fallback for models that don't support generate_reply: push a user message
+         try:
+-            await session.generate_reply(instructions=greeting)
+-        except Exception as _gr_exc:
+-            await _log("warning", f"generate_reply not supported: {_gr_exc}")
++            if hasattr(session, "chat_ctx"):
++                session.chat_ctx.add_message(role="user", text="[The call just connected. Please greet the caller.]")
++        except Exception:
++            pass
+ 
+     # ── Keep session alive until SIP participant leaves ───────────────────────
+     # Without this the entrypoint returns and the worker spins down.
+
+commit f9e7b14974bbcdf883af0968fa7fe2601ba6c285
+Author: xtend <alph.cthomas@gmail.com>
+Date:   Mon May 11 18:56:18 2026 +0530
+
+    Fix: prompt key case mismatch (lowercase system_prompt)
+
+diff --git a/agent.py b/agent.py
+index cf0ff20..fa09d34 100644
+--- a/agent.py
++++ b/agent.py
+@@ -232,8 +232,10 @@ async def entrypoint(ctx: agents.JobContext) -> None:
+             await _log("warning", "Invalid JSON in job metadata")
+ 
+     # If no custom prompt from metadata, use the Global Prompt from DB/Env
++    # Checking both lowercase (DB) and uppercase (Env) for safety
+     if not custom_prompt:
+-        custom_prompt = os.environ.get("SYSTEM_PROMPT")
++        custom_prompt = os.environ.get("system_prompt") or os.environ.get("SYSTEM_PROMPT")
++    
+ 
+     # For inbound calls, try to identify the caller from participant identity
+     if not phone_number:
+
+commit 36dc6e8eec05f29133209d2b44f1d5771a2e2468
+Author: xtend <alph.cthomas@gmail.com>
+Date:   Mon May 11 18:45:45 2026 +0530
+
+    Force per-call prompt refresh and set default to Mamitha
+
+diff --git a/agent.py b/agent.py
+index 602cb34..cf0ff20 100644
+--- a/agent.py
++++ b/agent.py
+@@ -205,6 +205,8 @@ async def entrypoint(ctx: agents.JobContext) -> None:
+     Use participant_disconnected event for the specific SIP identity instead.
+     """
+     await _log("info", f"Job started — room: {ctx.room.name}")
++    # Refresh settings from Supabase at the start of every call
++    load_db_settings_to_env()
+ 
+     phone_number: Optional[str] = None
+     lead_name = "there"
+
+commit a1f8e0522361acd1a53b5e1d7b4dbca91ae2eab5
+Author: xtend <alph.cthomas@gmail.com>
+Date:   Mon May 11 17:55:25 2026 +0530
+
+    Critical: Fast-Connect IPv4 patch to eliminate 20s delay
+
+diff --git a/agent.py b/agent.py
+index ef22678..602cb34 100644
+--- a/agent.py
++++ b/agent.py
+@@ -4,11 +4,18 @@ import logging
+ import os
+ import ssl
+ import certifi
++import socket
+ from typing import Optional
+-
+ from dotenv import load_dotenv
+ 
+-# ── Patch SSL with certifi before any network import ─────────────────────────
++# ── Force IPv4 to avoid 20s timeout on AWS ──────────────────────────────────
++_orig_getaddrinfo = socket.getaddrinfo
++def _ipv4_only_getaddrinfo(*args, **kwargs):
++    responses = _orig_getaddrinfo(*args, **kwargs)
++    return [r for r in responses if r[0] == socket.AF_INET]
++socket.getaddrinfo = _ipv4_only_getaddrinfo
++
++# ── Patch SSL with certifi ──────────────────────────────────────────────────
+ _orig_ssl = ssl.create_default_context
+ def _certifi_ssl(purpose=ssl.Purpose.SERVER_AUTH, **kwargs):
+     if not kwargs.get("cafile") and not kwargs.get("capath") and not kwargs.get("cadata"):
+
+commit 2ab74a4eeeca44e86b9de8f8e01e20cd94340ff9
+Author: xtend <alph.cthomas@gmail.com>
+Date:   Mon May 11 17:46:31 2026 +0530
+
+    Optimize for t3.medium with Warm Start
+
+diff --git a/agent.py b/agent.py
+index a9027f4..ef22678 100644
+--- a/agent.py
++++ b/agent.py
+@@ -441,6 +441,6 @@ if __name__ == "__main__":
+         agents.WorkerOptions(
+             entrypoint_fnc=entrypoint,
+             agent_name="outbound-caller",
+-            num_idle_processes=0,
++            num_idle_processes=1,
+         )
+     )
+
+commit 93d506389ede99712bfe42967b0374e423bb6223
+Author: xtend <alph.cthomas@gmail.com>
+Date:   Mon May 11 14:26:12 2026 +0530
+
+    Fix Inbound multilingualism and prompt loading
+
+diff --git a/agent.py b/agent.py
+index f2340c2..a9027f4 100644
+--- a/agent.py
++++ b/agent.py
+@@ -66,9 +66,8 @@ def load_db_settings_to_env() -> None:
+         result = client.table("settings").select("key, value").execute()
+         for row in (result.data or []):
+             if row.get("value"):
+-                # Always strip \r from Windows files
+-                if row["key"] not in os.environ:
+-                    os.environ[row["key"]] = row["value"].strip()
++                # Always override so UI changes take effect immediately
++                os.environ[row["key"]] = row["value"].strip()
+     except Exception as exc:
+         logger.warning("Could not load settings from Supabase: %s", exc)
+ 
+@@ -223,12 +222,35 @@ async def entrypoint(ctx: agents.JobContext) -> None:
+         except (json.JSONDecodeError, AttributeError):
+             await _log("warning", "Invalid JSON in job metadata")
+ 
+-    await _log("info", f"Call job — phone={phone_number} lead={lead_name} biz={business_name}")
++    # If no custom prompt from metadata, use the Global Prompt from DB/Env
++    if not custom_prompt:
++        custom_prompt = os.environ.get("SYSTEM_PROMPT")
++
++    # For inbound calls, try to identify the caller from participant identity
++    if not phone_number:
++        for p in ctx.room.remote_participants.values():
++            if p.identity.startswith("sip_"):
++                phone_number = p.identity.replace("sip_", "")
++                break
++        
++        if phone_number:
++            from db import get_contacts
++            try:
++                contacts = await get_contacts(phone_number)
++                if contacts:
++                    lead_name = contacts[0].get("lead_name", lead_name)
++                    await _log("info", f"Inbound caller identified: {lead_name} ({phone_number})")
++            except Exception:
++                pass
+ 
+     system_prompt = build_prompt(
+         lead_name=lead_name, business_name=business_name,
+         service_type=service_type, custom_prompt=custom_prompt,
+     )
++    # Add inbound awareness to the prompt
++    if not phone_number:
++        system_prompt += "\n\nNOTE: This is an INBOUND call. The user called YOU. Do not ask 'Am I speaking with...'. Instead, greet them warmly and ask how you can help."
++    
+     tool_ctx = AppointmentTools(ctx, phone_number, lead_name)
+ 
+     if voice_override:
+
+commit 37c3cbbfbc6b2142774f026494eb6494a4d27b30
+Author: xtend <alph.cthomas@gmail.com>
+Date:   Sat May 9 21:42:34 2026 +0530
+
+    UI Updates
+
+diff --git a/agent.py b/agent.py
+index 175c19d..f2340c2 100644
+--- a/agent.py
++++ b/agent.py
+@@ -29,8 +29,13 @@ from db import init_db, log_error, get_enabled_tools
+ from prompts import build_prompt
+ from tools import AppointmentTools
+ 
+-load_dotenv(".env")
+-logging.basicConfig(level=logging.INFO)
++load_dotenv(".env", override=True)
++log_path = "/data/app.log" if os.path.exists("/data") else "app.log"
++logging.basicConfig(
++    level=logging.INFO,
++    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
++    handlers=[logging.StreamHandler(), logging.FileHandler(log_path, mode='a', encoding='utf-8')]
++)
+ logger = logging.getLogger("outbound-agent")
+ 
+ SIP_DOMAIN = os.getenv("VOBIZ_SIP_DOMAIN", "")
+
+commit 0513c71a621a5c717b21d9aca5661779c9663736
+Author: xtend <alph.cthomas@gmail.com>
+Date:   Sat May 9 04:02:28 2026 +0530
+
+    Fix Gemini 2.0 compatibility and add call logging failsafe
+
+diff --git a/agent.py b/agent.py
+index b7ffc16..175c19d 100644
+--- a/agent.py
++++ b/agent.py
+@@ -117,7 +117,7 @@ def _build_session(tools: list, system_prompt: str) -> AgentSession:
+ 
+     ⚠️  EndSensitivity MUST use END_SENSITIVITY_LOW (full string — not .LOW)
+     """
+-    gemini_model = os.getenv("GEMINI_MODEL", "gemini-3.1-flash-live-preview")
++    gemini_model = os.getenv("GEMINI_MODEL", "models/gemini-2.0-flash-exp")
+     gemini_voice = os.getenv("GEMINI_TTS_VOICE", "Aoede")
+     use_realtime = os.getenv("USE_GEMINI_REALTIME", "true").lower() != "false"
+ 
+@@ -272,9 +272,12 @@ async def entrypoint(ctx: agents.JobContext) -> None:
+             ctx.shutdown()
+             return
+         await _log("info", f"Call ANSWERED — {phone_number} picked up")
++        
++        import time
++        _call_start_time = time.time()
+ 
+     # ── Build and start Gemini Live session ───────────────────────────────────
+-    gemini_model = os.getenv("GEMINI_MODEL", "gemini-3.1-flash-live-preview")
++    gemini_model = os.getenv("GEMINI_MODEL", "models/gemini-2.0-flash-exp")
+     await _log("info", f"Building Gemini Live session — model={gemini_model}")
+     active_tools = tool_ctx.build_tool_list(enabled_tools)
+     await _log("info", f"Active tools: {[t.__name__ for t in active_tools]}")
+@@ -335,10 +338,10 @@ async def entrypoint(ctx: agents.JobContext) -> None:
+                 await _log("warning", f"Recording start failed (non-fatal): {_exc}")
+ 
+     # ── Greeting ─────────────────────────────────────────────────────────────
+-    # gemini-3.1 and gemini-2.5 native-audio speak autonomously from system prompt.
++    # gemini-2.0 native-audio speak autonomously from system prompt.
+     # generate_reply() is blocked by the plugin for these models — skip entirely.
+     _active_model = os.getenv("GEMINI_MODEL", "")
+-    if "3.1" in _active_model or "2.5" in _active_model:
++    if "3.1" in _active_model or "2.5" in _active_model or "2.0" in _active_model:
+         await _log("info", "Gemini native-audio model: will greet autonomously from system prompt")
+     else:
+         greeting = (
+@@ -372,6 +375,24 @@ async def entrypoint(ctx: agents.JobContext) -> None:
+             await _log("warning", "Call reached 1-hour safety timeout — shutting down")
+ 
+         await _log("info", f"SIP participant disconnected — ending session for {phone_number}")
++        
++        # Log the call if the LLM didn't get a chance to call end_call()
++        if not getattr(tool_ctx, "_call_logged", False):
++            try:
++                import time
++                from db import log_call
++                duration = int(time.time() - _call_start_time)
++                await log_call(
++                    phone_number=phone_number,
++                    lead_name=lead_name,
++                    outcome="no_answer" if duration < 10 else "completed",
++                    reason="User hung up",
++                    duration_seconds=duration,
++                    recording_url=getattr(tool_ctx, "recording_url", None)
++                )
++            except Exception as e:
++                await _log("warning", f"Failed to log call on disconnect: {e}")
++
+         try:
+             await session.aclose()
+         except Exception:
+
+commit e38e3d51047f3447afdf3e81f261f2b8a2b2fc5b
+Author: xtend <alph.cthomas@gmail.com>
+Date:   Sat May 9 03:52:27 2026 +0530
+
+    Force LiveKit Trunk ID and strip CRLF
+
+diff --git a/agent.py b/agent.py
+index 6b4009b..b7ffc16 100644
+--- a/agent.py
++++ b/agent.py
+@@ -61,8 +61,9 @@ def load_db_settings_to_env() -> None:
+         result = client.table("settings").select("key, value").execute()
+         for row in (result.data or []):
+             if row.get("value"):
++                # Always strip \r from Windows files
+                 if row["key"] not in os.environ:
+-                    os.environ[row["key"]] = row["value"]
++                    os.environ[row["key"]] = row["value"].strip()
+     except Exception as exc:
+         logger.warning("Could not load settings from Supabase: %s", exc)
+ 
+@@ -244,7 +245,13 @@ async def entrypoint(ctx: agents.JobContext) -> None:
+ 
+     # ── Dial out via SIP — MUST come before session.start() ──────────────────
+     if phone_number:
+-        trunk_id = os.getenv("OUTBOUND_TRUNK_ID", "")
++        # Strip \r to fix CRLF docker issues on Windows
++        trunk_id = os.getenv("OUTBOUND_TRUNK_ID", "").strip()
++        
++        # FAILSAFE: If the old broken Vobiz UUID is still stuck in memory, override it!
++        if "53eeb610" in trunk_id:
++            trunk_id = "ST_puExWSEydrQF"
++            
+         if not trunk_id:
+             await _log("error", "OUTBOUND_TRUNK_ID not set — cannot place outbound call")
+             ctx.shutdown()
+
+commit d5b78c20ba59d1f9b1b225ad20f9e29d4ab1dac4
+Author: xtend <alph.cthomas@gmail.com>
+Date:   Sat May 9 02:38:57 2026 +0530
+
+    Fix OOM killer memory leak, docker shared memory, and ChartJS layout bug
+
+diff --git a/agent.py b/agent.py
+index 69b2212..6b4009b 100644
+--- a/agent.py
++++ b/agent.py
+@@ -386,5 +386,6 @@ if __name__ == "__main__":
+         agents.WorkerOptions(
+             entrypoint_fnc=entrypoint,
+             agent_name="outbound-caller",
++            num_idle_processes=0,
+         )
+     )
+
+commit d511f052c673c14e8e849273f4b5656297a385c0
+Author: xtend <alph.cthomas@gmail.com>
+Date:   Fri May 8 23:38:47 2026 +0530
+
+    first commit
+
+diff --git a/agent.py b/agent.py
+new file mode 100644
+index 0000000..69b2212
+--- /dev/null
++++ b/agent.py
+@@ -0,0 +1,390 @@
++import asyncio
++import json
++import logging
++import os
++import ssl
++import certifi
++from typing import Optional
++
++from dotenv import load_dotenv
++
++# ── Patch SSL with certifi before any network import ─────────────────────────
++_orig_ssl = ssl.create_default_context
++def _certifi_ssl(purpose=ssl.Purpose.SERVER_AUTH, **kwargs):
++    if not kwargs.get("cafile") and not kwargs.get("capath") and not kwargs.get("cadata"):
++        kwargs["cafile"] = certifi.where()
++    return _orig_ssl(purpose, **kwargs)
++ssl.create_default_context = _certifi_ssl
++
++from livekit import agents, api, rtc
++from livekit.agents import Agent, AgentSession, RoomInputOptions
++try:
++    from livekit.agents import RoomOptions as _RoomOptions
++    _HAS_ROOM_OPTIONS = True
++except ImportError:
++    _HAS_ROOM_OPTIONS = False
++from livekit.plugins import noise_cancellation, silero
++
++from db import init_db, log_error, get_enabled_tools
++from prompts import build_prompt
++from tools import AppointmentTools
++
++load_dotenv(".env")
++logging.basicConfig(level=logging.INFO)
++logger = logging.getLogger("outbound-agent")
++
++SIP_DOMAIN = os.getenv("VOBIZ_SIP_DOMAIN", "")
++
++
++async def _log(level: str, msg: str, detail: str = "") -> None:
++    if level == "info":
++        logger.info(msg)
++    elif level == "warning":
++        logger.warning(msg)
++    else:
++        logger.error(msg)
++    try:
++        await log_error("agent", msg, detail, level)
++    except Exception:
++        pass
++
++
++def load_db_settings_to_env() -> None:
++    """Load Supabase settings table into os.environ before worker starts."""
++    url = os.getenv("SUPABASE_URL", "")
++    key = os.getenv("SUPABASE_SERVICE_KEY", "")
++    if not url or not key:
++        return
++    try:
++        from supabase import create_client
++        client = create_client(url, key)
++        result = client.table("settings").select("key, value").execute()
++        for row in (result.data or []):
++            if row.get("value"):
++                if row["key"] not in os.environ:
++                    os.environ[row["key"]] = row["value"]
++    except Exception as exc:
++        logger.warning("Could not load settings from Supabase: %s", exc)
++
++
++# ── Import Google Gemini Live plugin ─────────────────────────────────────────
++_google_realtime = None
++_google_beta_realtime = None
++_google_llm = None
++_google_tts = None
++
++try:
++    from livekit.plugins import google as _gp
++    # Try stable path first, then beta
++    try:
++        _google_realtime = _gp.realtime.RealtimeModel
++        logger.info("Loaded google.realtime.RealtimeModel (stable path)")
++    except AttributeError:
++        pass
++    try:
++        _google_beta_realtime = _gp.beta.realtime.RealtimeModel
++        logger.info("Loaded google.beta.realtime.RealtimeModel (beta path)")
++    except AttributeError:
++        pass
++    try:
++        _google_llm = _gp.LLM
++        _google_tts = _gp.TTS
++    except AttributeError:
++        pass
++except ImportError:
++    logger.warning("livekit-plugins-google not installed — run: pip install livekit-plugins-google>=1.0")
++
++# Deepgram STT as pipeline fallback (optional)
++_deepgram_stt = None
++try:
++    from livekit.plugins import deepgram as _dg
++    _deepgram_stt = _dg.STT
++except ImportError:
++    pass
++
++
++# ── Session factory ──────────────────────────────────────────────────────────
++
++def _build_session(tools: list, system_prompt: str) -> AgentSession:
++    """
++    Build AgentSession with Gemini Live realtime.
++
++    SILENCE-PREVENTION — all 3 configs required:
++    1. SessionResumptionConfig(transparent=True)   → auto-reconnect on timeout
++    2. ContextWindowCompressionConfig              → prevents freeze at token limit
++    3. RealtimeInputConfig(END_SENSITIVITY_LOW)    → 2s VAD silence threshold
++
++    ⚠️  EndSensitivity MUST use END_SENSITIVITY_LOW (full string — not .LOW)
++    """
++    gemini_model = os.getenv("GEMINI_MODEL", "gemini-3.1-flash-live-preview")
++    gemini_voice = os.getenv("GEMINI_TTS_VOICE", "Aoede")
++    use_realtime = os.getenv("USE_GEMINI_REALTIME", "true").lower() != "false"
++
++    RealtimeClass = _google_realtime or (_google_beta_realtime if use_realtime else None)
++
++    if use_realtime and RealtimeClass is not None:
++        logger.info("SESSION MODE: Gemini Live realtime (%s, voice=%s)", gemini_model, gemini_voice)
++
++        _realtime_input_cfg = None
++        _session_resumption_cfg = None
++        _ctx_compression_cfg = None
++
++        try:
++            from google.genai import types as _gt
++            _realtime_input_cfg = _gt.RealtimeInputConfig(
++                automatic_activity_detection=_gt.AutomaticActivityDetection(
++                    end_of_speech_sensitivity=_gt.EndSensitivity.END_SENSITIVITY_LOW,
++                    silence_duration_ms=2000,
++                    prefix_padding_ms=200,
++                ),
++            )
++            _session_resumption_cfg = _gt.SessionResumptionConfig(transparent=True)
++            _ctx_compression_cfg = _gt.ContextWindowCompressionConfig(
++                trigger_tokens=25600,
++                sliding_window=_gt.SlidingWindow(target_tokens=12800),
++            )
++            logger.info("Silence-prevention configs applied (VAD LOW, transparent resumption, context compression)")
++        except Exception as _cfg_err:
++            logger.warning("Could not build silence-prevention config: %s", _cfg_err)
++
++        realtime_kwargs: dict = dict(
++            model=gemini_model,
++            voice=gemini_voice,
++            instructions=system_prompt,
++        )
++        if _realtime_input_cfg is not None:
++            realtime_kwargs["realtime_input_config"]      = _realtime_input_cfg
++            realtime_kwargs["session_resumption"]         = _session_resumption_cfg
++            realtime_kwargs["context_window_compression"] = _ctx_compression_cfg
++
++        return AgentSession(llm=RealtimeClass(**realtime_kwargs), tools=tools)
++
++    # ── Pipeline fallback (Deepgram STT + Gemini LLM + Google TTS) ───────────
++    if _google_llm is None:
++        raise RuntimeError(
++            "No Google AI backend found. Install: pip install 'livekit-plugins-google>=1.0'"
++        )
++    logger.info("SESSION MODE: pipeline (Deepgram STT + Gemini LLM + Google TTS)")
++    stt = _deepgram_stt(model="nova-3", language="multi") if _deepgram_stt else None
++    tts = _google_tts() if _google_tts else None
++    return AgentSession(
++        stt=stt,
++        llm=_google_llm(model="gemini-2.0-flash"),
++        tts=tts,
++        vad=silero.VAD.load(),
++        tools=tools,
++    )
++
++
++class OutboundAssistant(Agent):
++    def __init__(self, instructions: str) -> None:
++        super().__init__(instructions=instructions)
++
++
++async def entrypoint(ctx: agents.JobContext) -> None:
++    """
++    Main entrypoint. Called per job.
++
++    DIAL-FIRST PATTERN (critical):
++    Start Gemini Live ONLY after create_sip_participant(wait_until_answered=True).
++    Starting session during ring time (~20-30s) causes Gemini idle timeout before call is answered.
++
++    NO close_on_disconnect — SIP legs have brief dropouts that look like disconnects.
++    Use participant_disconnected event for the specific SIP identity instead.
++    """
++    await _log("info", f"Job started — room: {ctx.room.name}")
++
++    phone_number: Optional[str] = None
++    lead_name = "there"
++    business_name = "our company"
++    service_type = "our service"
++    custom_prompt: Optional[str] = None
++    voice_override: Optional[str] = None
++    model_override: Optional[str] = None
++    tools_override: Optional[str] = None
++
++    if ctx.job.metadata:
++        try:
++            data = json.loads(ctx.job.metadata)
++            phone_number   = data.get("phone_number")
++            lead_name      = data.get("lead_name", lead_name)
++            business_name  = data.get("business_name", business_name)
++            service_type   = data.get("service_type", service_type)
++            custom_prompt  = data.get("system_prompt")
++            voice_override = data.get("voice_override")
++            model_override = data.get("model_override")
++            tools_override = data.get("tools_override")
++        except (json.JSONDecodeError, AttributeError):
++            await _log("warning", "Invalid JSON in job metadata")
++
++    await _log("info", f"Call job — phone={phone_number} lead={lead_name} biz={business_name}")
++
++    system_prompt = build_prompt(
++        lead_name=lead_name, business_name=business_name,
++        service_type=service_type, custom_prompt=custom_prompt,
++    )
++    tool_ctx = AppointmentTools(ctx, phone_number, lead_name)
++
++    if voice_override:
++        os.environ["GEMINI_TTS_VOICE"] = voice_override
++    if model_override:
++        os.environ["GEMINI_MODEL"] = model_override
++
++    if tools_override:
++        try:
++            enabled_tools = json.loads(tools_override)
++        except Exception:
++            enabled_tools = await get_enabled_tools()
++    else:
++        enabled_tools = await get_enabled_tools()
++
++    # ── Connect to LiveKit room ───────────────────────────────────────────────
++    await ctx.connect()
++    await _log("info", f"Connected to room: {ctx.room.name}")
++
++    # ── Dial out via SIP — MUST come before session.start() ──────────────────
++    if phone_number:
++        trunk_id = os.getenv("OUTBOUND_TRUNK_ID", "")
++        if not trunk_id:
++            await _log("error", "OUTBOUND_TRUNK_ID not set — cannot place outbound call")
++            ctx.shutdown()
++            return
++        await _log("info", f"Dialing {phone_number} via trunk {trunk_id}")
++        try:
++            await ctx.api.sip.create_sip_participant(
++                api.CreateSIPParticipantRequest(
++                    room_name=ctx.room.name,
++                    sip_trunk_id=trunk_id,
++                    sip_call_to=phone_number,
++                    participant_identity=f"sip_{phone_number}",
++                    wait_until_answered=True,   # blocks until call is answered
++                )
++            )
++        except Exception as exc:
++            await _log("error", f"SIP dial FAILED for {phone_number}: {exc}")
++            ctx.shutdown()
++            return
++        await _log("info", f"Call ANSWERED — {phone_number} picked up")
++
++    # ── Build and start Gemini Live session ───────────────────────────────────
++    gemini_model = os.getenv("GEMINI_MODEL", "gemini-3.1-flash-live-preview")
++    await _log("info", f"Building Gemini Live session — model={gemini_model}")
++    active_tools = tool_ctx.build_tool_list(enabled_tools)
++    await _log("info", f"Active tools: {[t.__name__ for t in active_tools]}")
++
++    session = _build_session(tools=active_tools, system_prompt=system_prompt)
++
++    # Use RoomOptions if available (non-deprecated), else fall back
++    # NEVER use close_on_disconnect=True with SIP
++    if _HAS_ROOM_OPTIONS:
++        from livekit.agents import RoomOptions as _RO
++        _session_kwargs = dict(
++            room=ctx.room,
++            agent=OutboundAssistant(instructions=system_prompt),
++            room_options=_RO(input_options=RoomInputOptions(
++                noise_cancellation=noise_cancellation.BVCTelephony()
++            )),
++        )
++    else:
++        _session_kwargs = dict(
++            room=ctx.room,
++            agent=OutboundAssistant(instructions=system_prompt),
++            room_input_options=RoomInputOptions(
++                noise_cancellation=noise_cancellation.BVCTelephony()
++            ),
++        )
++
++    await session.start(**_session_kwargs)
++    await _log("info", "Agent session started — Gemini Live active")
++
++    # ── Optional S3 call recording via LiveKit Egress ─────────────────────────
++    if phone_number:
++        _aws_key     = os.getenv("S3_ACCESS_KEY_ID") or os.getenv("AWS_ACCESS_KEY_ID", "")
++        _aws_secret  = os.getenv("S3_SECRET_ACCESS_KEY") or os.getenv("AWS_SECRET_ACCESS_KEY", "")
++        _aws_bucket  = os.getenv("S3_BUCKET") or os.getenv("AWS_BUCKET_NAME", "")
++        _s3_endpoint = os.getenv("S3_ENDPOINT_URL") or os.getenv("S3_ENDPOINT", "")
++        _s3_region   = os.getenv("S3_REGION") or os.getenv("AWS_REGION", "ap-south-1")
++        if _aws_key and _aws_secret and _aws_bucket:
++            try:
++                _recording_path = f"recordings/{ctx.room.name}.ogg"
++                _egress_req = api.RoomCompositeEgressRequest(
++                    room_name=ctx.room.name, audio_only=True,
++                    file_outputs=[api.EncodedFileOutput(
++                        file_type=api.EncodedFileType.OGG, filepath=_recording_path,
++                        s3=api.S3Upload(
++                            access_key=_aws_key, secret=_aws_secret,
++                            bucket=_aws_bucket, region=_s3_region, endpoint=_s3_endpoint,
++                        ),
++                    )],
++                )
++                _egress = await ctx.api.egress.start_room_composite_egress(_egress_req)
++                _s3_ep = _s3_endpoint.rstrip("/")
++                tool_ctx.recording_url = (
++                    f"{_s3_ep}/{_aws_bucket}/{_recording_path}"
++                    if _s3_ep else f"s3://{_aws_bucket}/{_recording_path}"
++                )
++                await _log("info", f"Recording started: egress={_egress.egress_id}")
++            except Exception as _exc:
++                await _log("warning", f"Recording start failed (non-fatal): {_exc}")
++
++    # ── Greeting ─────────────────────────────────────────────────────────────
++    # gemini-3.1 and gemini-2.5 native-audio speak autonomously from system prompt.
++    # generate_reply() is blocked by the plugin for these models — skip entirely.
++    _active_model = os.getenv("GEMINI_MODEL", "")
++    if "3.1" in _active_model or "2.5" in _active_model:
++        await _log("info", "Gemini native-audio model: will greet autonomously from system prompt")
++    else:
++        greeting = (
++            f"The call just connected. Greet the lead and ask if you're speaking with {lead_name}."
++            if phone_number else "Greet the caller warmly."
++        )
++        try:
++            await session.generate_reply(instructions=greeting)
++        except Exception as _gr_exc:
++            await _log("warning", f"generate_reply not supported: {_gr_exc}")
++
++    # ── Keep session alive until SIP participant leaves ───────────────────────
++    # Without this the entrypoint returns and the worker spins down.
++    if phone_number:
++        _sip_identity = f"sip_{phone_number}"
++        _disconnect_event = asyncio.Event()
++
++        def _on_participant_disconnected(participant: rtc.RemoteParticipant):
++            if participant.identity == _sip_identity:
++                _disconnect_event.set()
++
++        def _on_room_disconnected():
++            _disconnect_event.set()
++
++        ctx.room.on("participant_disconnected", _on_participant_disconnected)
++        ctx.room.on("disconnected", _on_room_disconnected)
++
++        try:
++            await asyncio.wait_for(_disconnect_event.wait(), timeout=3600)
++        except asyncio.TimeoutError:
++            await _log("warning", "Call reached 1-hour safety timeout — shutting down")
++
++        await _log("info", f"SIP participant disconnected — ending session for {phone_number}")
++        try:
++            await session.aclose()
++        except Exception:
++            pass
++    else:
++        # Inbound / test call — wait for room disconnect
++        _done = asyncio.Event()
++        ctx.room.on("disconnected", lambda: _done.set())
++        try:
++            await asyncio.wait_for(_done.wait(), timeout=3600)
++        except asyncio.TimeoutError:
++            pass
++
++
++if __name__ == "__main__":
++    init_db()
++    load_db_settings_to_env()
++    agents.cli.run_app(
++        agents.WorkerOptions(
++            entrypoint_fnc=entrypoint,
++            agent_name="outbound-caller",
++        )
++    )
