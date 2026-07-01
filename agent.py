@@ -143,7 +143,7 @@ def _build_session(tools: list, system_prompt: str, voice_override: Optional[str
     """
     # CRITICAL FIX: We default to the Gemini Live compatible model:
     # "gemini-2.5-flash-native-audio-preview-09-2025"
-    raw_model = model_override or os.getenv("GEMINI_MODEL", "models/gemini-3.1-flash-live-preview")
+    raw_model = model_override or os.getenv("GEMINI_MODEL", "gemini-2.5-flash-native-audio-latest")
     
     # The Google GenAI SDK strictly rejects the "models/" prefix for bidiGenerateContent.
     if raw_model.startswith("models/"):
@@ -397,7 +397,7 @@ async def entrypoint(ctx: agents.JobContext) -> None:
         _call_start_time = time.time()
 
     # ── Build and start Gemini Live session ───────────────────────────────────
-    gemini_model = os.getenv("GEMINI_MODEL", "models/gemini-3.1-flash-live-preview")
+    gemini_model = os.getenv("GEMINI_MODEL", "gemini-2.5-flash-native-audio-latest")
     await _log("info", f"Building Gemini Live session — model={gemini_model}")
     active_tools = tool_ctx.build_tool_list(enabled_tools)
     await _log("info", f"Active tools: {len(active_tools)} loaded")
