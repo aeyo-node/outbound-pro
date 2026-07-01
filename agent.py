@@ -326,14 +326,6 @@ async def entrypoint(ctx: agents.JobContext) -> None:
     # Add inbound awareness to the prompt
     if not phone_number:
         system_prompt += "\n\nNOTE: This is an INBOUND call. The user called YOU. Do not ask 'Am I speaking with...'. Instead, greet them warmly and ask how you can help."
-    else:
-        agent_name = profile.get("name", "സ്വരം AI") if profile else "സ്വരം AI"
-        
-        # If there is a welcome_message in the profile, use it. Otherwise, use a default literal string.
-        greeting_text = profile.get("welcome_message") if profile and profile.get("welcome_message") else f"ഹലോ, ഞാൻ {agent_name} ആണ്. എനിക്ക് നിങ്ങളെ എങ്ങനെ സഹായിക്കാൻ കഴിയും?"
-        
-        system_prompt += f"\n\nGreeting: '{greeting_text}'"
-        system_prompt += "\n(CRITICAL INSTRUCTION: Read the Greeting exactly as written above IMMEDIATELY when the call connects! Do not wait for the user!)"
 
     # Inject speech settings if configured
     if profile and profile.get("speech_settings"):
@@ -489,18 +481,7 @@ async def entrypoint(ctx: agents.JobContext) -> None:
     await session.start(**_session_kwargs)
     await _log("info", "Agent session started — Gemini Live active")
 
-    # ── Trigger immediate greeting for outbound calls ─────────────────────────
-    # RealtimeModel (gemini-2.5-flash-native-audio-latest) does NOT support say().
-    # Instead we inject the greeting as a user turn to force the model to respond immediately.
-    if phone_number and greeting_text:
-        try:
-            await asyncio.sleep(0.5)  # tiny buffer for session to fully initialise
-            await session.generate_reply(
-                instructions=f"The call just connected. Say EXACTLY this greeting now: \"{greeting_text}\""
-            )
-            await _log("info", f"Greeting triggered via generate_reply(): {greeting_text[:60]}")
-        except Exception as _greet_err:
-            await _log("warning", f"generate_reply() failed (non-fatal): {_greet_err}")
+    # (Greeting logic removed. Agent will rely purely on system prompt.)
 
     # ── Optional S3 call recording via LiveKit Egress ─────────────────────────
     if phone_number:
