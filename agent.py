@@ -237,8 +237,8 @@ async def entrypoint(ctx: agents.JobContext) -> None:
     Use participant_disconnected event for the specific SIP identity instead.
     """
     await _log("info", f"Job started — room: {ctx.room.name}")
-    # Refresh settings from Supabase at the start of every call
-    load_db_settings_to_env()
+    # NOTE: load_db_settings_to_env() is NOT called here — it is synchronous and would
+    # block the async event loop causing ~20s delays. Settings are loaded once at startup.
 
     phone_number: Optional[str] = None
     lead_name = "there"
@@ -269,11 +269,7 @@ async def entrypoint(ctx: agents.JobContext) -> None:
         except (json.JSONDecodeError, AttributeError):
             await _log("warning", "Invalid JSON in job metadata")
 
-    # If no custom prompt from metadata, use the Global Prompt from DB/Env
-    # Checking both lowercase (DB) and uppercase (Env) for safety
-    if not custom_prompt:
-        custom_prompt = os.environ.get("system_prompt") or os.environ.get("SYSTEM_PROMPT")
-    
+    await _log("info", f"METADATA RECEIVED — agent_profile_id={agent_profile_id}, voice_override={voice_override}, campaign_id={campaign_id}")
 
     # For inbound calls, try to identify the caller from participant identity
     if not phone_number:
@@ -292,32 +288,54 @@ async def entrypoint(ctx: agents.JobContext) -> None:
             except Exception:
                 pass
 
+    # ── Fetch the agent profile — this is the SINGLE authoritative source ──────
+    # Priority: agent_profile_id from metadata > default profile in DB
+    profile = None
     if not agent_profile_id:
         from db import get_default_agent_profile
         try:
             default_prof = await get_default_agent_profile()
             if default_prof:
                 agent_profile_id = default_prof.get("id")
-        except Exception:
-            pass
+                await _log("info", f"No profile in metadata — using default profile: {default_prof.get('name')} ({agent_profile_id})")
+        except Exception as _e:
+            await _log("warning", f"Could not fetch default profile: {_e}")
 
-    # Fetch full profile from DB
-    profile = None
     if agent_profile_id:
         from db import get_agent_profile
         try:
             profile = await get_agent_profile(agent_profile_id)
-        except Exception:
-            pass
+            if profile:
+                await _log("info", f"Loaded agent profile: '{profile.get('name')}' (id={agent_profile_id}, voice={profile.get('voice')})")
+            else:
+                await _log("warning", f"Profile ID '{agent_profile_id}' not found in DB — falling back to metadata prompt")
+        except Exception as _e:
+            await _log("warning", f"Failed to fetch profile '{agent_profile_id}': {_e}")
 
-    # Agent profile system_prompt ALWAYS overrides env var / metadata
-    if profile and profile.get("system_prompt"):
-        custom_prompt = profile.get("system_prompt")
+    # ── Determine system prompt ────────────────────────────────────────────────
+    # Priority order:
+    #   1. DB agent profile system_prompt  (always wins when profile exists)
+    #   2. system_prompt from job metadata (set by server.py dispatch)
+    #   3. industry-based default from prompts.py
+    # NOTE: we deliberately do NOT fall back to os.environ["system_prompt"]
+    #       because that global setting may be any profile's prompt and would
+    #       cause the wrong profile to be used.
+    if profile and profile.get("system_prompt") and profile["system_prompt"].strip():
+        custom_prompt = profile["system_prompt"]
+        await _log("info", f"PROMPT SOURCE: agent profile '{profile.get('name')}' from DB")
+    elif custom_prompt and custom_prompt.strip():
+        await _log("info", "PROMPT SOURCE: job metadata (profile DB fetch failed or profile has no prompt)")
+    else:
+        await _log("info", f"PROMPT SOURCE: industry default for '{industry}' (no profile, no metadata prompt)")
 
-    # Pull voice from profile if not already in the job metadata
-    if not voice_override and profile and profile.get("voice"):
-        voice_override = profile["voice"]
-        await _log("info", f"Using voice from profile: {voice_override}")
+    # ── Pull voice / model from profile (only if not already overridden by metadata) ──
+    if profile:
+        if not voice_override and profile.get("voice"):
+            voice_override = profile["voice"]
+            await _log("info", f"Voice set from profile: {voice_override}")
+        if not model_override and profile.get("model"):
+            model_override = profile["model"]
+            await _log("info", f"Model set from profile: {model_override}")
 
     system_prompt = build_prompt(
         lead_name=lead_name, business_name=business_name,
