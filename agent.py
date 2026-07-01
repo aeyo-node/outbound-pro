@@ -145,6 +145,12 @@ def _build_session(tools: list, system_prompt: str, voice_override: Optional[str
     # "gemini-2.5-flash-native-audio-preview-09-2025"
     raw_model = model_override or os.getenv("GEMINI_MODEL", "gemini-2.5-flash-native-audio-latest")
     
+    # Sanitize known dead/deprecated models coming from Supabase DB overrides
+    dead_models = ["gemini-2.0-flash-exp", "gemini-3.1-flash-live-preview", "gemini-2.0-flash"]
+    for dead in dead_models:
+        if dead in raw_model:
+            raw_model = "gemini-2.5-flash-native-audio-latest"
+            
     # The Google GenAI SDK strictly rejects the "models/" prefix for bidiGenerateContent.
     if raw_model.startswith("models/"):
         gemini_model = raw_model.replace("models/", "")
