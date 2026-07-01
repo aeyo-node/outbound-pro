@@ -314,6 +314,11 @@ async def entrypoint(ctx: agents.JobContext) -> None:
     if profile and profile.get("system_prompt"):
         custom_prompt = profile.get("system_prompt")
 
+    # Pull voice from profile if not already in the job metadata
+    if not voice_override and profile and profile.get("voice"):
+        voice_override = profile["voice"]
+        await _log("info", f"Using voice from profile: {voice_override}")
+
     system_prompt = build_prompt(
         lead_name=lead_name, business_name=business_name,
         industry=industry, place=place, custom_prompt=custom_prompt,
@@ -356,10 +361,9 @@ async def entrypoint(ctx: agents.JobContext) -> None:
     
     tool_ctx = AppointmentTools(ctx, phone_number, lead_name, business_name, industry, place, agent_profile_id=agent_profile_id, campaign_id=campaign_id)
 
-    if voice_override:
-        os.environ["GEMINI_TTS_VOICE"] = voice_override
-    if model_override:
-        os.environ["GEMINI_MODEL"] = model_override
+    # DO NOT write voice_override/model_override to os.environ — it pollutes
+    # subsequent calls running on the same worker process.
+    # Pass them directly into _build_session instead (already done below).
 
     if tools_override:
         try:
@@ -485,6 +489,17 @@ async def entrypoint(ctx: agents.JobContext) -> None:
 
     await session.start(**_session_kwargs)
     await _log("info", "Agent session started — Gemini Live active")
+
+    # ── Trigger immediate greeting for outbound calls ─────────────────────────
+    # With gemini-2.5-flash-native-audio-latest, system prompt instructions alone
+    # are not enough to trigger the model to speak first — we must explicitly say().
+    if phone_number and greeting_text:
+        try:
+            await asyncio.sleep(0.5)  # tiny buffer for session to fully initialise
+            await session.say(greeting_text)
+            await _log("info", f"Greeting injected via session.say(): {greeting_text[:60]}")
+        except Exception as _greet_err:
+            await _log("warning", f"session.say() failed (non-fatal): {_greet_err}")
 
     # ── Optional S3 call recording via LiveKit Egress ─────────────────────────
     if phone_number:
