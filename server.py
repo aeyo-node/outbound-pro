@@ -131,8 +131,8 @@ class CallRequest(BaseModel):
 
 class AgentProfileRequest(BaseModel):
     name: str
-    voice: str = "Aoede"
-    model: str = "gemini-2.0-flash-exp"
+    voice: str = "Zephyr"
+    model: str = "gemini-3.1-flash-live-preview"
     system_prompt: Optional[str] = None
     enabled_tools: str = "[]"
     is_default: bool = False
@@ -219,7 +219,7 @@ async def init_demo_data():
                 "id": str(uuid.uuid4()),
                 "name": name,
                 "voice": voice,
-                "model": "gemini-2.0-flash-exp",
+                "model": "gemini-3.1-flash-live-preview",
                 "system_prompt": prompt,
                 "enabled_tools": "[]",
                 "is_default": 0,
@@ -1358,76 +1358,51 @@ async def api_chat_test(req: ChatRequest):
         raise HTTPException(400, "GOOGLE_API_KEY not configured.")
 
     try:
-        import google.generativeai as genai
-        from tools import AppointmentTools
+        from google import genai as _genai
         from db import get_enabled_tools
-        
-        genai.configure(api_key=api_key)
-        
-        # 1. Resolve tools
+
+        # 1. Resolve enabled tools list
         enabled = req.enabled_tools
         if enabled is None:
-             enabled = await get_setting("ENABLED_TOOLS", "[]")
-        
+            enabled = await get_setting("ENABLED_TOOLS", "[]")
         try:
             enabled_list = json.loads(enabled)
-        except:
+        except Exception:
             enabled_list = []
-            
-        # Mock a JobContext for AppointmentTools
-        class MockJobContext:
-            def __init__(self):
-                self.room = type('Room', (), {'name': 'chat-test', 'remote_participants': {}})
-                self.api = None
-        
-        tool_ctx = AppointmentTools(MockJobContext(), phone_number=req.phone_number)
-        active_tools = tool_ctx.build_tool_list(enabled_list)
-        
+
         # 2. Build system prompt
         system_prompt = req.system_prompt or await get_setting("system_prompt", DEFAULT_SYSTEM_PROMPT)
-        
-        # 3. Initialize model with tools
-        try:
-            model_name = "gemini-2.0-flash-exp"
-            model = genai.GenerativeModel(
-                model_name=model_name,
-                system_instruction=system_prompt,
-                tools=active_tools if active_tools else None
-            )
-            # 4. Convert history to Google format
-            chat = model.start_chat(history=req.history, enable_automatic_function_calling=True)
-            
-            # 5. Send message
-            response = chat.send_message(req.message)
-        except Exception as e:
-            if "404" in str(e) or "not found" in str(e).lower():
-                # Try to list models to help the user debug
-                available = []
-                try:
-                    for m in genai.list_models():
-                        if "generateContent" in m.supported_generation_methods:
-                            available.append(m.name.replace("models/", ""))
-                except: pass
-                model_list = ", ".join(available[:10])
-                return {
-                    "response": f"Model Error: {str(e)}\n\nAvailable models on your key: {model_list}",
-                    "history": req.history
-                }
-            raise e
-        
-        new_history = []
-        for content in chat.history:
-            parts = []
-            for part in content.parts:
-                if hasattr(part, 'text'): parts.append({'text': part.text})
-                # Function calls/results are complex to serialize back to the UI simply, 
-                # but for testing the 'text' is what matters most to the user.
-            new_history.append({'role': content.role, 'parts': parts})
 
-        return {
-            "response": response.text,
-            "history": new_history
-        }
+        # 3. Initialize google-genai client
+        client = _genai.Client(api_key=api_key)
+
+        # 4. Build history in google-genai format
+        history_contents = []
+        for turn in (req.history or []):
+            role = turn.get("role", "user")
+            parts = turn.get("parts", [])
+            text = "".join(p.get("text", "") for p in parts if isinstance(p, dict))
+            if text:
+                history_contents.append({"role": role, "parts": [{"text": text}]})
+
+        # 5. Append the new user message
+        history_contents.append({"role": "user", "parts": [{"text": req.message}]})
+
+        from google.genai import types as _gtypes
+        response = client.models.generate_content(
+            model="gemini-3.1-flash-lite-preview",
+            contents=history_contents,
+            config=_gtypes.GenerateContentConfig(system_instruction=system_prompt),
+        )
+
+        reply_text = response.text if hasattr(response, "text") else str(response)
+
+        # 6. Build updated history for the UI
+        new_history = list(req.history or [])
+        new_history.append({"role": "user", "parts": [{"text": req.message}]})
+        new_history.append({"role": "model", "parts": [{"text": reply_text}]})
+
+        return {"response": reply_text, "history": new_history}
     except Exception as exc:
         logger.error("Chat test error: %s", exc)
         return {"response": f"Error: {str(exc)}", "history": req.history}
@@ -1447,16 +1422,16 @@ async def api_init_demo_data():
         profiles = await db.get_all_agent_profiles()
         if not profiles:
             await db.create_agent_profile(
-                name="Swaram AI (Default)", 
-                voice="Aoede", 
-                model="gemini-2.0-flash-exp",
+                name="Swaram AI (Default)",
+                voice="Zephyr",
+                model="gemini-3.1-flash-live-preview",
                 system_prompt="You are Swaram, a friendly AI assistant for EV charging.",
                 is_default=1
             )
             await db.create_agent_profile(
-                name="Sales Closer", 
-                voice="Charon", 
-                model="gemini-2.0-flash-exp",
+                name="Sales Closer",
+                voice="Charon",
+                model="gemini-3.1-flash-live-preview",
                 system_prompt="You are a professional sales closer.",
                 is_default=0
             )

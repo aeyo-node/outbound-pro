@@ -30,7 +30,6 @@ try:
     _HAS_ROOM_OPTIONS = True
 except ImportError:
     _HAS_ROOM_OPTIONS = False
-from livekit.plugins import silero
 
 from db import init_db, log_error, get_enabled_tools, get_all_settings
 from prompts import build_prompt
@@ -94,39 +93,8 @@ def load_db_settings_to_env() -> None:
         logger.warning("Could not load settings from Supabase: %s", exc)
 
 
-# ── Import Google Gemini Live plugin ─────────────────────────────────────────
-_google_realtime = None
-_google_beta_realtime = None
-_google_llm = None
-_google_tts = None
-_google_stt = None
-
-try:
-    from livekit.plugins import google as _gp
-    # Try stable path first, then beta
-    try:
-        _google_realtime = _gp.realtime.RealtimeModel
-        logger.info("Loaded google.realtime.RealtimeModel (stable path)")
-    except AttributeError:
-        pass
-    try:
-        _google_beta_realtime = _gp.beta.realtime.RealtimeModel
-        logger.info("Loaded google.beta.realtime.RealtimeModel (beta path)")
-    except AttributeError:
-        pass
-    try:
-        _google_llm = _gp.LLM
-        _google_tts = _gp.TTS
-    except AttributeError:
-        pass
-    try:
-        _google_stt = _gp.STT
-        logger.info("Loaded Google STT for pipeline mode")
-    except AttributeError:
-        pass
-except ImportError:
-    logger.warning("livekit-plugins-google not installed — run: pip install livekit-plugins-google>=1.0")
-
+# ── Google Gemini Live realtime Model ────────────────────────────────────────
+from livekit.plugins.google import realtime
 
 # ── Session factory ──────────────────────────────────────────────────────────
 
@@ -141,83 +109,54 @@ def _build_session(tools: list, system_prompt: str, voice_override: Optional[str
 
     ⚠️  EndSensitivity MUST use END_SENSITIVITY_LOW (full string — not .LOW)
     """
-    # CRITICAL FIX: We default to the Gemini Live compatible model:
-    # "gemini-2.5-flash-native-audio-preview-09-2025"
-    raw_model = model_override or os.getenv("GEMINI_MODEL", "gemini-2.5-flash-native-audio-latest")
+    raw_model = model_override or os.getenv("GEMINI_MODEL", "gemini-3.1-flash-live-preview")
     
-    # Sanitize known dead/deprecated models coming from Supabase DB overrides
-    dead_models = ["gemini-2.0-flash-exp", "gemini-3.1-flash-live-preview", "gemini-2.0-flash"]
-    for dead in dead_models:
-        if dead in raw_model:
-            raw_model = "gemini-2.5-flash-native-audio-latest"
-            
-    # The Google GenAI SDK strictly rejects the "models/" prefix for bidiGenerateContent.
+    # Strip models/ prefix if present
     if raw_model.startswith("models/"):
         gemini_model = raw_model.replace("models/", "")
     else:
         gemini_model = raw_model
     
-    gemini_voice = voice_override or os.getenv("GEMINI_TTS_VOICE", "Aoede")
+    gemini_voice = voice_override or os.getenv("GEMINI_VOICE", "Zephyr")
     
-    # Use Gemini Live Realtime — single model handles STT+LLM+TTS natively
-    use_realtime = True
+    logger.info("SESSION MODE: Gemini Live realtime (%s, voice=%s)", gemini_model, gemini_voice)
 
-    RealtimeClass = _google_realtime or _google_beta_realtime
+    _realtime_input_cfg = None
+    _session_resumption_cfg = None
+    _ctx_compression_cfg = None
 
-    if use_realtime and RealtimeClass is not None:
-        logger.info("SESSION MODE: Gemini Live realtime (%s, voice=%s)", gemini_model, gemini_voice)
-
-        _realtime_input_cfg = None
-        _session_resumption_cfg = None
-        _ctx_compression_cfg = None
-
-        try:
-            from google.genai import types as _gt
-            _realtime_input_cfg = _gt.RealtimeInputConfig(
-                automatic_activity_detection=_gt.AutomaticActivityDetection(
-                    end_of_speech_sensitivity=_gt.EndSensitivity.END_SENSITIVITY_LOW,
-                    silence_duration_ms=2000,
-                    prefix_padding_ms=200,
-                ),
-            )
-            _session_resumption_cfg = _gt.SessionResumptionConfig(transparent=True)
-            _ctx_compression_cfg = _gt.ContextWindowCompressionConfig(
-                trigger_tokens=25600,
-                sliding_window=_gt.SlidingWindow(target_tokens=12800),
-            )
-            logger.info("Silence-prevention configs applied (VAD LOW, transparent resumption, context compression)")
-        except Exception as _cfg_err:
-            logger.warning("Could not build silence-prevention config: %s", _cfg_err)
-
-        realtime_kwargs: dict = dict(
-            model=gemini_model,
-            voice=gemini_voice,
-            instructions=system_prompt,
-            api_key=os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_GEMINI_API_KEY"),
+    try:
+        from google.genai import types as _gt
+        _realtime_input_cfg = _gt.RealtimeInputConfig(
+            automatic_activity_detection=_gt.AutomaticActivityDetection(
+                end_of_speech_sensitivity=_gt.EndSensitivity.END_SENSITIVITY_LOW,
+                silence_duration_ms=2000,
+                prefix_padding_ms=200,
+            ),
         )
-        if _realtime_input_cfg is not None:
-            realtime_kwargs["realtime_input_config"]      = _realtime_input_cfg
-            realtime_kwargs["session_resumption"]         = _session_resumption_cfg
-            realtime_kwargs["context_window_compression"] = _ctx_compression_cfg
-
-        logger.error("FINAL REALTIME MODEL=%s", gemini_model)
-        return AgentSession(llm=RealtimeClass(**realtime_kwargs), tools=tools)
-
-    # ── Pipeline fallback (Google STT + Gemini LLM + Google TTS) ──────────────
-    if _google_llm is None:
-        raise RuntimeError(
-            "No Google AI backend found. Install: pip install 'livekit-plugins-google>=1.0'"
+        _session_resumption_cfg = _gt.SessionResumptionConfig(transparent=True)
+        _ctx_compression_cfg = _gt.ContextWindowCompressionConfig(
+            trigger_tokens=25600,
+            sliding_window=_gt.SlidingWindow(target_tokens=12800),
         )
-    logger.info("SESSION MODE: pipeline (Google STT + Gemini LLM + Google TTS)")
-    stt = _google_stt(model="chirp_2", languages=["en-US"]) if _google_stt else None
-    tts = _google_tts(voice_name="en-US-Journey-O") if _google_tts else None
-    return AgentSession(
-        stt=stt,
-        llm=_google_llm(model="gemini-2.5-flash-native-audio-preview-12-2025"),
-        tts=tts,
-        vad=silero.VAD.load(),
-        tools=tools,
+        logger.info("Silence-prevention configs applied (VAD LOW, transparent resumption, context compression)")
+    except Exception as _cfg_err:
+        logger.warning("Could not build silence-prevention config: %s", _cfg_err)
+
+    realtime_kwargs: dict = dict(
+        model=gemini_model,
+        voice=gemini_voice,
+        instructions=system_prompt,
+        api_key=os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_GEMINI_API_KEY"),
     )
+    if _realtime_input_cfg is not None:
+        realtime_kwargs["realtime_input_config"]      = _realtime_input_cfg
+        realtime_kwargs["session_resumption"]         = _session_resumption_cfg
+        realtime_kwargs["context_window_compression"] = _ctx_compression_cfg
+
+    logger.info("FINAL REALTIME MODEL=%s", gemini_model)
+    return AgentSession(llm=realtime.RealtimeModel(**realtime_kwargs), tools=tools)
+
 
 
 class OutboundAssistant(Agent):
@@ -417,7 +356,7 @@ async def entrypoint(ctx: agents.JobContext) -> None:
         _call_start_time = time.time()
 
     # ── Build and start Gemini Live session ───────────────────────────────────
-    gemini_model = os.getenv("GEMINI_MODEL", "gemini-2.5-flash-native-audio-latest")
+    gemini_model = os.getenv("GEMINI_MODEL", "gemini-3.1-flash-live-preview")
     await _log("info", f"Building Gemini Live session — model={gemini_model}")
     active_tools = tool_ctx.build_tool_list(enabled_tools)
     await _log("info", f"Active tools: {len(active_tools)} loaded")

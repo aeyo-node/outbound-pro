@@ -233,14 +233,34 @@ INDUSTRY_PROMPTS = {
 
 
 def build_prompt(lead_name: str, business_name: str, industry: str, custom_prompt: str = None, place: str = "your area") -> str:
-    base = INDUSTRY_PROMPTS.get(industry, DEFAULT_SYSTEM_PROMPT)
-    if custom_prompt and custom_prompt.strip():
-        base = custom_prompt
+    """
+    Build the final system prompt.
 
-    # Replace dynamic variables in the prompt template
+    Structure:
+      1. Industry base prompt  (always present — sets tone, language, tools, escalation)
+      2. PROFILE OVERRIDES     (appended when a profile system_prompt is set — persona / style only)
+      3. Call context block    (lead / business / industry / place)
+
+    The profile's system_prompt should contain ONLY persona/style/language overrides,
+    NOT a full replacement script.  The industry base ensures tools and escalation
+    instructions are always active regardless of which profile is selected.
+    """
+    base = INDUSTRY_PROMPTS.get(industry, DEFAULT_SYSTEM_PROMPT)
+
+    # Apply variable substitution on the base
     base = base.replace("{business_name}", business_name or "Swaram")
     base = base.replace("{industry}", industry or "General Support")
     base = base.replace("{place}", place or "your area")
     base = base.replace("{lead_name}", lead_name or "there")
+
+    # Append profile overrides — never replace the base
+    if custom_prompt and custom_prompt.strip():
+        profile_block = custom_prompt.strip()
+        # Apply variable substitution on the profile block too
+        profile_block = profile_block.replace("{business_name}", business_name or "Swaram")
+        profile_block = profile_block.replace("{industry}", industry or "General Support")
+        profile_block = profile_block.replace("{place}", place or "your area")
+        profile_block = profile_block.replace("{lead_name}", lead_name or "there")
+        base = base + f"\n\n# PROFILE OVERRIDES\n{profile_block}"
 
     return base + f"\n\nContext:\nLead: {lead_name or 'there'}\nBusiness: {business_name or 'Swaram'}\nIndustry: {industry or 'General Support'}\nPlace: {place or 'your area'}"

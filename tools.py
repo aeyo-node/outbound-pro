@@ -751,20 +751,28 @@ class AppointmentTools(llm.ToolContext):
             memories = await get_contact_memory(self.phone_number)
             if len(memories) < 5:
                 return
-            import google.generativeai as genai
+            from google import genai as _genai
+            from google.genai import types as _gtypes
             api_key = os.getenv("GOOGLE_API_KEY", "")
             if not api_key:
                 return
-            genai.configure(api_key=api_key)
-            model = genai.GenerativeModel("gemini-2.0-flash")
+            client = _genai.Client(api_key=api_key)
             bullet_list = "\n".join(f"- {m['insight']}" for m in memories)
             prompt = f"Compress these notes about a sales contact into 3-5 concise bullets. Keep all key facts.\n\n{bullet_list}"
-            loop = asyncio.get_event_loop()
-            response = await loop.run_in_executor(None, lambda: model.generate_content(prompt))
-            if response.text.strip():
-                await compress_contact_memory(self.phone_number, response.text.strip())
+            response = await asyncio.get_event_loop().run_in_executor(
+                None,
+                lambda: client.models.generate_content(
+                    model="gemini-2.0-flash-lite",
+                    contents=prompt,
+                    config=_gtypes.GenerateContentConfig(),
+                ),
+            )
+            compressed = response.text.strip() if hasattr(response, "text") else ""
+            if compressed:
+                await compress_contact_memory(self.phone_number, compressed)
         except Exception as exc:
             logger.warning("Memory compression failed: %s", exc)
+
 
     @llm.function_tool
     async def email_booking_details(self, name: str, phone: str, preferred_date: str, service_type: str) -> str:

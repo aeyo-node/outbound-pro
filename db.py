@@ -15,8 +15,8 @@ DEFAULTS = {
     "LIVEKIT_API_KEY":         os.getenv("LIVEKIT_API_KEY", ""),
     "LIVEKIT_API_SECRET":      os.getenv("LIVEKIT_API_SECRET", ""),
     "GOOGLE_API_KEY":          os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY", ""),
-    "GEMINI_MODEL":            os.getenv("GEMINI_MODEL", "gemini-2.5-flash-native-audio-latest"),
-    "GEMINI_TTS_VOICE":        os.getenv("GEMINI_TTS_VOICE", "Aoede"),
+    "GEMINI_MODEL":            os.getenv("GEMINI_MODEL", "gemini-3.1-flash-live-preview"),
+    "GEMINI_VOICE":            os.getenv("GEMINI_VOICE", "Zephyr"),
     "USE_GEMINI_REALTIME":     os.getenv("USE_GEMINI_REALTIME", "true"),
     "VOBIZ_SIP_DOMAIN":        os.getenv("VOBIZ_SIP_DOMAIN", ""),
     "VOBIZ_USERNAME":          os.getenv("VOBIZ_USERNAME", ""),
@@ -26,7 +26,6 @@ DEFAULTS = {
     "DEFAULT_TRANSFER_NUMBER": os.getenv("DEFAULT_TRANSFER_NUMBER", ""),
     "SUPABASE_URL":            os.getenv("SUPABASE_URL", ""),
     "SUPABASE_SERVICE_KEY":    os.getenv("SUPABASE_SERVICE_KEY", ""),
-    "DEEPGRAM_API_KEY":        os.getenv("DEEPGRAM_API_KEY", ""),
 }
 
 
@@ -41,7 +40,6 @@ SENSITIVE_KEYS = {
     "LIVEKIT_API_KEY", "LIVEKIT_API_SECRET", "GOOGLE_API_KEY",
     "VOBIZ_PASSWORD", "TWILIO_AUTH_TOKEN", "SUPABASE_SERVICE_KEY",
     "AWS_SECRET_ACCESS_KEY", "S3_SECRET_ACCESS_KEY", "CALCOM_API_KEY",
-    "DEEPGRAM_API_KEY",
 }
 
 
@@ -77,10 +75,10 @@ async def get_all_settings() -> dict:
     result = await db.table("settings").select("key, value").execute()
     KNOWN_KEYS = [
         "LIVEKIT_URL", "LIVEKIT_API_KEY", "LIVEKIT_API_SECRET",
-        "GOOGLE_API_KEY", "GEMINI_MODEL", "GEMINI_TTS_VOICE", "USE_GEMINI_REALTIME",
+        "GOOGLE_API_KEY", "GEMINI_MODEL", "GEMINI_VOICE", "USE_GEMINI_REALTIME",
         "VOBIZ_SIP_DOMAIN", "VOBIZ_USERNAME", "VOBIZ_PASSWORD",
         "VOBIZ_OUTBOUND_NUMBER", "OUTBOUND_TRUNK_ID", "DEFAULT_TRANSFER_NUMBER",
-        "DEEPGRAM_API_KEY", "TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN", "TWILIO_FROM_NUMBER",
+        "TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN", "TWILIO_FROM_NUMBER",
         "S3_ACCESS_KEY_ID", "S3_SECRET_ACCESS_KEY", "S3_ENDPOINT_URL", "S3_REGION", "S3_BUCKET",
         "CALCOM_API_KEY", "CALCOM_EVENT_TYPE_ID", "CALCOM_TIMEZONE", "CALCOM_USERNAME",
         "ENABLED_TOOLS", "KNOWLEDGE_BASE",
@@ -611,7 +609,7 @@ async def get_agent_profile(profile_id: str) -> Optional[dict]:
 
 
 async def create_agent_profile(
-    name: str, voice: str = "Aoede", model: str = "gemini-2.0-flash-exp",
+    name: str, voice: str = "Zephyr", model: str = "gemini-3.1-flash-live-preview",
     system_prompt: Optional[str] = None, enabled_tools: str = "[]", is_default: bool = False,
     place: Optional[str] = None, welcome_message: Optional[str] = None,
     speech_settings: str = "{}", call_settings: str = "{}"

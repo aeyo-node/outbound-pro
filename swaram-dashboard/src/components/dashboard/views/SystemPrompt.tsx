@@ -20,7 +20,7 @@ const VOICES = [
 export function SystemPrompt() {
   const [prompt, setPrompt] = useState("");
   const [knowledgeBase, setKnowledgeBase] = useState("");
-  const [voice, setVoice] = useState("Aoede");
+  const [voice, setVoice] = useState("Zephyr");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
@@ -37,7 +37,7 @@ export function SystemPrompt() {
 
       setPrompt(promptData.prompt || "");
       // API returns { KEY: { value: "...", configured: bool } } shape
-      setVoice(settingsData.GEMINI_TTS_VOICE?.value || "Aoede");
+      setVoice(settingsData.GEMINI_VOICE?.value || "Zephyr");
       setKnowledgeBase(settingsData.KNOWLEDGE_BASE?.value || "");
     } catch (err) {
       console.error(err);
@@ -68,7 +68,7 @@ export function SystemPrompt() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           settings: {
-            GEMINI_TTS_VOICE: voice,
+            GEMINI_VOICE: voice,
             KNOWLEDGE_BASE: knowledgeBase,
           }
         })
