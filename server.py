@@ -478,9 +478,48 @@ async def livekit_webhook(request: Request):
         elif event_type == "participant_joined":
             # Just another way to track if we miss sip_inbound_call
             participant = data.get("participant", {})
+            room = data.get("room", {})
+            room_name = room.get("name", "")
             if "sip" in participant.get("identity", ""):
                 phone = participant.get("name", participant.get("identity", "Unknown"))
                 await log_incoming_call(phone=phone, status="joined_room")
+                
+                # If this is an inbound call (not an outbound call we initiated), dispatch the AI agent!
+                if room_name.startswith("inbound-"):
+                    url = await eff("LIVEKIT_URL")
+                    key = await eff("LIVEKIT_API_KEY")
+                    secret = await eff("LIVEKIT_API_SECRET")
+                    
+                    if url and key and secret:
+                        try:
+                            from livekit import api as lk_api
+                            ctx = ssl.create_default_context()
+                            ctx.check_hostname = False
+                            ctx.verify_mode = ssl.CERT_NONE
+                            session = aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=ctx))
+                            lk = lk_api.LiveKitAPI(url=url, api_key=key, api_secret=secret, session=session)
+                            
+                            # Retrieve the default inbound agent profile (if any) or fallback to defaults
+                            from db import get_agent_profile
+                            metadata = {
+                                "phone_number": phone,
+                                "is_inbound": True
+                            }
+                            # Optional: Hardcode your inbound agent profile ID here if needed,
+                            # e.g., metadata["agent_profile_id"] = "your_inbound_profile_uuid"
+                            
+                            await lk.agent_dispatch.create_dispatch(
+                                lk_api.CreateAgentDispatchRequest(
+                                    agent_name="outbound-caller",  # The worker name in agent.py is 'outbound-caller'
+                                    room=room_name,
+                                    metadata=json.dumps(metadata),
+                                )
+                            )
+                            await log_error("webhook", f"Agent dispatched for INBOUND call in room {room_name}", "", "info")
+                            await lk.aclose()
+                            await session.close()
+                        except Exception as e:
+                            logger.error(f"Failed to dispatch agent for inbound call: {e}")
                 
         return {"status": "ok"}
     except Exception as e:
