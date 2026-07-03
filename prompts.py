@@ -234,33 +234,40 @@ INDUSTRY_PROMPTS = {
 
 def build_prompt(lead_name: str, business_name: str, industry: str, custom_prompt: str = None, place: str = "your area") -> str:
     """
-    Build the final system prompt.
+    Build the final system prompt for the Gemini Live agent.
 
-    Structure:
-      1. Industry base prompt  (always present — sets tone, language, tools, escalation)
-      2. PROFILE OVERRIDES     (appended when a profile system_prompt is set — persona / style only)
-      3. Call context block    (lead / business / industry / place)
+    Priority:
+      1. custom_prompt (from Agent Profile DB) — used AS THE FULL PROMPT.
+         Variable substitution is applied, then a call context block is appended.
+      2. Industry base prompt from INDUSTRY_PROMPTS — used ONLY when no custom_prompt exists.
+      3. DEFAULT_SYSTEM_PROMPT — last resort when industry not found either.
 
-    The profile's system_prompt should contain ONLY persona/style/language overrides,
-    NOT a full replacement script.  The industry base ensures tools and escalation
-    instructions are always active regardless of which profile is selected.
+    The profile's system_prompt is the COMPLETE persona/script, NOT a partial override.
     """
-    base = INDUSTRY_PROMPTS.get(industry, DEFAULT_SYSTEM_PROMPT)
+    ctx_block = (
+        f"\n\nContext:\n"
+        f"Lead: {lead_name or 'there'}\n"
+        f"Business: {business_name or 'Swaram'}\n"
+        f"Industry: {industry or 'General Support'}\n"
+        f"Place: {place or 'your area'}"
+    )
 
-    # Apply variable substitution on the base
-    base = base.replace("{business_name}", business_name or "Swaram")
-    base = base.replace("{industry}", industry or "General Support")
-    base = base.replace("{place}", place or "your area")
-    base = base.replace("{lead_name}", lead_name or "there")
+    def _substitute(text: str) -> str:
+        return (text
+                .replace("{business_name}", business_name or "Swaram")
+                .replace("{industry}",      industry      or "General Support")
+                .replace("{place}",         place         or "your area")
+                .replace("{lead_name}",     lead_name     or "there"))
 
-    # Append profile overrides — never replace the base
+    # ── Priority 1: Agent Profile prompt (sole source of truth) ───────────────
     if custom_prompt and custom_prompt.strip():
-        profile_block = custom_prompt.strip()
-        # Apply variable substitution on the profile block too
-        profile_block = profile_block.replace("{business_name}", business_name or "Swaram")
-        profile_block = profile_block.replace("{industry}", industry or "General Support")
-        profile_block = profile_block.replace("{place}", place or "your area")
-        profile_block = profile_block.replace("{lead_name}", lead_name or "there")
-        base = base + f"\n\n# PROFILE OVERRIDES\n{profile_block}"
+        return _substitute(custom_prompt.strip()) + ctx_block
 
-    return base + f"\n\nContext:\nLead: {lead_name or 'there'}\nBusiness: {business_name or 'Swaram'}\nIndustry: {industry or 'General Support'}\nPlace: {place or 'your area'}"
+    # ── Priority 2: Industry base prompt ──────────────────────────────────────
+    base = INDUSTRY_PROMPTS.get(industry)
+    if base:
+        return _substitute(base) + ctx_block
+
+    # ── Priority 3: Generic fallback ──────────────────────────────────────────
+    return _substitute(DEFAULT_SYSTEM_PROMPT) + ctx_block
+

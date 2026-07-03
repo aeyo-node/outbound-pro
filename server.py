@@ -36,6 +36,7 @@ from db import (
     cleanup_unknown_rows, create_contact
 )
 from prompts import DEFAULT_SYSTEM_PROMPT
+from config import REALTIME_MODEL, CHAT_MODEL, DEFAULT_VOICE
 
 load_dotenv(".env", override=True)
 
@@ -131,8 +132,8 @@ class CallRequest(BaseModel):
 
 class AgentProfileRequest(BaseModel):
     name: str
-    voice: str = "Zephyr"
-    model: str = "gemini-3.1-flash-live-preview"
+    voice: str = DEFAULT_VOICE
+    model: str = REALTIME_MODEL
     system_prompt: Optional[str] = None
     enabled_tools: str = "[]"
     is_default: bool = False
@@ -207,19 +208,11 @@ async def init_demo_data():
         # 1. Insert Agent Profiles
         inserted_profiles = 0
         for name, prompt in INDUSTRY_PROMPTS.items():
-            if name in ["Vehicle Dealerships", "Finance / Loans"]:
-                voice = "Charon"
-            elif name in ["Consultancies", "Home Services"]:
-                voice = "Fenrir"
-            elif name in ["Real Estate", "Insurance", "EV Charging & Support"]:
-                voice = "Aoede"
-            else:
-                voice = "Kore"
             await db_client.table("agent_profiles").insert({
                 "id": str(uuid.uuid4()),
                 "name": name,
-                "voice": voice,
-                "model": "gemini-3.1-flash-live-preview",
+                "voice": DEFAULT_VOICE,
+                "model": REALTIME_MODEL,
                 "system_prompt": prompt,
                 "enabled_tools": "[]",
                 "is_default": 0,
@@ -358,14 +351,8 @@ async def api_dispatch_call(req: CallRequest):
     req_place = req_place or "your area"
 
     if not effective_voice:
-        if req_industry in ["Vehicle Dealerships", "Finance / Loans"]:
-            effective_voice = "Charon"
-        elif req_industry in ["Consultancies", "Home Services"]:
-            effective_voice = "Fenrir"
-        elif req_industry in ["Real Estate", "Insurance", "EV Charging & Support"]:
-            effective_voice = "Aoede"
-        else:
-            effective_voice = "Kore"
+        # No voice in profile — fall back to global default from config.py
+        effective_voice = os.getenv("GEMINI_VOICE", DEFAULT_VOICE)
 
     from prompts import build_prompt
     effective_prompt = build_prompt(req.lead_name, req.business_name, req_industry, effective_prompt, place=req_place)
@@ -1390,7 +1377,7 @@ async def api_chat_test(req: ChatRequest):
 
         from google.genai import types as _gtypes
         response = client.models.generate_content(
-            model="gemini-3.1-flash-lite-preview",
+            model=CHAT_MODEL,
             contents=history_contents,
             config=_gtypes.GenerateContentConfig(system_instruction=system_prompt),
         )
@@ -1423,15 +1410,15 @@ async def api_init_demo_data():
         if not profiles:
             await db.create_agent_profile(
                 name="Swaram AI (Default)",
-                voice="Zephyr",
-                model="gemini-3.1-flash-live-preview",
+                voice=DEFAULT_VOICE,
+                model=REALTIME_MODEL,
                 system_prompt="You are Swaram, a friendly AI assistant for EV charging.",
                 is_default=1
             )
             await db.create_agent_profile(
                 name="Sales Closer",
-                voice="Charon",
-                model="gemini-3.1-flash-live-preview",
+                voice=DEFAULT_VOICE,
+                model=REALTIME_MODEL,
                 system_prompt="You are a professional sales closer.",
                 is_default=0
             )

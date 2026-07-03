@@ -6,6 +6,7 @@ from typing import Optional
 
 logger = logging.getLogger("outbound-db")
 from collections import defaultdict
+from config import REALTIME_MODEL, DEFAULT_VOICE
 
 # ---------------------------------------------------------------------------
 # DEFAULTS — loaded from environment variables only.
@@ -15,8 +16,8 @@ DEFAULTS = {
     "LIVEKIT_API_KEY":         os.getenv("LIVEKIT_API_KEY", ""),
     "LIVEKIT_API_SECRET":      os.getenv("LIVEKIT_API_SECRET", ""),
     "GOOGLE_API_KEY":          os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY", ""),
-    "GEMINI_MODEL":            os.getenv("GEMINI_MODEL", "gemini-3.1-flash-live-preview"),
-    "GEMINI_VOICE":            os.getenv("GEMINI_VOICE", "Zephyr"),
+    "GEMINI_MODEL":            os.getenv("GEMINI_MODEL", REALTIME_MODEL),
+    "GEMINI_VOICE":            os.getenv("GEMINI_VOICE", DEFAULT_VOICE),
     "USE_GEMINI_REALTIME":     os.getenv("USE_GEMINI_REALTIME", "true"),
     "VOBIZ_SIP_DOMAIN":        os.getenv("VOBIZ_SIP_DOMAIN", ""),
     "VOBIZ_USERNAME":          os.getenv("VOBIZ_USERNAME", ""),
@@ -609,7 +610,7 @@ async def get_agent_profile(profile_id: str) -> Optional[dict]:
 
 
 async def create_agent_profile(
-    name: str, voice: str = "Zephyr", model: str = "gemini-3.1-flash-live-preview",
+    name: str, voice: str = DEFAULT_VOICE, model: str = REALTIME_MODEL,
     system_prompt: Optional[str] = None, enabled_tools: str = "[]", is_default: bool = False,
     place: Optional[str] = None, welcome_message: Optional[str] = None,
     speech_settings: str = "{}", call_settings: str = "{}"

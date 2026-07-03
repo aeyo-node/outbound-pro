@@ -753,6 +753,7 @@ class AppointmentTools(llm.ToolContext):
                 return
             from google import genai as _genai
             from google.genai import types as _gtypes
+            from config import CHAT_MODEL
             api_key = os.getenv("GOOGLE_API_KEY", "")
             if not api_key:
                 return
@@ -762,7 +763,7 @@ class AppointmentTools(llm.ToolContext):
             response = await asyncio.get_event_loop().run_in_executor(
                 None,
                 lambda: client.models.generate_content(
-                    model="gemini-2.0-flash-lite",
+                    model=CHAT_MODEL,
                     contents=prompt,
                     config=_gtypes.GenerateContentConfig(),
                 ),

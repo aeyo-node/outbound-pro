@@ -31,6 +31,7 @@ try:
 except ImportError:
     _HAS_ROOM_OPTIONS = False
 
+from config import REALTIME_MODEL, DEFAULT_VOICE, VAD_SILENCE_DURATION_MS, VAD_PREFIX_PADDING_MS, CTX_TRIGGER_TOKENS, CTX_TARGET_TOKENS
 from db import init_db, log_error, get_enabled_tools, get_all_settings
 from prompts import build_prompt
 from tools import AppointmentTools
@@ -101,47 +102,45 @@ from livekit.plugins.google import realtime
 def _build_session(tools: list, system_prompt: str, voice_override: Optional[str] = None, model_override: Optional[str] = None) -> AgentSession:
     """
     Build AgentSession with Gemini Live realtime.
+    All config comes from config.py constants — no hardcoding here.
 
     SILENCE-PREVENTION — all 3 configs required:
     1. SessionResumptionConfig(transparent=True)   → auto-reconnect on timeout
     2. ContextWindowCompressionConfig              → prevents freeze at token limit
     3. RealtimeInputConfig(END_SENSITIVITY_LOW)    → 2s VAD silence threshold
-
-    ⚠️  EndSensitivity MUST use END_SENSITIVITY_LOW (full string — not .LOW)
     """
-    raw_model = model_override or os.getenv("GEMINI_MODEL", "gemini-3.1-flash-live-preview")
-    
-    # Strip models/ prefix if present
-    if raw_model.startswith("models/"):
-        gemini_model = raw_model.replace("models/", "")
-    else:
-        gemini_model = raw_model
-    
-    gemini_voice = voice_override or os.getenv("GEMINI_VOICE", "Zephyr")
-    
-    logger.info("SESSION MODE: Gemini Live realtime (%s, voice=%s)", gemini_model, gemini_voice)
+    # ── Model: profile > env > config.py constant ──────────────────────────────
+    raw_model = model_override or os.getenv("GEMINI_MODEL", REALTIME_MODEL)
+    gemini_model = raw_model.replace("models/", "") if raw_model.startswith("models/") else raw_model
 
-    _realtime_input_cfg = None
+    # ── Voice: profile > env > config.py constant ─────────────────────────────
+    gemini_voice = voice_override or os.getenv("GEMINI_VOICE", DEFAULT_VOICE)
+
+    logger.info("[SESSION] Gemini Live | model=%s | voice=%s | prompt_len=%d",
+                gemini_model, gemini_voice, len(system_prompt))
+
+    _realtime_input_cfg     = None
     _session_resumption_cfg = None
-    _ctx_compression_cfg = None
+    _ctx_compression_cfg    = None
 
     try:
         from google.genai import types as _gt
         _realtime_input_cfg = _gt.RealtimeInputConfig(
             automatic_activity_detection=_gt.AutomaticActivityDetection(
                 end_of_speech_sensitivity=_gt.EndSensitivity.END_SENSITIVITY_LOW,
-                silence_duration_ms=2000,
-                prefix_padding_ms=200,
+                silence_duration_ms=VAD_SILENCE_DURATION_MS,
+                prefix_padding_ms=VAD_PREFIX_PADDING_MS,
             ),
         )
         _session_resumption_cfg = _gt.SessionResumptionConfig(transparent=True)
         _ctx_compression_cfg = _gt.ContextWindowCompressionConfig(
-            trigger_tokens=25600,
-            sliding_window=_gt.SlidingWindow(target_tokens=12800),
+            trigger_tokens=CTX_TRIGGER_TOKENS,
+            sliding_window=_gt.SlidingWindow(target_tokens=CTX_TARGET_TOKENS),
         )
-        logger.info("Silence-prevention configs applied (VAD LOW, transparent resumption, context compression)")
+        logger.info("[SESSION] Silence-prevention: VAD_LOW=%dms, transparent resumption, ctx_compression",
+                    VAD_SILENCE_DURATION_MS)
     except Exception as _cfg_err:
-        logger.warning("Could not build silence-prevention config: %s", _cfg_err)
+        logger.warning("[SESSION] Could not build silence-prevention config: %s", _cfg_err)
 
     realtime_kwargs: dict = dict(
         model=gemini_model,
@@ -154,7 +153,6 @@ def _build_session(tools: list, system_prompt: str, voice_override: Optional[str
         realtime_kwargs["session_resumption"]         = _session_resumption_cfg
         realtime_kwargs["context_window_compression"] = _ctx_compression_cfg
 
-    logger.info("FINAL REALTIME MODEL=%s", gemini_model)
     return AgentSession(llm=realtime.RealtimeModel(**realtime_kwargs), tools=tools)
 
 
@@ -355,11 +353,25 @@ async def entrypoint(ctx: agents.JobContext) -> None:
         import time
         _call_start_time = time.time()
 
+    # ── Comprehensive startup debug log ──────────────────────────────────────
+    _effective_model = model_override or os.getenv("GEMINI_MODEL", REALTIME_MODEL)
+    _effective_voice = voice_override or os.getenv("GEMINI_VOICE", DEFAULT_VOICE)
+    await _log("info",
+        f"\n{'='*60}\n"
+        f"  CALL START DEBUG\n"
+        f"  Campaign ID   : {campaign_id or 'N/A'}\n"
+        f"  Agent Profile : {profile.get('name') if profile else 'N/A'} ({agent_profile_id or 'none'})\n"
+        f"  Voice         : {_effective_voice}\n"
+        f"  Realtime Model: {_effective_model}\n"
+        f"  Prompt Length : {len(system_prompt)} chars\n"
+        f"  Prompt Preview: {system_prompt[:200]}...\n"
+        f"{'='*60}"
+    )
+
     # ── Build and start Gemini Live session ───────────────────────────────────
-    gemini_model = os.getenv("GEMINI_MODEL", "gemini-3.1-flash-live-preview")
-    await _log("info", f"Building Gemini Live session — model={gemini_model}")
+    await _log("info", f"[AGENT] Building Gemini Live session | model={_effective_model} | voice={_effective_voice}")
     active_tools = tool_ctx.build_tool_list(enabled_tools)
-    await _log("info", f"Active tools: {len(active_tools)} loaded")
+    await _log("info", f"[AGENT] Active tools: {len(active_tools)} loaded")
 
     session = _build_session(tools=active_tools, system_prompt=system_prompt, voice_override=voice_override, model_override=model_override)
     tool_ctx.session = session
@@ -418,11 +430,13 @@ async def entrypoint(ctx: agents.JobContext) -> None:
 
     # Use RoomOptions if available (non-deprecated), else fall back
     # NEVER use close_on_disconnect=True with SIP
+    # Pass system_prompt into OutboundAssistant so the Agent layer also
+    # carries the instructions (prevents empty-string override of RealtimeModel).
     if _HAS_ROOM_OPTIONS:
         from livekit.agents import RoomOptions as _RO
         _session_kwargs = dict(
             room=ctx.room,
-            agent=OutboundAssistant(instructions=""),
+            agent=OutboundAssistant(instructions=system_prompt),
             room_options=_RO(input_options=RoomInputOptions(
                 close_on_disconnect=False,
             )),
@@ -430,13 +444,15 @@ async def entrypoint(ctx: agents.JobContext) -> None:
     else:
         _session_kwargs = dict(
             room=ctx.room,
-            agent=OutboundAssistant(instructions=""),
+            agent=OutboundAssistant(instructions=system_prompt),
             room_input_options=RoomInputOptions(
                 close_on_disconnect=False,
             ),
         )
     await session.start(**_session_kwargs)
-    await _log("info", "Agent session started — Gemini Live active")
+    await _log("info",
+        f"[AGENT] Gemini Live session STARTED | model={_effective_model} | voice={_effective_voice} "
+        f"| instructions_len={len(system_prompt)}")
 
     # (Greeting logic removed. Agent will rely purely on system prompt.)
 
