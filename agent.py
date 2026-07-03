@@ -335,17 +335,21 @@ async def entrypoint(ctx: agents.JobContext) -> None:
             return
         await _log("info", f"Dialing {phone_number} via trunk {trunk_id}")
         try:
-            await ctx.api.sip.create_sip_participant(
-                api.CreateSIPParticipantRequest(
-                    room_name=ctx.room.name,
-                    sip_trunk_id=trunk_id,
-                    sip_call_to=phone_number,
-                    participant_identity=f"sip_{phone_number}",
-                    wait_until_answered=True,   # blocks until call is answered
-                )
+            req_payload = api.CreateSIPParticipantRequest(
+                room_name=ctx.room.name,
+                sip_trunk_id=trunk_id,
+                sip_call_to=phone_number,
+                participant_identity=f"sip_{phone_number}",
+                wait_until_answered=True,   # blocks until call is answered
             )
+            await _log("info", f"[SIP AUDIT] Sending CreateSIPParticipantRequest: room_name={req_payload.room_name}, sip_trunk_id={req_payload.sip_trunk_id}, sip_call_to={req_payload.sip_call_to}, identity={req_payload.participant_identity}")
+            
+            resp = await ctx.api.sip.create_sip_participant(req_payload)
+            await _log("info", f"[SIP AUDIT] Received CreateSIPParticipant Response: {resp}")
         except Exception as exc:
-            await _log("error", f"SIP dial FAILED for {phone_number}: {exc}")
+            import traceback
+            err_trace = traceback.format_exc()
+            await _log("error", f"[SIP AUDIT] SIP dial FAILED for {phone_number}. \nException: {exc}\nTraceback: {err_trace}")
             ctx.shutdown()
             return
         await _log("info", f"Call ANSWERED — {phone_number} picked up")
