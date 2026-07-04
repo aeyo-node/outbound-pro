@@ -148,14 +148,6 @@ def _build_session(tools: list, system_prompt: str, voice_override: Optional[str
         api_key=os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_GEMINI_API_KEY"),
     )
     
-    try:
-        from livekit.agents.llm import ChatContext
-        _chat_ctx = ChatContext()
-        _chat_ctx.append(role="user", text="[SYSTEM: The user has answered the call. Please begin the conversation immediately following your instructions.]")
-        realtime_kwargs["chat_ctx"] = _chat_ctx
-    except Exception as e:
-        logger.warning("[SESSION] Failed to inject chat_ctx for greeting: %s", e)
-            
     if _realtime_input_cfg is not None:
         realtime_kwargs["realtime_input_config"]      = _realtime_input_cfg
         realtime_kwargs["session_resumption"]         = _session_resumption_cfg

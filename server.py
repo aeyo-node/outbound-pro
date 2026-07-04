@@ -247,17 +247,26 @@ async def api_get_livekit_rooms():
         rooms_resp = await lk.room.list_rooms(lk_api.ListRoomsRequest())
         rooms = []
         for r in rooms_resp.rooms:
-            rooms.append({
-                "sid": r.sid, "name": r.name, "empty_timeout": r.empty_timeout,
-                "max_participants": r.max_participants, "creation_time": r.creation_time,
-                "num_participants": r.num_participants
-            })
+            # Only show real agent call rooms — exclude SIP infra, test, and empty rooms
+            name = r.name
+            is_real_call = (
+                name.startswith("camp-") or        # outbound campaign calls
+                name.startswith("call-")           # inbound calls created by server
+            )
+            has_participants = r.num_participants > 0
+            if is_real_call and has_participants:
+                rooms.append({
+                    "sid": r.sid, "name": name, "empty_timeout": r.empty_timeout,
+                    "max_participants": r.max_participants, "creation_time": r.creation_time,
+                    "num_participants": r.num_participants
+                })
         await lk.aclose()
         await session.close()
         return {"rooms": rooms}
     except Exception as e:
         logger.error(f"Error fetching rooms: {e}")
         return {"rooms": []}
+
 
 @app.post("/api/livekit/token")
 async def api_generate_livekit_token(req: dict):
@@ -467,64 +476,78 @@ async def livekit_webhook(request: Request):
         body = await request.body()
         data = json.loads(body.decode("utf-8"))
         event_type = data.get("event")
-        
-        # When a SIP call comes in, LiveKit sends various events.
-        # Let's log 'participant_joined' if it's a SIP participant, or 'sip_inbound_call'.
+        logger.info(f"[WEBHOOK] Received event: {event_type}")
+
         if event_type == "sip_inbound_call":
             phone = data.get("sip_call", {}).get("from_uri", "Unknown")
             await log_incoming_call(phone=phone, status="received")
-            await log_error("webhook", f"Inbound SIP Call from {phone}", json.dumps(data), "info")
-            
+            logger.info(f"[WEBHOOK] Inbound SIP Call from {phone}")
+
         elif event_type == "participant_joined":
-            # Just another way to track if we miss sip_inbound_call
             participant = data.get("participant", {})
             room = data.get("room", {})
             room_name = room.get("name", "")
-            if "sip" in participant.get("identity", ""):
-                phone = participant.get("name", participant.get("identity", "Unknown"))
+            identity = participant.get("identity", "")
+            logger.info(f"[WEBHOOK] participant_joined room={room_name} identity={identity}")
+
+            # Only dispatch for SIP participants in inbound rooms
+            if "sip" in identity.lower() and room_name.startswith("inbound-"):
+                phone = participant.get("name", identity)
                 await log_incoming_call(phone=phone, status="joined_room")
-                
-                # If this is an inbound call (not an outbound call we initiated), dispatch the AI agent!
-                if room_name.startswith("inbound-"):
-                    url = await eff("LIVEKIT_URL")
-                    key = await eff("LIVEKIT_API_KEY")
-                    secret = await eff("LIVEKIT_API_SECRET")
-                    
-                    if url and key and secret:
+                logger.info(f"[WEBHOOK] Inbound SIP participant joined. Dispatching agent for room={room_name}")
+
+                url = await eff("LIVEKIT_URL")
+                key = await eff("LIVEKIT_API_KEY")
+                secret = await eff("LIVEKIT_API_SECRET")
+
+                if not all([url, key, secret]):
+                    logger.error("[WEBHOOK] LiveKit credentials missing — cannot dispatch agent")
+                else:
+                    try:
+                        # Look up the default inbound profile
+                        from db import get_default_inbound_profile
+                        inbound_profile = None
                         try:
-                            from livekit import api as lk_api
-                            ctx = ssl.create_default_context()
-                            ctx.check_hostname = False
-                            ctx.verify_mode = ssl.CERT_NONE
-                            session = aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=ctx))
-                            lk = lk_api.LiveKitAPI(url=url, api_key=key, api_secret=secret, session=session)
-                            
-                            # Retrieve the default inbound agent profile (if any) or fallback to defaults
-                            from db import get_agent_profile
-                            metadata = {
-                                "phone_number": phone,
-                                "is_inbound": True
-                            }
-                            # Optional: Hardcode your inbound agent profile ID here if needed,
-                            # e.g., metadata["agent_profile_id"] = "your_inbound_profile_uuid"
-                            
-                            await lk.agent_dispatch.create_dispatch(
-                                lk_api.CreateAgentDispatchRequest(
-                                    agent_name="outbound-caller",  # The worker name in agent.py is 'outbound-caller'
-                                    room=room_name,
-                                    metadata=json.dumps(metadata),
-                                )
+                            inbound_profile = await get_default_inbound_profile()
+                        except Exception:
+                            pass
+
+                        metadata: dict = {
+                            "phone_number": "",   # empty = inbound (no outbound dial)
+                            "is_inbound": True,
+                            "caller_phone": phone,
+                        }
+                        if inbound_profile:
+                            metadata["agent_profile_id"] = inbound_profile.get("id", "")
+                            logger.info(f"[WEBHOOK] Using inbound profile: {inbound_profile.get('name')} ({metadata['agent_profile_id']})")
+                        else:
+                            logger.info("[WEBHOOK] No default inbound profile — using system default")
+
+                        from livekit import api as lk_api
+                        ctx = ssl.create_default_context()
+                        ctx.check_hostname = False
+                        ctx.verify_mode = ssl.CERT_NONE
+                        session = aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=ctx))
+                        lk = lk_api.LiveKitAPI(url=url, api_key=key, api_secret=secret, session=session)
+                        await lk.agent_dispatch.create_dispatch(
+                            lk_api.CreateAgentDispatchRequest(
+                                agent_name="outbound-caller",
+                                room=room_name,
+                                metadata=json.dumps(metadata),
                             )
-                            await log_error("webhook", f"Agent dispatched for INBOUND call in room {room_name}", "", "info")
-                            await lk.aclose()
-                            await session.close()
-                        except Exception as e:
-                            logger.error(f"Failed to dispatch agent for inbound call: {e}")
-                
+                        )
+                        logger.info(f"[WEBHOOK] ✅ Agent dispatched for inbound call room={room_name}")
+                        await lk.aclose()
+                        await session.close()
+                    except Exception as e:
+                        import traceback
+                        logger.error(f"[WEBHOOK] ❌ Failed to dispatch agent: {e}\n{traceback.format_exc()}")
+
         return {"status": "ok"}
     except Exception as e:
         logger.error(f"Webhook error: {e}")
         return {"status": "error", "message": str(e)}
+
 
 
 # ── Stats ─────────────────────────────────────────────────────────────────────

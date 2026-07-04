@@ -609,6 +609,17 @@ async def get_agent_profile(profile_id: str) -> Optional[dict]:
     return result.data if result else None
 
 
+async def get_default_inbound_profile() -> Optional[dict]:
+    """Return the profile marked is_default=1, or the first profile if none are marked."""
+    db = await _adb()
+    result = await db.table("agent_profiles").select("*").eq("is_default", 1).limit(1).execute()
+    if result and result.data:
+        return result.data[0]
+    # Fallback: return first available profile
+    fallback = await db.table("agent_profiles").select("*").order("created_at", desc=False).limit(1).execute()
+    return fallback.data[0] if fallback and fallback.data else None
+
+
 async def create_agent_profile(
     name: str, voice: str = DEFAULT_VOICE, model: str = REALTIME_MODEL,
     system_prompt: Optional[str] = None, enabled_tools: str = "[]", is_default: bool = False,
