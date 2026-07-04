@@ -221,14 +221,34 @@ export function AgentProfiles() {
                 <div className="bg-[#0A0A0A] border border-white/10 rounded-xl p-4">
                   <div className="flex items-center justify-between mb-2">
                     <h4 className="text-sm font-medium text-white">Book Appointment</h4>
-                    <input type="checkbox" checked={formData.enabled_tools.includes("book_appointment")} onChange={() => {}} className="accent-[#FFD166]" />
+                    <input 
+                      type="checkbox" 
+                      checked={formData.enabled_tools.includes("book_appointment")} 
+                      onChange={(e) => {
+                        const newTools = e.target.checked 
+                          ? [...formData.enabled_tools, "book_appointment"]
+                          : formData.enabled_tools.filter(t => t !== "book_appointment");
+                        setFormData({...formData, enabled_tools: newTools});
+                      }} 
+                      className="accent-[#FFD166]" 
+                    />
                   </div>
                   <p className="text-xs text-gray-500">Allows the agent to schedule meetings in Google Calendar.</p>
                 </div>
                 <div className="bg-[#0A0A0A] border border-white/10 rounded-xl p-4">
                   <div className="flex items-center justify-between mb-2">
                     <h4 className="text-sm font-medium text-white">Transfer Call</h4>
-                    <input type="checkbox" checked={formData.enabled_tools.includes("transfer_call")} onChange={() => {}} className="accent-[#FFD166]" />
+                    <input 
+                      type="checkbox" 
+                      checked={formData.enabled_tools.includes("transfer_call")} 
+                      onChange={(e) => {
+                        const newTools = e.target.checked 
+                          ? [...formData.enabled_tools, "transfer_call"]
+                          : formData.enabled_tools.filter(t => t !== "transfer_call");
+                        setFormData({...formData, enabled_tools: newTools});
+                      }} 
+                      className="accent-[#FFD166]" 
+                    />
                   </div>
                   <p className="text-xs text-gray-500">Allows the agent to route the call to a human representative.</p>
                 </div>
