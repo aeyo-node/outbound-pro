@@ -254,10 +254,10 @@ async def api_get_livekit_rooms():
             })
         await lk.aclose()
         await session.close()
-        return rooms
+        return {"rooms": rooms}
     except Exception as e:
         logger.error(f"Error fetching rooms: {e}")
-        return []
+        return {"rooms": []}
 
 @app.post("/api/livekit/token")
 async def api_generate_livekit_token(req: dict):

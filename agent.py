@@ -149,9 +149,9 @@ def _build_session(tools: list, system_prompt: str, voice_override: Optional[str
     )
     
     try:
-        from livekit.agents.llm import ChatContext, ChatMessage
+        from livekit.agents.llm import ChatContext
         _chat_ctx = ChatContext()
-        _chat_ctx.messages.append(ChatMessage(role="user", content="[SYSTEM: The user has answered the call. Please begin the conversation immediately following your instructions.]"))
+        _chat_ctx.append(role="user", text="[SYSTEM: The user has answered the call. Please begin the conversation immediately following your instructions.]")
         realtime_kwargs["chat_ctx"] = _chat_ctx
     except Exception as e:
         logger.warning("[SESSION] Failed to inject chat_ctx for greeting: %s", e)
