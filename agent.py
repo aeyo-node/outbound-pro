@@ -109,9 +109,8 @@ def _build_session(tools: list, system_prompt: str, voice_override: Optional[str
     2. ContextWindowCompressionConfig              → prevents freeze at token limit
     3. RealtimeInputConfig(END_SENSITIVITY_LOW)    → 2s VAD silence threshold
     """
-    # ── Model: profile > env > config.py constant ──────────────────────────────
-    raw_model = model_override or os.getenv("GEMINI_MODEL", REALTIME_MODEL)
-    gemini_model = raw_model.replace("models/", "") if raw_model.startswith("models/") else raw_model
+    # ── Model: ALWAYS from config.py — no overrides allowed ──────────────────
+    gemini_model = REALTIME_MODEL
 
     # ── Voice: profile > env > config.py constant ─────────────────────────────
     gemini_voice = voice_override or os.getenv("GEMINI_VOICE", DEFAULT_VOICE)
@@ -199,7 +198,7 @@ async def entrypoint(ctx: agents.JobContext) -> None:
             place          = data.get("place", place)
             custom_prompt  = data.get("system_prompt")
             voice_override = data.get("voice_override")
-            model_override = data.get("model_override")
+            # model_override intentionally NOT read from metadata — config.py REALTIME_MODEL is always used
             tools_override = data.get("tools_override")
             agent_profile_id = data.get("agent_profile_id")
             campaign_id = data.get("campaign_id")
@@ -361,7 +360,8 @@ async def entrypoint(ctx: agents.JobContext) -> None:
         _call_start_time = time.time()
 
     # ── Comprehensive startup debug log ──────────────────────────────────────
-    _effective_model = model_override or os.getenv("GEMINI_MODEL", REALTIME_MODEL)
+    # ── ALWAYS use config.py — no env var override, no DB override ─────────────
+    _effective_model = REALTIME_MODEL
     _effective_voice = voice_override or os.getenv("GEMINI_VOICE", DEFAULT_VOICE)
     await _log("info",
         f"\n{'='*60}\n"

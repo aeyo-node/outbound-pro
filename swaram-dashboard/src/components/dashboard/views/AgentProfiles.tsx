@@ -17,8 +17,8 @@ export function AgentProfiles() {
   // Form state
   const [formData, setFormData] = useState({
     name: "",
-    voice: "Aoede",
-    model: "gemini-2.0-flash-exp",
+    voice: "Zephyr",
+    model: "gemini-3.1-flash-live-preview",
     system_prompt: "",
     welcome_message: "",
     enabled_tools: "[]",
@@ -78,8 +78,8 @@ export function AgentProfiles() {
     setEditingProfile(null);
     setFormData({
       name: "New Agent",
-      voice: "Aoede",
-      model: "gemini-2.0-flash-exp",
+      voice: "Zephyr",
+      model: "gemini-3.1-flash-live-preview",
       system_prompt: "",
       welcome_message: "",
       enabled_tools: "[]",
@@ -244,11 +244,45 @@ export function AgentProfiles() {
                     onChange={e => setFormData({...formData, voice: e.target.value})}
                     className="w-full bg-[#0A0A0A] border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-[#FFD166]/50 text-sm"
                   >
-                    <option value="Aoede">Aoede</option>
-                    <option value="Charon">Charon</option>
-                    <option value="Fenrir">Fenrir</option>
-                    <option value="Kore">Kore</option>
-                    <option value="Puck">Puck</option>
+                    <optgroup label="✨ Bright & Clear">
+                      <option value="Zephyr">Zephyr — Warm, natural (Default)</option>
+                      <option value="Autonoe">Autonoe — Bright &amp; clear</option>
+                      <option value="Callirrhoe">Callirrhoe — Easy-going</option>
+                      <option value="Leda">Leda — Youthful</option>
+                      <option value="Sulafat">Sulafat — Warm</option>
+                      <option value="Vindemiatrix">Vindemiatrix — Gentle</option>
+                    </optgroup>
+                    <optgroup label="🎤 Smooth &amp; Professional">
+                      <option value="Aoede">Aoede — Smooth, breezy</option>
+                      <option value="Kore">Kore — Firm</option>
+                      <option value="Puck">Puck — Upbeat</option>
+                      <option value="Charon">Charon — Informative</option>
+                      <option value="Achird">Achird — Friendly</option>
+                      <option value="Gacrux">Gacrux — Mature</option>
+                      <option value="Iocaste">Iocaste — Smooth</option>
+                      <option value="Zubenelgenubi">Zubenelgenubi — Casual</option>
+                    </optgroup>
+                    <optgroup label="🧔 Deep &amp; Authoritative">
+                      <option value="Fenrir">Fenrir — Excitable</option>
+                      <option value="Alnilam">Alnilam — Firm</option>
+                      <option value="Algieba">Algieba — Smooth</option>
+                      <option value="Rasalgethi">Rasalgethi — Informative</option>
+                      <option value="Sadachbia">Sadachbia — Lively</option>
+                      <option value="Sadaltager">Sadaltager — Knowledgeable</option>
+                      <option value="Schedar">Schedar — Even-tempered</option>
+                      <option value="Umbriel">Umbriel — Easy-going</option>
+                    </optgroup>
+                    <optgroup label="🌍 Expressive">
+                      <option value="Erinome">Erinome — Clear, precise</option>
+                      <option value="Despina">Despina — Smooth</option>
+                      <option value="Enceladus">Enceladus — Breathy</option>
+                      <option value="Algenib">Algenib — Gravelly</option>
+                      <option value="Electra">Electra — Soft</option>
+                      <option value="Muninn">Muninn — Steady</option>
+                      <option value="Nashira">Nashira — Animated</option>
+                      <option value="Oberon">Oberon — Smooth</option>
+                      <option value="Orus">Orus — Firm</option>
+                    </optgroup>
                   </select>
                 </div>
                 <div className="pt-4 border-t border-white/10 space-y-4">

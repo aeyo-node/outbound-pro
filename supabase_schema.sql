@@ -95,8 +95,8 @@ ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS agent_profile_id TEXT;
 CREATE TABLE IF NOT EXISTS agent_profiles (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
-    voice TEXT NOT NULL DEFAULT 'Aoede',
-    model TEXT NOT NULL DEFAULT 'gemini-2.0-flash-exp',
+    voice TEXT NOT NULL DEFAULT 'Zephyr',
+    model TEXT NOT NULL DEFAULT 'gemini-3.1-flash-live-preview',
     system_prompt TEXT,
     enabled_tools TEXT DEFAULT '[]',
     is_default INTEGER DEFAULT 0,

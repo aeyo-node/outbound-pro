@@ -47,8 +47,8 @@ export async function GET() {
           body: JSON.stringify({
             id: crypto.randomUUID(),
             name: name,
-            voice: "Aoede",
-            model: "gemini-2.0-flash-exp",
+            voice: "Zephyr",
+            model: "gemini-3.1-flash-live-preview",
             system_prompt: prompt,
             enabled_tools: "[]",
             is_default: false,

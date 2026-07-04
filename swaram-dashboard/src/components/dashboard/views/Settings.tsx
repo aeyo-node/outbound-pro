@@ -418,14 +418,16 @@ export function Settings() {
                 </div>
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-400">Gemini Model</label>
+                <label className="text-sm font-medium text-gray-400">Gemini Realtime Model <span className="text-[#FFD166] text-xs">(locked in config.py)</span></label>
                 <input 
                   type="text" 
                   name="GEMINI_MODEL"
-                  value={settings.GEMINI_MODEL || "gemini-2.0-flash-exp"}
+                  value={settings.GEMINI_MODEL || "gemini-3.1-flash-live-preview"}
                   onChange={handleChange}
-                  className="w-full bg-[#0A0A0A] border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#FFD166]/50 transition-colors"
+                  readOnly
+                  className="w-full bg-[#0A0A0A] border border-white/10 rounded-xl px-4 py-3 text-gray-400 focus:outline-none cursor-not-allowed opacity-60 transition-colors"
                 />
+                <p className="text-xs text-gray-600">Model is managed via config.py. Always uses gemini-3.1-flash-live-preview.</p>
               </div>
             </div>
           </div>
