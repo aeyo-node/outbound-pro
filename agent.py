@@ -104,10 +104,9 @@ def _build_session(tools: list, system_prompt: str, voice_override: Optional[str
     Build AgentSession with Gemini Live realtime.
     All config comes from config.py constants — no hardcoding here.
 
-    SILENCE-PREVENTION — all 3 configs required:
-    1. SessionResumptionConfig(transparent=True)   → auto-reconnect on timeout
-    2. ContextWindowCompressionConfig              → prevents freeze at token limit
-    3. RealtimeInputConfig(END_SENSITIVITY_LOW)    → 2s VAD silence threshold
+    NOTE: gemini-3.1-flash-live-preview does NOT support advanced session configs
+    (RealtimeInputConfig, SessionResumptionConfig, ContextWindowCompressionConfig).
+    Passing them causes APIError 1011. Use minimal config only.
     """
     # ── Model: ALWAYS from config.py — no overrides allowed ──────────────────
     gemini_model = REALTIME_MODEL
@@ -118,42 +117,22 @@ def _build_session(tools: list, system_prompt: str, voice_override: Optional[str
     logger.info("[SESSION] Gemini Live | model=%s | voice=%s | prompt_len=%d",
                 gemini_model, gemini_voice, len(system_prompt))
 
-    _realtime_input_cfg     = None
-    _session_resumption_cfg = None
-    _ctx_compression_cfg    = None
-
-    try:
-        from google.genai import types as _gt
-        _realtime_input_cfg = _gt.RealtimeInputConfig(
-            automatic_activity_detection=_gt.AutomaticActivityDetection(
-                end_of_speech_sensitivity=_gt.EndSensitivity.END_SENSITIVITY_LOW,
-                silence_duration_ms=VAD_SILENCE_DURATION_MS,
-                prefix_padding_ms=VAD_PREFIX_PADDING_MS,
-            ),
-        )
-        _session_resumption_cfg = _gt.SessionResumptionConfig(transparent=True)
-        _ctx_compression_cfg = _gt.ContextWindowCompressionConfig(
-            trigger_tokens=CTX_TRIGGER_TOKENS,
-            sliding_window=_gt.SlidingWindow(target_tokens=CTX_TARGET_TOKENS),
-        )
-        logger.info("[SESSION] Silence-prevention: VAD_LOW=%dms, transparent resumption, ctx_compression",
-                    VAD_SILENCE_DURATION_MS)
-    except Exception as _cfg_err:
-        logger.warning("[SESSION] Could not build silence-prevention config: %s", _cfg_err)
-
-    realtime_kwargs: dict = dict(
-        model=gemini_model,
-        voice=gemini_voice,
-        instructions=system_prompt,
-        api_key=os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_GEMINI_API_KEY"),
+    api_key = (
+        os.getenv("GOOGLE_API_KEY")
+        or os.getenv("GEMINI_API_KEY")
+        or os.getenv("GOOGLE_GEMINI_API_KEY")
     )
-    
-    if _realtime_input_cfg is not None:
-        realtime_kwargs["realtime_input_config"]      = _realtime_input_cfg
-        realtime_kwargs["session_resumption"]         = _session_resumption_cfg
-        realtime_kwargs["context_window_compression"] = _ctx_compression_cfg
 
-    return AgentSession(llm=realtime.RealtimeModel(**realtime_kwargs), tools=tools)
+    return AgentSession(
+        llm=realtime.RealtimeModel(
+            model=gemini_model,
+            voice=gemini_voice,
+            instructions=system_prompt,
+            api_key=api_key,
+        ),
+        tools=tools,
+    )
+
 
 
 
