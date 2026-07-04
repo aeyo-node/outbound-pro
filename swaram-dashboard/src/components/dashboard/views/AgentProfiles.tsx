@@ -21,7 +21,7 @@ export function AgentProfiles() {
     model: "gemini-3.1-flash-live-preview",
     system_prompt: "",
     welcome_message: "",
-    enabled_tools: "[]",
+    enabled_tools: [] as string[],
     is_default: false,
     place: "",
     speech_settings: {
@@ -67,7 +67,7 @@ export function AgentProfiles() {
       model: p.model,
       system_prompt: p.system_prompt || "",
       welcome_message: p.welcome_message || "",
-      enabled_tools: p.enabled_tools || "[]",
+      enabled_tools: Array.isArray(p.enabled_tools) ? p.enabled_tools : [],
       is_default: !!p.is_default,
       place: p.place || "",
       speech_settings: parsedSpeech
@@ -82,7 +82,7 @@ export function AgentProfiles() {
       model: "gemini-3.1-flash-live-preview",
       system_prompt: "",
       welcome_message: "",
-      enabled_tools: "[]",
+      enabled_tools: [],
       is_default: false,
       place: "",
       speech_settings: { fillers: false, laugh: false, speed: 1.0, custom_instructions: "" }
