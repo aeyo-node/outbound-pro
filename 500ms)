@@ -1,0 +1,3 @@
+[main 4c37a74] fix: force Gemini 3.1 model, fix 40s latency (VAD 2000ms-, lock config.py as single source of truth
+ 4 files changed, 61 insertions(+), 8 deletions(-)
+ create mode 100644 scratch/migrate_profiles_to_31.py
