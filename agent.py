@@ -265,14 +265,17 @@ async def entrypoint(ctx: agents.JobContext) -> None:
     else:
         await _log("info", f"PROMPT SOURCE: industry default for '{industry}' (no profile, no metadata prompt)")
 
-    # ── Pull voice / model from profile (only if not already overridden by metadata) ──
+    # ── Pull voice from profile. MODEL IS ALWAYS FROM config.py — never from DB ──
+    # The profile 'model' field in the DB is IGNORED. config.py REALTIME_MODEL is
+    # the single source of truth. This prevents stale DB values (e.g. gemini-2.5)
+    # from overriding the correct Gemini 3.1 model.
+    model_override = None  # Always force config.py REALTIME_MODEL
     if profile:
         if not voice_override and profile.get("voice"):
             voice_override = profile["voice"]
             await _log("info", f"Voice set from profile: {voice_override}")
-        if not model_override and profile.get("model"):
-            model_override = profile["model"]
-            await _log("info", f"Model set from profile: {model_override}")
+        if profile.get("model") and profile["model"] != REALTIME_MODEL:
+            await _log("warning", f"Profile model '{profile.get('model')}' IGNORED — using config.py REALTIME_MODEL='{REALTIME_MODEL}'")
 
     system_prompt = build_prompt(
         lead_name=lead_name, business_name=business_name,

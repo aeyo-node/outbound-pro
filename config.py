@@ -25,9 +25,9 @@ MAX_OUTPUT_TOKENS = 2048
 # ── Native audio enabled (always True for Gemini Live) ────────────────────────
 ENABLE_NATIVE_AUDIO = True
 
-# ── VAD / silence settings ─────────────────────────────────────────────────────
-VAD_SILENCE_DURATION_MS = 2000
-VAD_PREFIX_PADDING_MS   = 200
+# ── VAD / silence settings ────────────────────────────────────────────────────────────
+VAD_SILENCE_DURATION_MS = 500   # How long silence before agent speaks (was 2000ms — too slow)
+VAD_PREFIX_PADDING_MS   = 100   # Pre-speech padding (was 200ms)
 
 # ── Context window compression ─────────────────────────────────────────────────
 CTX_TRIGGER_TOKENS = 25600

@@ -14,7 +14,7 @@ mkdir -p /data/agent_docs 2>/dev/null || mkdir -p data/agent_docs
 echo "📋 Configuration:"
 echo "   LiveKit:   ${LIVEKIT_URL}"
 echo "   Supabase:  ${SUPABASE_URL}"
-echo "   Voice:     ${GEMINI_TTS_VOICE:-Aoede}"
+echo "   Voice:     ${GEMINI_VOICE:-Zephyr}"
 
 # Next.js proxy target — inside Docker both run in same container
 export BACKEND_URL="http://localhost:8000"
