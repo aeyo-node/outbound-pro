@@ -443,7 +443,18 @@ async def entrypoint(ctx: agents.JobContext) -> None:
         f"[AGENT] Gemini Live session STARTED | model={_effective_model} | voice={_effective_voice} "
         f"| instructions_len={len(system_prompt)}")
 
-    # (Greeting logic removed. Agent will rely purely on system prompt.)
+    # (Greeting logic was removed, but we MUST trigger the agent to speak first on outbound calls, otherwise VAD waits 20s)
+    if phone_number:
+        try:
+            if hasattr(session, "generate_reply"):
+                asyncio.create_task(
+                    session.generate_reply(
+                        "The call just connected. You are the caller. Speak first immediately using the greeting defined in your system prompt."
+                    )
+                )
+                await _log("info", "Injected initial response trigger via generate_reply()")
+        except Exception as e:
+            await _log("warning", f"Could not inject initial greeting trigger: {e}")
 
     # ── Optional S3 call recording via LiveKit Egress ─────────────────────────
     if phone_number:
