@@ -1,6 +1,14 @@
 services:
+  # ── Global Logging Policy ────────────────────────────────
+  x-logging: &default-logging
+    driver: "json-file"
+    options:
+      max-size: "50m"
+      max-file: "2"
+
   # ── Your existing app (UNCHANGED) ──────────────────────────
   swaram:
+    <<: *default-logging
     build: .
     restart: unless-stopped
     shm_size: '512m'
@@ -29,6 +37,7 @@ services:
 
   # ── Redis (state coordination for LiveKit + Egress + SIP) ──
   redis:
+    <<: *default-logging
     image: redis:7-alpine
     restart: unless-stopped
     network_mode: "host"
@@ -42,6 +51,7 @@ services:
 
   # ── LiveKit Server ─────────────────────────────────────────
   livekit:
+    <<: *default-logging
     image: livekit/livekit-server:latest
     restart: unless-stopped
     network_mode: "host"
@@ -56,6 +66,7 @@ services:
 
   # ── Egress (unlimited call recordings!) ────────────────────
   livekit-egress:
+    <<: *default-logging
     image: livekit/egress:latest
     restart: unless-stopped
     network_mode: "host"
@@ -72,6 +83,7 @@ services:
 
   # ── SIP (telephony — inbound + outbound calls) ────────────
   livekit-sip:
+    <<: *default-logging
     image: livekit/sip:latest
     restart: unless-stopped
     network_mode: "host"
