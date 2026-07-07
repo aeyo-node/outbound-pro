@@ -21,6 +21,7 @@ export function AgentProfiles() {
     model: "gemini-3.1-flash-live-preview",
     system_prompt: "",
     welcome_message: "",
+    knowledge_base: "",
     enabled_tools: [] as string[],
     is_default: false,
     place: "",
@@ -67,6 +68,7 @@ export function AgentProfiles() {
       model: p.model,
       system_prompt: p.system_prompt || "",
       welcome_message: p.welcome_message || "",
+      knowledge_base: p.knowledge_base || "",
       enabled_tools: Array.isArray(p.enabled_tools) ? p.enabled_tools : [],
       is_default: !!p.is_default,
       place: p.place || "",
@@ -82,6 +84,7 @@ export function AgentProfiles() {
       model: "gemini-3.1-flash-live-preview",
       system_prompt: "",
       welcome_message: "",
+      knowledge_base: "",
       enabled_tools: [],
       is_default: false,
       place: "",
@@ -186,10 +189,20 @@ export function AgentProfiles() {
                 className="w-full bg-[#0A0A0A] border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#FFD166]/50 resize-none text-sm leading-relaxed"
               />
             </div>
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-gray-400 uppercase">Knowledge Base</label>
+              <textarea 
+                rows={4}
+                value={formData.knowledge_base}
+                onChange={e => setFormData({...formData, knowledge_base: e.target.value})}
+                placeholder="Enter facts, FAQs, or any knowledge the agent should have access to..."
+                className="w-full bg-[#0A0A0A] border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#FFD166]/50 resize-none text-sm leading-relaxed"
+              />
+            </div>
             <div className="space-y-2 flex-1">
               <label className="text-xs font-medium text-gray-400 uppercase">System Prompt</label>
               <textarea 
-                rows={12}
+                rows={6}
                 value={formData.system_prompt}
                 onChange={e => setFormData({...formData, system_prompt: e.target.value})}
                 placeholder="You are an expert sales assistant..."

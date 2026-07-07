@@ -1,24 +1,46 @@
 #!/bin/bash
-# ── Setup Daily Disk Cleanup ────────────────────────────────────────────────
+# ═══════════════════════════════════════════════════════════════
+#  setup_cron.sh — Registers:
+#   1. Daily full cleanup at 3:00 AM
+#   2. SSH login health check via /etc/profile.d/
+# ═══════════════════════════════════════════════════════════════
 
-SCRIPT_PATH="$(realpath cleanup.sh)"
+CLEANUP_SCRIPT="$(cd "$(dirname "$0")" && pwd)/cleanup.sh"
 
-if [ ! -f "$SCRIPT_PATH" ]; then
-    echo "❌ Error: cleanup.sh not found in the current directory."
+if [ ! -f "$CLEANUP_SCRIPT" ]; then
+    echo "❌ Error: cleanup.sh not found at $CLEANUP_SCRIPT"
     exit 1
 fi
 
-# Make cleanup script executable
-chmod +x "$SCRIPT_PATH"
+chmod +x "$CLEANUP_SCRIPT"
 
-# Check if cron job already exists
-(crontab -l 2>/dev/null | grep -q "$SCRIPT_PATH")
-if [ $? -eq 0 ]; then
-    echo "✅ Daily cleanup cron job is already configured."
+# ── 1. Daily cron at 3:00 AM ──────────────────────────────────
+CRON_CMD="0 3 * * * bash $CLEANUP_SCRIPT >> /var/log/swaram_cleanup.log 2>&1"
+if crontab -l 2>/dev/null | grep -qF "$CLEANUP_SCRIPT"; then
+    echo "✅ Daily cleanup cron already registered."
 else
-    # Add to crontab to run at 3:00 AM every day
-    (crontab -l 2>/dev/null; echo "0 3 * * * $SCRIPT_PATH >> /var/log/swaram_cleanup.log 2>&1") | crontab -
-    echo "✅ Successfully scheduled daily cleanup at 3:00 AM."
+    (crontab -l 2>/dev/null; echo "$CRON_CMD") | crontab -
+    echo "✅ Daily cleanup scheduled at 3:00 AM."
 fi
 
-echo "To view your active cron jobs, run: crontab -l"
+# ── 2. SSH login health check ─────────────────────────────────
+PROFILE_FILE="/etc/profile.d/swaram_health.sh"
+sudo tee "$PROFILE_FILE" > /dev/null << PROFILE
+#!/bin/bash
+# Swaram health check on SSH login
+if [ -f "$CLEANUP_SCRIPT" ]; then
+    bash "$CLEANUP_SCRIPT" --check
+fi
+PROFILE
+sudo chmod +x "$PROFILE_FILE"
+echo "✅ SSH login health check registered at $PROFILE_FILE"
+
+echo ""
+echo "Done! Every time you SSH into this server, you will see:"
+echo "  ✔ Disk usage status (warns at 75%, critical at 90%)"
+echo "  ✔ Docker container health"
+echo "  ✔ Memory usage"
+echo "  ✔ Auto-cleans stopped containers if >5 accumulate"
+echo ""
+echo "Full deep clean runs automatically every day at 3:00 AM."
+echo "To run a manual full clean now: sudo bash $CLEANUP_SCRIPT"

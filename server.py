@@ -139,6 +139,7 @@ class AgentProfileRequest(BaseModel):
     is_default: bool = False
     place: Optional[str] = None
     welcome_message: Optional[str] = None
+    knowledge_base: Optional[str] = None
     speech_settings: Optional[str] = None
     call_settings: Optional[str] = None
 
@@ -706,7 +707,8 @@ async def api_create_profile(req: AgentProfileRequest):
         is_default=req.is_default, place=req.place,
         welcome_message=req.welcome_message,
         speech_settings=req.speech_settings or "{}",
-        call_settings=req.call_settings or "{}"
+        call_settings=req.call_settings or "{}",
+        knowledge_base=req.knowledge_base or ""
     )
     return {"status": "created", "id": profile_id}
 

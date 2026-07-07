@@ -597,6 +597,27 @@ async def compress_contact_memory(phone: str, compressed: str) -> None:
 
 # ── Agent Profiles ────────────────────────────────────────────────────────────
 
+async def save_agent_profile(profile_id: str, name: str, voice: str, model: str, system_prompt: str, enabled_tools: str, is_default: bool = False, welcome_message: str = "", speech_settings: str = "{}", call_settings: str = "{}", place: str = "", knowledge_base: str = "") -> str:
+    db = await _adb()
+    # Force integer (Supabase INTEGER column expects 0 or 1, not boolean)
+    default_val = 1 if is_default in (True, 1, "true", "1") else 0
+    
+    row = {
+        "id": profile_id, "name": name, "voice": voice, "model": model,
+        "system_prompt": system_prompt, "enabled_tools": enabled_tools,
+        "is_default": default_val, "created_at": datetime.now().isoformat(),
+        "welcome_message": welcome_message, "speech_settings": speech_settings,
+        "call_settings": call_settings, "knowledge_base": knowledge_base
+    }
+    if place:
+        row["place"] = place
+
+    if default_val == 1:
+        await db.table("agent_profiles").update({"is_default": 0}).neq("id", "placeholder").execute()
+    await db.table("agent_profiles").upsert(row).execute()
+    return profile_id
+
+
 async def get_all_agent_profiles() -> list:
     db = await _adb()
     result = await db.table("agent_profiles").select("*").order("created_at").execute()
@@ -624,7 +645,7 @@ async def create_agent_profile(
     name: str, voice: str = DEFAULT_VOICE, model: str = REALTIME_MODEL,
     system_prompt: Optional[str] = None, enabled_tools: str = "[]", is_default: bool = False,
     place: Optional[str] = None, welcome_message: Optional[str] = None,
-    speech_settings: str = "{}", call_settings: str = "{}"
+    speech_settings: str = "{}", call_settings: str = "{}", knowledge_base: str = ""
 ) -> str:
     profile_id = str(uuid.uuid4())
     db = await _adb()
@@ -636,7 +657,7 @@ async def create_agent_profile(
         "system_prompt": system_prompt, "enabled_tools": enabled_tools,
         "is_default": default_val, "created_at": datetime.now().isoformat(),
         "welcome_message": welcome_message, "speech_settings": speech_settings,
-        "call_settings": call_settings
+        "call_settings": call_settings, "knowledge_base": knowledge_base
     }
     if place:
         row["place"] = place

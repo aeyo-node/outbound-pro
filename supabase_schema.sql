@@ -101,6 +101,7 @@ CREATE TABLE IF NOT EXISTS agent_profiles (
     enabled_tools TEXT DEFAULT '[]',
     is_default INTEGER DEFAULT 0,
     place TEXT,
+    knowledge_base TEXT DEFAULT '',
     created_at TEXT NOT NULL
 );
 ALTER TABLE agent_profiles DISABLE ROW LEVEL SECURITY;

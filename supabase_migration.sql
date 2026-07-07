@@ -19,9 +19,15 @@ END $$;
 
 DO $$
 BEGIN
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
                  WHERE table_name='agent_profiles' AND column_name='call_settings') THEN
     ALTER TABLE agent_profiles ADD COLUMN call_settings TEXT DEFAULT '{}';
+  END IF;
+
+  -- Add knowledge_base if missing
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                 WHERE table_name='agent_profiles' AND column_name='knowledge_base') THEN
+    ALTER TABLE agent_profiles ADD COLUMN knowledge_base TEXT DEFAULT '';
   END IF;
 END $$;
 
