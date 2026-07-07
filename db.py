@@ -598,16 +598,26 @@ async def compress_contact_memory(phone: str, compressed: str) -> None:
 # ── Agent Profiles ────────────────────────────────────────────────────────────
 
 async def save_agent_profile(profile_id: str, name: str, voice: str, model: str, system_prompt: str, enabled_tools: str, is_default: bool = False, welcome_message: str = "", speech_settings: str = "{}", call_settings: str = "{}", place: str = "", knowledge_base: str = "") -> str:
+    import json
     db = await _adb()
     # Force integer (Supabase INTEGER column expects 0 or 1, not boolean)
     default_val = 1 if is_default in (True, 1, "true", "1") else 0
+    
+    # Store knowledge_base inside call_settings to avoid DB schema migration
+    cs_dict = {}
+    try:
+        cs_dict = json.loads(call_settings) if call_settings else {}
+    except Exception:
+        pass
+    cs_dict["knowledge_base"] = knowledge_base
+    call_settings = json.dumps(cs_dict)
     
     row = {
         "id": profile_id, "name": name, "voice": voice, "model": model,
         "system_prompt": system_prompt, "enabled_tools": enabled_tools,
         "is_default": default_val, "created_at": datetime.now().isoformat(),
         "welcome_message": welcome_message, "speech_settings": speech_settings,
-        "call_settings": call_settings, "knowledge_base": knowledge_base
+        "call_settings": call_settings
     }
     if place:
         row["place"] = place
@@ -619,26 +629,59 @@ async def save_agent_profile(profile_id: str, name: str, voice: str, model: str,
 
 
 async def get_all_agent_profiles() -> list:
+    import json
     db = await _adb()
     result = await db.table("agent_profiles").select("*").order("created_at").execute()
-    return result.data or []
+    data = result.data or []
+    for row in data:
+        row["knowledge_base"] = ""
+        if row.get("call_settings"):
+            try:
+                cs = json.loads(row["call_settings"])
+                row["knowledge_base"] = cs.get("knowledge_base", "")
+            except Exception:
+                pass
+    return data
 
 
 async def get_agent_profile(profile_id: str) -> Optional[dict]:
+    import json
     db = await _adb()
     result = await db.table("agent_profiles").select("*").eq("id", profile_id).maybe_single().execute()
-    return result.data if result else None
-
+    data = result.data if result else None
+    if data:
+        data["knowledge_base"] = ""
+        if data.get("call_settings"):
+            try:
+                cs = json.loads(data["call_settings"])
+                data["knowledge_base"] = cs.get("knowledge_base", "")
+            except Exception:
+                pass
+    return data
 
 async def get_default_inbound_profile() -> Optional[dict]:
     """Return the profile marked is_default=1, or the first profile if none are marked."""
+    import json
     db = await _adb()
     result = await db.table("agent_profiles").select("*").eq("is_default", 1).limit(1).execute()
+    
+    data = None
     if result and result.data:
-        return result.data[0]
-    # Fallback: return first available profile
-    fallback = await db.table("agent_profiles").select("*").order("created_at", desc=False).limit(1).execute()
-    return fallback.data[0] if fallback and fallback.data else None
+        data = result.data[0]
+    else:
+        # Fallback: return first available profile
+        fallback = await db.table("agent_profiles").select("*").order("created_at", desc=False).limit(1).execute()
+        data = fallback.data[0] if fallback and fallback.data else None
+        
+    if data:
+        data["knowledge_base"] = ""
+        if data.get("call_settings"):
+            try:
+                cs = json.loads(data["call_settings"])
+                data["knowledge_base"] = cs.get("knowledge_base", "")
+            except Exception:
+                pass
+    return data
 
 
 async def create_agent_profile(
@@ -647,17 +690,27 @@ async def create_agent_profile(
     place: Optional[str] = None, welcome_message: Optional[str] = None,
     speech_settings: str = "{}", call_settings: str = "{}", knowledge_base: str = ""
 ) -> str:
+    import json
     profile_id = str(uuid.uuid4())
     db = await _adb()
     # Force integer (Supabase INTEGER column expects 0 or 1, not boolean)
     default_val = 1 if is_default in (True, 1, "true", "1") else 0
+    
+    # Store knowledge_base inside call_settings to avoid DB schema migration
+    cs_dict = {}
+    try:
+        cs_dict = json.loads(call_settings) if call_settings else {}
+    except Exception:
+        pass
+    cs_dict["knowledge_base"] = knowledge_base
+    call_settings = json.dumps(cs_dict)
     
     row = {
         "id": profile_id, "name": name, "voice": voice, "model": model,
         "system_prompt": system_prompt, "enabled_tools": enabled_tools,
         "is_default": default_val, "created_at": datetime.now().isoformat(),
         "welcome_message": welcome_message, "speech_settings": speech_settings,
-        "call_settings": call_settings, "knowledge_base": knowledge_base
+        "call_settings": call_settings
     }
     if place:
         row["place"] = place

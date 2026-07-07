@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Plus, Loader2, Save, Bot, Star } from "lucide-react";
+import { Plus, Loader2, Save, Bot, Star, Upload, FileText, Trash2 } from "lucide-react";
 import { TestAgentWidget } from "../TestAgentWidget";
 
 const API = "/api";
@@ -32,6 +32,8 @@ export function AgentProfiles() {
       custom_instructions: ""
     }
   });
+  const [documents, setDocuments] = useState<any[]>([]);
+  const [uploadingDoc, setUploadingDoc] = useState(false);
 
   const fetchProfiles = async () => {
     try {
@@ -50,12 +52,25 @@ export function AgentProfiles() {
     }
   };
 
+  const fetchDocuments = async (profileId: string) => {
+    try {
+      const res = await fetch(`${API}/profiles/${profileId}/documents`);
+      if (res.ok) {
+        const data = await res.json();
+        setDocuments(data.documents || []);
+      }
+    } catch (err) {
+      console.error("Failed to fetch documents", err);
+    }
+  };
+
   useEffect(() => {
     fetchProfiles();
   }, []);
 
   const handleSelectProfile = (p: any) => {
     setEditingProfile(p);
+    fetchDocuments(p.id);
     
     let parsedSpeech = { fillers: false, laugh: false, speed: 1.0, custom_instructions: "" };
     try {
@@ -78,6 +93,7 @@ export function AgentProfiles() {
 
   const handleCreateNew = () => {
     setEditingProfile(null);
+    setDocuments([]);
     setFormData({
       name: "New Agent",
       voice: "Zephyr",
@@ -119,8 +135,51 @@ export function AgentProfiles() {
       }
     } catch (err) {
       console.error(err);
+      alert("Failed to save profile. " + (err as Error).message);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0 || !editingProfile) return;
+    const file = e.target.files[0];
+    
+    setUploadingDoc(true);
+    const fd = new FormData();
+    fd.append("file", file);
+    
+    try {
+      const res = await fetch(`${API}/profiles/${editingProfile.id}/documents`, {
+        method: "POST",
+        body: fd
+      });
+      if (res.ok) {
+        await fetchDocuments(editingProfile.id);
+      } else {
+        alert("Upload failed.");
+      }
+    } catch (err) {
+      alert("Error uploading document.");
+    } finally {
+      setUploadingDoc(false);
+      e.target.value = "";
+    }
+  };
+
+  const handleDeleteDoc = async (filename: string) => {
+    if (!editingProfile) return;
+    if (!confirm(`Delete ${filename}?`)) return;
+    
+    try {
+      const res = await fetch(`${API}/profiles/${editingProfile.id}/documents/${encodeURIComponent(filename)}`, {
+        method: "DELETE"
+      });
+      if (res.ok) {
+        await fetchDocuments(editingProfile.id);
+      }
+    } catch (err) {
+      alert("Error deleting document.");
     }
   };
 
@@ -189,7 +248,7 @@ export function AgentProfiles() {
                 className="w-full bg-[#0A0A0A] border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#FFD166]/50 resize-none text-sm leading-relaxed"
               />
             </div>
-            <div className="space-y-2">
+            <div className="space-y-2 flex-1 flex flex-col">
               <label className="text-xs font-medium text-gray-400 uppercase">Knowledge Base</label>
               <textarea 
                 rows={4}
@@ -198,6 +257,34 @@ export function AgentProfiles() {
                 placeholder="Enter facts, FAQs, or any knowledge the agent should have access to..."
                 className="w-full bg-[#0A0A0A] border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#FFD166]/50 resize-none text-sm leading-relaxed"
               />
+              {editingProfile && (
+                <div className="mt-4 border border-white/10 rounded-xl p-4 bg-[#0A0A0A]">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="text-sm font-medium text-white">Reference Documents</h4>
+                    <label className="bg-white/5 hover:bg-white/10 text-white p-1.5 rounded cursor-pointer transition-colors" title="Upload Document">
+                      {uploadingDoc ? <Loader2 className="w-4 h-4 animate-spin text-[#FFD166]" /> : <Upload className="w-4 h-4" />}
+                      <input type="file" className="hidden" accept=".txt,.pdf" onChange={handleFileUpload} disabled={uploadingDoc} />
+                    </label>
+                  </div>
+                  {documents.length === 0 ? (
+                    <p className="text-xs text-gray-500 italic">No documents uploaded.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {documents.map((doc, idx) => (
+                        <div key={idx} className="flex items-center justify-between bg-white/5 p-2 rounded-lg group">
+                          <div className="flex items-center gap-2 overflow-hidden">
+                            <FileText className="w-4 h-4 text-gray-400 shrink-0" />
+                            <span className="text-xs text-gray-300 truncate">{doc.name}</span>
+                          </div>
+                          <button onClick={() => handleDeleteDoc(doc.name)} className="text-red-400 hover:text-red-300 opacity-0 group-hover:opacity-100 transition-opacity p-1">
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
             <div className="space-y-2 flex-1">
               <label className="text-xs font-medium text-gray-400 uppercase">System Prompt</label>
