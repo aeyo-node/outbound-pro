@@ -40,8 +40,13 @@ export function LiveOps() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || "Failed to generate token");
       
+      let lkUrl = data.url;
+      if (lkUrl.includes("livekit:7880")) {
+        lkUrl = `ws://${window.location.hostname}:7880`;
+      }
+      
       setToken(data.token);
-      setUrl(data.url);
+      setUrl(lkUrl);
       setBargeRoom(roomName);
     } catch (err: any) {
       alert("Error joining room: " + err.message);

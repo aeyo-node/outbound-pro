@@ -28,8 +28,13 @@ export function TestAgentWidget({ agentId }: { agentId: string }) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || "Failed to get token");
       
+      let lkUrl = data.url;
+      if (lkUrl.includes("livekit:7880")) {
+        lkUrl = `ws://${window.location.hostname}:7880`;
+      }
+      
       setToken(data.token);
-      setUrl(data.url);
+      setUrl(lkUrl);
       
       // Dispatch the agent to the room
       await fetch("/api/agent/test", {

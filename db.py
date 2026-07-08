@@ -405,21 +405,61 @@ async def log_call(
 
 async def get_campaign_call_logs(campaign_id: str) -> list:
     db = await _adb()
-    result = await db.table("call_logs").select("*").eq("campaign_id", campaign_id).order("timestamp", desc=True).limit(5000).execute()
-    return result.data or []
+    all_data = []
+    offset = 0
+    limit = 5000
+    while offset < limit:
+        chunk = min(1000, limit - offset)
+        result = await db.table("call_logs").select("*").eq("campaign_id", campaign_id).order("timestamp", desc=True).range(offset, offset + chunk - 1).execute()
+        data = result.data or []
+        if not data:
+            break
+        all_data.extend(data)
+        offset += len(data)
+        if len(data) < chunk:
+            break
+    return all_data
 
 async def get_all_calls(page: int = 1, limit: int = 5000) -> list:
     await cleanup_unknown_rows()
     db = await _adb()
-    offset = (page - 1) * limit
-    result = await db.table("call_logs").select("*").order("timestamp", desc=True).range(offset, offset + limit - 1).execute()
-    return result.data or []
+    
+    all_data = []
+    total_fetched = 0
+    base_offset = (page - 1) * limit
+    
+    while total_fetched < limit:
+        chunk = min(1000, limit - total_fetched)
+        current_offset = base_offset + total_fetched
+        result = await db.table("call_logs").select("*").order("timestamp", desc=True).range(current_offset, current_offset + chunk - 1).execute()
+        
+        data = result.data or []
+        if not data:
+            break
+        all_data.extend(data)
+        total_fetched += len(data)
+        if len(data) < chunk:
+            break
+            
+    return all_data
 
 
 async def get_calls_by_phone(phone: str) -> list:
     db = await _adb()
-    result = await db.table("call_logs").select("*").eq("phone_number", phone).order("timestamp", desc=True).limit(5000).execute()
-    return result.data or []
+    all_data = []
+    offset = 0
+    limit = 5000
+    while offset < limit:
+        chunk = min(1000, limit - offset)
+        result = await db.table("call_logs").select("*").eq("phone_number", phone).order("timestamp", desc=True).range(offset, offset + chunk - 1).execute()
+        data = result.data or []
+        if not data:
+            break
+        all_data.extend(data)
+        offset += len(data)
+        if len(data) < chunk:
+            break
+    return all_data
 
 
 async def update_call_notes(call_id: str, notes: str) -> bool:
