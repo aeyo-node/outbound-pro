@@ -334,6 +334,32 @@ async def entrypoint(ctx: agents.JobContext) -> None:
             import traceback
             err_trace = traceback.format_exc()
             await _log("error", f"[SIP AUDIT] SIP dial FAILED for {phone_number}. \nException: {exc}\nTraceback: {err_trace}")
+            # Log the failed call so it appears in campaign/outbound logs
+            try:
+                from db import log_call
+                sip_err = str(exc)
+                # Extract SIP status if present
+                if "sip status:" in sip_err.lower():
+                    import re
+                    m = re.search(r"sip status:\s*(\d+):\s*([\w ]+)", sip_err, re.IGNORECASE)
+                    fail_reason = f"SIP {m.group(1)}: {m.group(2).strip()}" if m else "SIP failure"
+                else:
+                    fail_reason = "SIP failure"
+                await log_call(
+                    phone_number=phone_number,
+                    lead_name=lead_name,
+                    outcome="failed",
+                    reason=fail_reason,
+                    duration_seconds=0,
+                    recording_url=None,
+                    campaign_id=campaign_id,
+                    business_name=business_name,
+                    industry=industry,
+                    place=place,
+                    notes=f"[FAILED] Call could not be placed. Error: {fail_reason}"
+                )
+            except Exception as log_err:
+                await _log("warning", f"Could not log failed call: {log_err}")
             ctx.shutdown()
             return
         await _log("info", f"Call ANSWERED — {phone_number} picked up")

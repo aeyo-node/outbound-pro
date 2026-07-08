@@ -335,6 +335,7 @@ async def log_call(
 
     try:
         await db.table("call_logs").insert(row).execute()
+        logger.info(f"[DB] Successfully inserted call log for {phone_number}")
     except Exception as e:
         logger.warning(f"Failed to insert call log (attempt 1): {e}")
         # Try stripping optional columns one by one
@@ -343,7 +344,7 @@ async def log_call(
                 row.pop(col)
         try:
             await db.table("call_logs").insert(row).execute()
-            logger.info("Call log saved on retry (stripped optional columns)")
+            logger.info(f"[DB] Call log saved on retry (stripped optional columns) for {phone_number}")
         except Exception as e2:
             logger.error(f"Failed to insert call log even after stripping columns: {e2}")
     
