@@ -63,6 +63,20 @@ services:
       redis:
         condition: service_healthy
 
+  # ── Egress (call recording to S3) ──────────────────────────
+  livekit-egress:
+    image: livekit/egress:latest
+    restart: unless-stopped
+    network_mode: "host"
+    logging: *default-logging
+    environment:
+      - EGRESS_CONFIG_FILE=/egress/config.yaml
+      - LIVEKIT_API_KEY=${LIVEKIT_API_KEY}
+      - LIVEKIT_API_SECRET=${LIVEKIT_API_SECRET}
+    volumes:
+      - ./livekit/egress.yaml:/egress/config.yaml
+    depends_on:
+      - livekit
 
   # ── SIP (telephony — inbound + outbound calls) ────────────
   livekit-sip:
