@@ -129,9 +129,14 @@ export function AgentProfiles() {
       if (res.ok) {
         const saved = await res.json();
         await fetchProfiles();
+        // For new profiles, saved contains the full profile row - select it
         if (!editingProfile && saved.id) {
           handleSelectProfile(saved);
         }
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        const msg = errData.detail || JSON.stringify(errData) || `HTTP ${res.status}`;
+        alert("Failed to save profile: " + msg);
       }
     } catch (err) {
       console.error(err);

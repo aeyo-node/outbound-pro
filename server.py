@@ -10,7 +10,7 @@ import certifi
 import aiohttp
 import urllib.parse
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Union
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Query, Request, UploadFile, File, Form
@@ -135,13 +135,19 @@ class AgentProfileRequest(BaseModel):
     voice: str = DEFAULT_VOICE
     model: str = REALTIME_MODEL
     system_prompt: Optional[str] = None
-    enabled_tools: str = "[]"
+    enabled_tools: Union[list, str] = []
     is_default: bool = False
     place: Optional[str] = None
     welcome_message: Optional[str] = None
     knowledge_base: Optional[str] = None
     speech_settings: Optional[str] = None
     call_settings: Optional[str] = None
+
+    @property
+    def enabled_tools_str(self) -> str:
+        if isinstance(self.enabled_tools, list):
+            return json.dumps(self.enabled_tools)
+        return self.enabled_tools or "[]"
 
 
 class PromptRequest(BaseModel):
@@ -703,18 +709,34 @@ async def api_get_profiles():
 async def api_create_profile(req: AgentProfileRequest):
     profile_id = await create_agent_profile(
         name=req.name, voice=req.voice, model=req.model,
-        system_prompt=req.system_prompt, enabled_tools=req.enabled_tools,
+        system_prompt=req.system_prompt, enabled_tools=req.enabled_tools_str,
         is_default=req.is_default, place=req.place,
         welcome_message=req.welcome_message,
         speech_settings=req.speech_settings or "{}",
         call_settings=req.call_settings or "{}",
         knowledge_base=req.knowledge_base or ""
     )
-    return {"status": "created", "id": profile_id}
+    # Return full profile so the frontend can immediately select it
+    db = await _adb()
+    row = await db.table("agent_profiles").select("*").eq("id", profile_id).single().execute()
+    return row.data if row.data else {"status": "created", "id": profile_id}
 
 
 @app.put("/api/profiles/{profile_id}")
-async def api_update_profile(profile_id: str, updates: dict):
+async def api_update_profile(profile_id: str, req: AgentProfileRequest):
+    updates = {
+        "name": req.name,
+        "voice": req.voice,
+        "model": req.model,
+        "system_prompt": req.system_prompt,
+        "enabled_tools": req.enabled_tools_str,
+        "is_default": 1 if req.is_default else 0,
+        "place": req.place,
+        "welcome_message": req.welcome_message,
+        "speech_settings": req.speech_settings or "{}",
+        "call_settings": req.call_settings or "{}",
+        "knowledge_base": req.knowledge_base or ""
+    }
     ok = await update_agent_profile(profile_id, updates)
     return {"status": "updated" if ok else "not_found"}
 
