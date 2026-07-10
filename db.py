@@ -763,15 +763,33 @@ async def create_agent_profile(
 
 
 async def update_agent_profile(profile_id: str, updates: dict) -> bool:
+    import json
     db = await _adb()
+    
+    # Normalize is_default to integer
     if "is_default" in updates:
         val = updates["is_default"]
         default_val = 1 if val in (True, 1, "true", "1") else 0
         updates["is_default"] = default_val
         if default_val == 1:
             await db.table("agent_profiles").update({"is_default": 0}).neq("id", "placeholder").execute()
+    
+    # knowledge_base is stored inside call_settings JSON (no separate DB column)
+    if "knowledge_base" in updates:
+        kb = updates.pop("knowledge_base")
+        # Fetch existing call_settings to merge
+        try:
+            existing = await db.table("agent_profiles").select("call_settings").eq("id", profile_id).single().execute()
+            cs_str = (existing.data or {}).get("call_settings") or "{}"
+            cs_dict = json.loads(cs_str) if cs_str else {}
+        except Exception:
+            cs_dict = {}
+        cs_dict["knowledge_base"] = kb
+        updates["call_settings"] = json.dumps(cs_dict)
+    
     result = await db.table("agent_profiles").update(updates).eq("id", profile_id).execute()
     return len(result.data or []) > 0
+
 
 
 async def delete_agent_profile(profile_id: str) -> bool:

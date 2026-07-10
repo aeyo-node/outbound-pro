@@ -135,7 +135,7 @@ class AgentProfileRequest(BaseModel):
     voice: str = DEFAULT_VOICE
     model: str = REALTIME_MODEL
     system_prompt: Optional[str] = None
-    enabled_tools: Union[list, str] = []
+    enabled_tools: Optional[Union[list, str]] = None
     is_default: bool = False
     place: Optional[str] = None
     welcome_message: Optional[str] = None
@@ -143,12 +143,14 @@ class AgentProfileRequest(BaseModel):
     speech_settings: Optional[str] = None
     call_settings: Optional[str] = None
 
-    @property
-    def enabled_tools_str(self) -> str:
-        if isinstance(self.enabled_tools, list):
-            return json.dumps(self.enabled_tools)
-        return self.enabled_tools or "[]"
-
+    def get_enabled_tools_str(self) -> str:
+        """Return enabled_tools as a JSON string regardless of how it was received."""
+        et = self.enabled_tools
+        if et is None:
+            return "[]"
+        if isinstance(et, list):
+            return json.dumps(et)
+        return str(et)
 
 class PromptRequest(BaseModel):
     prompt: str
@@ -709,7 +711,8 @@ async def api_get_profiles():
 async def api_create_profile(req: AgentProfileRequest):
     profile_id = await create_agent_profile(
         name=req.name, voice=req.voice, model=req.model,
-        system_prompt=req.system_prompt, enabled_tools=req.enabled_tools_str,
+        system_prompt=req.system_prompt,
+        enabled_tools=req.get_enabled_tools_str(),
         is_default=req.is_default, place=req.place,
         welcome_message=req.welcome_message,
         speech_settings=req.speech_settings or "{}",
@@ -718,8 +721,11 @@ async def api_create_profile(req: AgentProfileRequest):
     )
     # Return full profile so the frontend can immediately select it
     db = await _adb()
-    row = await db.table("agent_profiles").select("*").eq("id", profile_id).single().execute()
-    return row.data if row.data else {"status": "created", "id": profile_id}
+    try:
+        row = await db.table("agent_profiles").select("*").eq("id", profile_id).single().execute()
+        return row.data if row.data else {"status": "created", "id": profile_id}
+    except Exception:
+        return {"status": "created", "id": profile_id}
 
 
 @app.put("/api/profiles/{profile_id}")
@@ -729,16 +735,16 @@ async def api_update_profile(profile_id: str, req: AgentProfileRequest):
         "voice": req.voice,
         "model": req.model,
         "system_prompt": req.system_prompt,
-        "enabled_tools": req.enabled_tools_str,
+        "enabled_tools": req.get_enabled_tools_str(),
         "is_default": 1 if req.is_default else 0,
         "place": req.place,
         "welcome_message": req.welcome_message,
         "speech_settings": req.speech_settings or "{}",
-        "call_settings": req.call_settings or "{}",
         "knowledge_base": req.knowledge_base or ""
     }
     ok = await update_agent_profile(profile_id, updates)
     return {"status": "updated" if ok else "not_found"}
+
 
 
 @app.delete("/api/profiles/{profile_id}")
