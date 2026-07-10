@@ -104,34 +104,7 @@ async function dispatchCall(phone: string, serviceType: string): Promise<{ ok: b
   }
 }
 
-/* ─── Navbar ───────────────────────────────────────────────── */
-function Navbar() {
-  const [scrolled, setScrolled] = useState(false);
-  useEffect(() => {
-    const handler = () => setScrolled(window.scrollY > 50);
-    window.addEventListener("scroll", handler);
-    return () => window.removeEventListener("scroll", handler);
-  }, []);
 
-  return (
-    <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${scrolled ? "bg-black/80 backdrop-blur-xl border-b border-white/5" : ""}`}>
-      <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Headset className="w-6 h-6 text-[#FFD166]" />
-          <span className="text-xl font-semibold tracking-tight">swaram</span>
-        </div>
-        <div className="hidden md:flex items-center gap-8">
-          <a href="#features" className="text-sm text-gray-400 hover:text-white transition-colors">Features</a>
-          <a href="#usecases" className="text-sm text-gray-400 hover:text-white transition-colors">Use Cases</a>
-          <a href="#languages" className="text-sm text-gray-400 hover:text-white transition-colors">Languages</a>
-        </div>
-        <a href="/login" className="cta-btn text-sm !py-2.5 !px-5">
-          Dashboard <ArrowRight className="w-4 h-4" />
-        </a>
-      </div>
-    </nav>
-  );
-}
 
 /* ─── Hero ─────────────────────────────────────────────────── */
 function HeroSection() {
@@ -156,8 +129,8 @@ function HeroSection() {
         </p>
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-fade-up delay-300">
-          <a href="#usecases" className="cta-btn text-base">
-            <Mic className="w-5 h-5" /> Try Live Demo
+          <a href="/solutions" className="cta-btn text-base">
+            <Mic className="w-5 h-5" /> View Solutions
           </a>
           <a href="/login" className="cta-btn-outline text-base">
             Open Dashboard <ArrowRight className="w-4 h-4" />
@@ -312,7 +285,7 @@ function CTASection() {
             <h2 className="text-4xl md:text-5xl font-bold mb-4">Ready to automate<br /><span className="text-gradient">your voice operations?</span></h2>
             <p className="text-gray-400 max-w-lg mx-auto mb-8">Join enterprises across India using Swaram to handle thousands of calls daily in every language.</p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <a href="#usecases" className="cta-btn text-base"><Mic className="w-5 h-5" /> Try Live Demo</a>
+              <a href="/solutions" className="cta-btn text-base"><Mic className="w-5 h-5" /> View Solutions</a>
               <a href="/login" className="cta-btn-outline text-base">Access Dashboard <ArrowRight className="w-4 h-4" /></a>
             </div>
           </div>
@@ -322,26 +295,7 @@ function CTASection() {
   );
 }
 
-/* ─── Footer ───────────────────────────────────────────────── */
-function Footer() {
-  return (
-    <footer className="border-t border-white/5 py-12 px-6">
-      <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
-        <div className="flex items-center gap-2">
-          <Headset className="w-5 h-5 text-[#FFD166]" />
-          <span className="font-semibold text-lg">swaram</span>
-          <span className="text-xs text-gray-600 ml-2">സ്വരം</span>
-        </div>
-        <div className="flex items-center gap-6 text-sm text-gray-500">
-          <a href="#features" className="hover:text-white transition-colors">Features</a>
-          <a href="#usecases" className="hover:text-white transition-colors">Industries</a>
-          <a href="/login" className="hover:text-white transition-colors">Dashboard</a>
-        </div>
-        <p className="text-xs text-gray-600">© 2026 Swaram AI. All rights reserved.</p>
-      </div>
-    </footer>
-  );
-}
+
 
 /* ─── Page ─────────────────────────────────────────────────── */
 export default function LandingPage() {
@@ -352,12 +306,10 @@ export default function LandingPage() {
 
   return (
     <main>
-      <Navbar />
       <HeroSection />
       <FeaturesSection />
       <UseCasesSection />
       <CTASection />
-      <Footer />
     </main>
   );
 }

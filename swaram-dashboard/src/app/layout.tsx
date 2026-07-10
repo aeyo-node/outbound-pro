@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { ClientProviders } from "@/components/ClientProviders";
+import Navbar from "@/components/Navbar";
+import Footer from "@/components/Footer";
 
 export const metadata: Metadata = {
   title: "സ്വരം | Swaram — AI Voice Agents for India",
@@ -19,7 +21,11 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       </head>
       <body className="min-h-full flex flex-col font-sans" suppressHydrationWarning>
-        <ClientProviders>{children}</ClientProviders>
+        <ClientProviders>
+          <Navbar />
+          {children}
+          <Footer />
+        </ClientProviders>
       </body>
     </html>
   );
