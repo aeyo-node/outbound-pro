@@ -30,7 +30,10 @@ const RESOURCES = [
   { label: "Integrations", href: "/integrations" },
 ];
 
+import { usePathname } from "next/navigation";
+
 export default function Navbar() {
+  const pathname = usePathname();
   const [scrolled, setScrolled] = useState(false);
   const [solutionsOpen, setSolutionsOpen] = useState(false);
   const [industriesOpen, setIndustriesOpen] = useState(false);
@@ -61,6 +64,10 @@ export default function Navbar() {
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, []);
+
+  if (pathname.startsWith("/dashboard") || pathname.startsWith("/login")) {
+    return null;
+  }
 
   const closeAll = () => {
     setSolutionsOpen(false);
