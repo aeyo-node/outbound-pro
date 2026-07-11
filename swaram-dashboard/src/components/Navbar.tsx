@@ -65,7 +65,7 @@ export default function Navbar() {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  if (pathname.startsWith("/dashboard") || pathname.startsWith("/login")) {
+  if (pathname.startsWith("/app") || pathname.startsWith("/login")) {
     return null;
   }
 
