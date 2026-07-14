@@ -31,6 +31,9 @@ export default function AppDashboard() {
     const auth = localStorage.getItem("swaram_auth");
     if (auth === "true") {
       setAuthed(true);
+      const params = new URLSearchParams(window.location.search);
+      const tab = params.get("tab") as TabId;
+      if (tab) setActiveTab(tab);
     } else {
       window.location.href = "/login";
     }

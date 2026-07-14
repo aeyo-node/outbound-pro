@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Search, Bell, Menu, Zap, Crown, Building2 } from "lucide-react";
+import { Search, Bell, Menu, Zap, Crown, Building2, LogOut } from "lucide-react";
 
 export function TopHeader() {
   const [user, setUser] = useState<any>(null);
@@ -99,6 +99,17 @@ export function TopHeader() {
           <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#FFD166] to-[#FF9F1C] flex items-center justify-center text-black font-bold text-lg uppercase">
             {(user?.name || user?.email || "S").charAt(0)}
           </div>
+          <button 
+            onClick={() => {
+              fetch("/api/auth/logout", { method: "POST", headers: { Authorization: `Bearer ${localStorage.getItem("swaram_token")}` } });
+              localStorage.clear();
+              window.location.href = "/login";
+            }}
+            className="ml-2 text-gray-500 hover:text-red-400 transition-colors"
+            title="Logout"
+          >
+            <LogOut className="w-4 h-4" />
+          </button>
         </div>
       </div>
     </header>
