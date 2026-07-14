@@ -9,7 +9,7 @@ import { useBranding } from "@/lib/BrandingContext";
 export type TabId = 
   "overview" | "single_call" | "campaigns" | "crm" | "outbound" | 
   "incoming" | "ev_transactions" | "appointments" | "agent_profiles" | 
-  "live_ops" | "system_prompt" | "settings" | "analytics";
+  "live_ops" | "system_prompt" | "settings" | "analytics" | "billing" | "superadmin";
 
 interface SidebarProps {
   activeTab: TabId;
@@ -30,7 +30,12 @@ export function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
     { id: "appointments", label: "Demo Booked", icon: CalendarDays },
     { id: "live_ops", label: "Live Monitoring", icon: Headset, badge: "LIVE" },
     { id: "agent_profiles", label: "Agent Profiles", icon: UserSquare2 },
+    { id: "billing", label: "Billing & Plans", icon: CreditCard },
   ];
+
+  if (typeof window !== "undefined" && localStorage.getItem("swaram_role") === "superadmin") {
+    menuItems.push({ id: "superadmin", label: "Super Admin", icon: Shield, badge: "ADMIN" });
+  }
 
   const generalItems: { id: TabId; label: string; icon: React.ElementType }[] = [
     { id: "system_prompt", label: "System Prompt", icon: TerminalSquare },
@@ -150,22 +155,6 @@ export function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
 
       {/* Bottom card */}
       <div className="p-4 shrink-0 space-y-2">
-        {/* Admin link for superadmin */}
-        {typeof window !== "undefined" && localStorage.getItem("swaram_role") === "superadmin" && (
-          <a href="/admin"
-            className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-gray-400 hover:text-white hover:bg-white/5 transition-all"
-          >
-            <Shield className="w-4 h-4 text-[#a78bfa]" />
-            <span className="text-sm">Super Admin</span>
-          </a>
-        )}
-        {/* Billing */}
-        <a href="/billing"
-          className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-gray-400 hover:text-[#FFD166] hover:bg-[#FFD166]/5 transition-all"
-        >
-          <CreditCard className="w-4 h-4" />
-          <span className="text-sm">Billing & Plans</span>
-        </a>
         <div className="bg-gradient-to-br from-[#1C1C1E] to-[#0A0A0A] border border-white/10 rounded-2xl p-4 relative overflow-hidden">
           <div
             className="absolute top-0 right-0 w-24 h-24 rounded-full blur-xl"

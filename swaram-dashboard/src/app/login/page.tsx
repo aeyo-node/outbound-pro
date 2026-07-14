@@ -43,7 +43,7 @@ export default function LoginPage() {
       localStorage.setItem("swaram_user", JSON.stringify(data.user));
       localStorage.setItem("swaram_auth", "true"); // legacy compat
       // Redirect based on role
-      window.location.href = data.user.role === "superadmin" ? "/admin" : "/app";
+      window.location.href = "/app";
     } catch (err) {
       setError("Connection error. Please try again.");
       setLoading(false);
