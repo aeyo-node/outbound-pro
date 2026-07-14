@@ -349,7 +349,11 @@ async def api_agent_test(req: dict):
         raise HTTPException(500, f"Dispatch failed: {e}")
 
 @app.post("/api/call")
-async def api_dispatch_call(req: CallRequest):
+async def api_dispatch_call(request: Request, req: CallRequest):
+    from auth import get_current_user
+    user = await get_current_user(request)
+    tenant_id = user.get("tenant_id") if user else "system"
+
     url    = await eff("LIVEKIT_URL")
     key    = await eff("LIVEKIT_API_KEY")
     secret = await eff("LIVEKIT_API_SECRET")
@@ -397,6 +401,7 @@ async def api_dispatch_call(req: CallRequest):
         "place":          req_place,
         "service_type":   req_industry,
         "system_prompt":  effective_prompt,
+        "tenant_id":      tenant_id,
     }
     if effective_voice:  metadata["voice_override"]  = effective_voice
     if effective_model:  metadata["model_override"]  = effective_model
@@ -431,10 +436,25 @@ async def api_dispatch_call(req: CallRequest):
 
 # ── Calls ─────────────────────────────────────────────────────────────────────
 
+# Helper: build a tenant_id -> name map and inject into records
+async def _enrich_with_tenant_name(records: list) -> list:
+    """Inject a tenants.name value into each record so frontend can read c.tenants?.name"""
+    try:
+        from db import get_all_tenants
+        tenants = await get_all_tenants()
+        tenant_map = {t["id"]: t["name"] for t in tenants}
+    except Exception:
+        tenant_map = {}
+    for rec in records:
+        tid = rec.get("tenant_id", "system")
+        rec["tenants"] = {"name": tenant_map.get(tid, "System")}
+    return records
+
 @app.get("/api/calls")
 async def api_get_all_calls(request: Request, page: int = 1, limit: int = 5000, tenant_id: Optional[str] = Query(None)) -> list:
     target = await get_target_tenant(request, tenant_id)
-    return await get_all_calls(page, limit, tenant_id=target)
+    records = await get_all_calls(page, limit, tenant_id=target)
+    return await _enrich_with_tenant_name(records)
 
 @app.get("/api/calls/phone/{phone}")
 async def api_get_calls_by_phone(phone: str) -> list:
@@ -480,7 +500,8 @@ async def api_get_transactions(limit: int = 50):
 @app.get("/api/incoming_calls")
 async def api_get_incoming_calls(request: Request, limit: int = 50, tenant_id: Optional[str] = Query(None)):
     target = await get_target_tenant(request, tenant_id)
-    return await get_incoming_calls(limit=limit, tenant_id=target)
+    records = await get_incoming_calls(limit=limit, tenant_id=target)
+    return await _enrich_with_tenant_name(records)
 
 @app.post("/api/incoming_calls/delete-bulk")
 async def api_delete_incoming_calls_bulk(req: dict):
@@ -629,10 +650,12 @@ async def api_get_appointments(request: Request, date: Optional[str] = None, ten
             "industry": appt.get("industry") or "",
             "place": appt.get("place") or "",
             "notes": appt.get("notes") or "",
+            "tenant_id": appt.get("tenant_id", "system"),
             "tenants": appt.get("tenants"),
             "created_at": appt.get("created_at") or datetime.now().isoformat()
         })
-    return mapped
+    enriched = await _enrich_with_tenant_name(mapped)
+    return enriched
 
 
 @app.delete("/api/appointments/{appointment_id}")
@@ -921,7 +944,8 @@ async def api_delete_profile_link(profile_id: str, url: str):
 @app.get("/api/contacts")
 async def api_get_contacts_old(request: Request, tenant_id: Optional[str] = Query(None)):
     target = await get_target_tenant(request, tenant_id)
-    return await get_contacts(tenant_id=target)
+    records = await get_contacts(tenant_id=target)
+    return await _enrich_with_tenant_name(records)
 
 
 @app.post("/api/contacts")
@@ -959,7 +983,8 @@ async def api_delete_contacts_bulk(req: dict):
 @app.get("/api/campaigns")
 async def api_get_campaigns(request: Request, tenant_id: Optional[str] = Query(None)):
     target = await get_target_tenant(request, tenant_id)
-    return await get_all_campaigns(tenant_id=target)
+    records = await get_all_campaigns(tenant_id=target)
+    return await _enrich_with_tenant_name(records)
 
 
 @app.post("/api/campaigns")
@@ -1107,7 +1132,9 @@ async def api_clear_logs():
 @app.get("/api/crm")
 async def api_get_contacts(request: Request, tenant_id: Optional[str] = Query(None)):
     target = await get_target_tenant(request, tenant_id)
-    return {"data": await get_contacts(tenant_id=target)}
+    records = await get_contacts(tenant_id=target)
+    enriched = await _enrich_with_tenant_name(records)
+    return {"data": enriched}
 
 
 @app.get("/api/crm/calls")

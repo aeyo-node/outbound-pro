@@ -167,6 +167,7 @@ async def entrypoint(ctx: agents.JobContext) -> None:
     tools_override: Optional[str] = None
     agent_profile_id: Optional[str] = None
     campaign_id: Optional[str] = None
+    tenant_id_from_metadata = "system"
 
     if ctx.job.metadata:
         try:
@@ -182,6 +183,7 @@ async def entrypoint(ctx: agents.JobContext) -> None:
             tools_override = data.get("tools_override")
             agent_profile_id = data.get("agent_profile_id")
             campaign_id = data.get("campaign_id")
+            tenant_id_from_metadata = data.get("tenant_id", "system")
         except (json.JSONDecodeError, AttributeError):
             await _log("warning", "Invalid JSON in job metadata")
 
@@ -290,7 +292,7 @@ async def entrypoint(ctx: agents.JobContext) -> None:
         
     await _log("info", f"FINAL SYSTEM PROMPT:\n{system_prompt}")
     
-    tool_ctx = AppointmentTools(ctx, phone_number, lead_name, business_name, industry, place, agent_profile_id=agent_profile_id, campaign_id=campaign_id)
+    tool_ctx = AppointmentTools(ctx, phone_number, lead_name, business_name, industry, place, agent_profile_id=agent_profile_id, campaign_id=campaign_id, tenant_id=tenant_id_from_metadata)
 
     # DO NOT write voice_override/model_override to os.environ — it pollutes
     # subsequent calls running on the same worker process.
@@ -356,7 +358,8 @@ async def entrypoint(ctx: agents.JobContext) -> None:
                     business_name=business_name,
                     industry=industry,
                     place=place,
-                    notes=f"[FAILED] Call could not be placed. Error: {fail_reason}"
+                    notes=f"[FAILED] Call could not be placed. Error: {fail_reason}",
+                    tenant_id=tenant_id_from_metadata
                 )
             except Exception as log_err:
                 await _log("warning", f"Could not log failed call: {log_err}")
@@ -597,7 +600,8 @@ async def entrypoint(ctx: agents.JobContext) -> None:
                     business_name=business_name,
                     industry=industry,
                     place=place,
-                    notes=final_notes
+                    notes=final_notes,
+                    tenant_id=tenant_id_from_metadata
                 )
             except Exception as e:
                 await _log("warning", f"Failed to log call on disconnect: {e}")

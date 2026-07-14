@@ -330,12 +330,14 @@ async def log_call(
     duration_seconds: int, recording_url: Optional[str] = None, notes: Optional[str] = None,
     campaign_id: Optional[str] = None, business_name: Optional[str] = None, 
     industry: Optional[str] = None, place: Optional[str] = None,
+    tenant_id: str = "system"
 ) -> None:
     db = await _adb()
     row: dict = {
         "id": str(uuid.uuid4()), "phone_number": phone_number, "lead_name": lead_name,
         "outcome": outcome, "reason": reason, "duration_seconds": duration_seconds,
         "timestamp": datetime.now().isoformat(),
+        "tenant_id": tenant_id
     }
     if recording_url: row["recording_url"] = recording_url
     if notes: row["notes"] = notes

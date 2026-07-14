@@ -256,13 +256,14 @@ class MCPClient:
 class AppointmentTools(llm.ToolContext):
     """All function tools available to the appointment-booking agent."""
 
-    def __init__(self, ctx: agents.JobContext, phone_number: Optional[str] = None, lead_name: Optional[str] = None, business_name: Optional[str] = None, industry: Optional[str] = None, place: Optional[str] = None, agent_profile_id: Optional[str] = None, campaign_id: Optional[str] = None):
+    def __init__(self, ctx: agents.JobContext, phone_number: Optional[str] = None, lead_name: Optional[str] = None, business_name: Optional[str] = None, industry: Optional[str] = None, place: Optional[str] = None, agent_profile_id: Optional[str] = None, campaign_id: Optional[str] = None, tenant_id: str = "system"):
         self.ctx = ctx
         self.phone_number = phone_number
         self.lead_name = lead_name
         self.business_name = business_name
         self.industry = industry
         self.place = place
+        self.tenant_id = tenant_id
         self.whatsapp_number: Optional[str] = None
         self.agent_profile_id = agent_profile_id
         self.campaign_id = campaign_id
@@ -608,7 +609,8 @@ class AppointmentTools(llm.ToolContext):
                 lead_name=self.lead_name, outcome=outcome, reason=reason,
                 duration_seconds=duration, recording_url=self.recording_url,
                 notes=notes, campaign_id=self.campaign_id,
-                business_name=self.business_name, industry=self.industry, place=self.place
+                business_name=self.business_name, industry=self.industry, place=self.place,
+                tenant_id=getattr(self, "tenant_id", "system")
             )
             self._call_logged = True
         except Exception as exc:
