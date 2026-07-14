@@ -216,7 +216,7 @@ async def get_errors(limit: int = 100) -> list:
 async def get_incoming_calls(limit: int = 50, tenant_id: str = "system") -> list:
     db = await _adb()
     q = db.table("incoming_calls").select("*, tenants(name)")
-    if tenant_id != "system":
+    if tenant_id != "all":
         q = q.eq("tenant_id", tenant_id)
     result = await q.order("timestamp", desc=True).limit(limit).execute()
     return result.data or []
@@ -302,7 +302,7 @@ async def get_all_appointments(date_filter: Optional[str] = None, tenant_id: str
     query = db.table("appointments").select("*, tenants(name)").order("created_at", desc=True)
     if date_filter:
         query = query.eq("date", date_filter)
-    if tenant_id != "system":
+    if tenant_id != "all":
         query = query.eq("tenant_id", tenant_id)
     result = await query.execute()
     return result.data or []
@@ -443,7 +443,7 @@ async def get_all_calls(page: int = 1, limit: int = 5000, tenant_id: str = "syst
         chunk = min(1000, limit - total_fetched)
         current_offset = base_offset + total_fetched
         q = db.table("call_logs").select("*, tenants(name)")
-        if tenant_id != "system":
+        if tenant_id != "all":
             q = q.eq("tenant_id", tenant_id)
         result = await q.order("timestamp", desc=True).range(current_offset, current_offset + chunk - 1).execute()
         
@@ -485,7 +485,7 @@ async def update_call_notes(call_id: str, notes: str) -> bool:
 async def get_contacts(tenant_id: str = "system") -> list:
     db = await _adb()
     q = db.table("contacts").select("*, tenants(name)")
-    if tenant_id != "system":
+    if tenant_id != "all":
         q = q.eq("tenant_id", tenant_id)
     try:
         result = await q.order("created_at", desc=True).execute()
@@ -522,7 +522,7 @@ async def get_stats(tenant_id: str = "system") -> dict:
     offset = 0
     while True:
         q = db.table("call_logs").select("outcome, duration_seconds, timestamp")
-        if tenant_id != "system":
+        if tenant_id != "all":
             q = q.eq("tenant_id", tenant_id)
         chunk = (await q.order("timestamp", desc=True).range(offset, offset + 999).execute()).data or []
         rows.extend(chunk)
@@ -539,7 +539,7 @@ async def get_stats(tenant_id: str = "system") -> dict:
     
     # Incoming calls
     inc_q = db.table("incoming_calls").select("id")
-    if tenant_id != "system":
+    if tenant_id != "all":
         inc_q = inc_q.eq("tenant_id", tenant_id)
     incoming_rows = (await inc_q.execute()).data or []
     total_incoming = len(incoming_rows)
@@ -610,7 +610,7 @@ async def create_campaign(
 async def get_all_campaigns(tenant_id: str = "system") -> list:
     db = await _adb()
     q = db.table("campaigns").select("*, tenants(name)")
-    if tenant_id != "system":
+    if tenant_id != "all":
         q = q.eq("tenant_id", tenant_id)
     result = await q.order("created_at", desc=True).execute()
     return result.data or []
@@ -707,7 +707,7 @@ async def get_all_agent_profiles(tenant_id: str = "system") -> list:
     import json
     db = await _adb()
     q = db.table("agent_profiles").select("*, tenants(name)")
-    if tenant_id != "system":
+    if tenant_id != "all":
         q = q.eq("tenant_id", tenant_id)
     result = await q.order("created_at", desc=True).execute()
     data = result.data or []
@@ -1062,7 +1062,7 @@ async def get_all_transactions(limit: int = 50, tenant_id: str = "system") -> li
     await cleanup_unknown_rows()
     db = await _adb()
     q = db.table("transactions").select("*, tenants(name)")
-    if tenant_id != "system":
+    if tenant_id != "all":
         q = q.eq("tenant_id", tenant_id)
     result = await q.order("created_at", desc=True).limit(limit).execute()
     return result.data or []
@@ -1313,18 +1313,32 @@ async def get_analytics(tenant_id: str = "system", days: int = 30) -> dict:
     cutoff = (datetime.now() - timedelta(days=days)).isoformat()
 
     # All calls in window
-    q = db.table("call_logs").select(
-        "id, outcome, duration_seconds, timestamp, phone_number, business_name, place, agent_profile_id, campaign_id, recording_url"
-    ).gte("timestamp", cutoff)
-    if tenant_id != "system":
-        q = q.eq("tenant_id", tenant_id)
-    rows = (await q.execute()).data or []
+    rows = []
+    base_offset = 0
+    while True:
+        q = db.table("call_logs").select(
+            "id, outcome, duration_seconds, timestamp, phone_number, business_name, place, campaign_id, recording_url"
+        ).gte("timestamp", cutoff)
+        if tenant_id != "all":
+            q = q.eq("tenant_id", tenant_id)
+        chunk = (await q.range(base_offset, base_offset + 999).execute()).data or []
+        rows.extend(chunk)
+        if len(chunk) < 1000:
+            break
+        base_offset += 1000
 
     # All calls ever (for totals)
-    q_all = db.table("call_logs").select("id, outcome, duration_seconds")
-    if tenant_id != "system":
-        q_all = q_all.eq("tenant_id", tenant_id)
-    all_rows = (await q_all.execute()).data or []
+    all_rows = []
+    base_offset = 0
+    while True:
+        q_all = db.table("call_logs").select("id, outcome, duration_seconds")
+        if tenant_id != "all":
+            q_all = q_all.eq("tenant_id", tenant_id)
+        chunk = (await q_all.range(base_offset, base_offset + 999).execute()).data or []
+        all_rows.extend(chunk)
+        if len(chunk) < 1000:
+            break
+        base_offset += 1000
 
     # Basic KPIs
     total = len(rows)

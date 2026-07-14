@@ -93,7 +93,9 @@ async def get_target_tenant(request: Request, query_tenant: Optional[str] = None
     role = user.get("role")
     user_tenant = user.get("tenant_id")
     if role == "superadmin":
-        return query_tenant or "system"
+        if query_tenant == "" or query_tenant == "all":
+            return "all"
+        return query_tenant or "all"
     return user_tenant or "system"
 
 from fastapi.staticfiles import StaticFiles

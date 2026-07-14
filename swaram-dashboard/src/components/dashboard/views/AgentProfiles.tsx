@@ -13,6 +13,13 @@ export function AgentProfiles() {
   const [editingProfile, setEditingProfile] = useState<any>(null);
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState("functions");
+  const [isSuperadmin, setIsSuperadmin] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setIsSuperadmin(localStorage.getItem("swaram_role") === "superadmin");
+    }
+  }, []);
   
   // Form state
   const [formData, setFormData] = useState({
@@ -210,7 +217,10 @@ export function AgentProfiles() {
               if (p) handleSelectProfile(p);
             }}
           >
-            {profiles.map(p => <option key={p.id} value={p.id}>{p.name} {p.is_default ? '(Default)' : ''}</option>)}
+            {profiles.map(p => {
+              const clientSuffix = (isSuperadmin && p.tenants) ? ` - ${p.tenants.name}` : (isSuperadmin ? " - System" : "");
+              return <option key={p.id} value={p.id}>{p.name} {p.is_default ? '(Default)' : ''}{clientSuffix}</option>;
+            })}
           </select>
           <button 
             onClick={handleCreateNew}
