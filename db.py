@@ -213,6 +213,15 @@ async def get_errors(limit: int = 100) -> list:
     return result.data or []
 
 
+async def get_incoming_calls(limit: int = 50, tenant_id: str = "system") -> list:
+    db = await _adb()
+    q = db.table("incoming_calls").select("*, tenants(name)")
+    if tenant_id != "system":
+        q = q.eq("tenant_id", tenant_id)
+    result = await q.order("timestamp", desc=True).limit(limit).execute()
+    return result.data or []
+
+
 async def get_logs(level: Optional[str] = None, source: Optional[str] = None, limit: int = 200) -> list:
     db = await _adb()
     query = db.table("error_logs").select("*").order("timestamp", desc=True).limit(limit)
@@ -287,12 +296,14 @@ async def get_next_available(date: str, time: str) -> str:
     return "no open slots found in the next 7 days"
 
 
-async def get_all_appointments(date_filter: Optional[str] = None) -> list:
+async def get_all_appointments(date_filter: Optional[str] = None, tenant_id: str = "system") -> list:
     await cleanup_unknown_rows()
     db = await _adb()
-    query = db.table("appointments").select("*").order("created_at", desc=True)
+    query = db.table("appointments").select("*, tenants(name)").order("created_at", desc=True)
     if date_filter:
         query = query.eq("date", date_filter)
+    if tenant_id != "system":
+        query = query.eq("tenant_id", tenant_id)
     result = await query.execute()
     return result.data or []
 
@@ -420,7 +431,7 @@ async def get_campaign_call_logs(campaign_id: str) -> list:
             break
     return all_data
 
-async def get_all_calls(page: int = 1, limit: int = 5000) -> list:
+async def get_all_calls(page: int = 1, limit: int = 5000, tenant_id: str = "system") -> list:
     await cleanup_unknown_rows()
     db = await _adb()
     
@@ -431,7 +442,10 @@ async def get_all_calls(page: int = 1, limit: int = 5000) -> list:
     while total_fetched < limit:
         chunk = min(1000, limit - total_fetched)
         current_offset = base_offset + total_fetched
-        result = await db.table("call_logs").select("*").order("timestamp", desc=True).range(current_offset, current_offset + chunk - 1).execute()
+        q = db.table("call_logs").select("*, tenants(name)")
+        if tenant_id != "system":
+            q = q.eq("tenant_id", tenant_id)
+        result = await q.order("timestamp", desc=True).range(current_offset, current_offset + chunk - 1).execute()
         
         data = result.data or []
         if not data:
@@ -468,10 +482,13 @@ async def update_call_notes(call_id: str, notes: str) -> bool:
     return len(result.data or []) > 0
 
 
-async def get_contacts() -> list:
+async def get_contacts(tenant_id: str = "system") -> list:
+    db = await _adb()
+    q = db.table("contacts").select("*, tenants(name)")
+    if tenant_id != "system":
+        q = q.eq("tenant_id", tenant_id)
     try:
-        db = await _adb()
-        result = await db.table("contacts").select("*").order("created_at", desc=True).execute()
+        result = await q.order("created_at", desc=True).execute()
         return result.data or []
     except Exception:
         return []
@@ -498,10 +515,21 @@ async def create_contact(
 
 # ── Stats ─────────────────────────────────────────────────────────────────────
 
-async def get_stats() -> dict:
+async def get_stats(tenant_id: str = "system") -> dict:
     db = await _adb()
-    # Outbound calls
-    rows = (await db.table("call_logs").select("outcome, duration_seconds, timestamp").execute()).data or []
+    # Outbound calls — paginate to get ALL rows past Supabase's 1000-row limit
+    rows = []
+    offset = 0
+    while True:
+        q = db.table("call_logs").select("outcome, duration_seconds, timestamp")
+        if tenant_id != "system":
+            q = q.eq("tenant_id", tenant_id)
+        chunk = (await q.order("timestamp", desc=True).range(offset, offset + 999).execute()).data or []
+        rows.extend(chunk)
+        if len(chunk) < 1000:
+            break
+        offset += 1000
+
     total_calls    = len(rows)
     booked         = sum(1 for r in rows if r.get("outcome") == "booked")
     not_interested = sum(1 for r in rows if r.get("outcome") == "not_interested")
@@ -510,7 +538,10 @@ async def get_stats() -> dict:
     booking_rate   = round((booked / total_calls * 100) if total_calls else 0, 1)
     
     # Incoming calls
-    incoming_rows = (await db.table("incoming_calls").select("id").execute()).data or []
+    inc_q = db.table("incoming_calls").select("id")
+    if tenant_id != "system":
+        inc_q = inc_q.eq("tenant_id", tenant_id)
+    incoming_rows = (await inc_q.execute()).data or []
     total_incoming = len(incoming_rows)
 
     outcomes: dict = {}
@@ -576,9 +607,12 @@ async def create_campaign(
     return campaign_id
 
 
-async def get_all_campaigns() -> list:
+async def get_all_campaigns(tenant_id: str = "system") -> list:
     db = await _adb()
-    result = await db.table("campaigns").select("*").order("created_at", desc=True).execute()
+    q = db.table("campaigns").select("*, tenants(name)")
+    if tenant_id != "system":
+        q = q.eq("tenant_id", tenant_id)
+    result = await q.order("created_at", desc=True).execute()
     return result.data or []
 
 
@@ -669,10 +703,13 @@ async def save_agent_profile(profile_id: str, name: str, voice: str, model: str,
     return profile_id
 
 
-async def get_all_agent_profiles() -> list:
+async def get_all_agent_profiles(tenant_id: str = "system") -> list:
     import json
     db = await _adb()
-    result = await db.table("agent_profiles").select("*").order("created_at").execute()
+    q = db.table("agent_profiles").select("*, tenants(name)")
+    if tenant_id != "system":
+        q = q.eq("tenant_id", tenant_id)
+    result = await q.order("created_at", desc=True).execute()
     data = result.data or []
     for row in data:
         row["knowledge_base"] = ""
@@ -1021,10 +1058,13 @@ async def cleanup_unknown_rows() -> None:
     except Exception as e:
         logger.warning(f"Cleanup error (non-fatal): {e}")
 
-async def get_all_transactions(limit: int = 50) -> list:
+async def get_all_transactions(limit: int = 50, tenant_id: str = "system") -> list:
     await cleanup_unknown_rows()
     db = await _adb()
-    result = await db.table("transactions").select("*").order("created_at", desc=True).limit(limit).execute()
+    q = db.table("transactions").select("*, tenants(name)")
+    if tenant_id != "system":
+        q = q.eq("tenant_id", tenant_id)
+    result = await q.order("created_at", desc=True).limit(limit).execute()
     return result.data or []
 
 # ── Incoming Calls ────────────────────────────────────────────────────────────
@@ -1274,7 +1314,7 @@ async def get_analytics(tenant_id: str = "system", days: int = 30) -> dict:
 
     # All calls in window
     q = db.table("call_logs").select(
-        "id, outcome, duration_seconds, timestamp, phone_number, business, place, agent_profile_id, campaign_id, recording_url"
+        "id, outcome, duration_seconds, timestamp, phone_number, business_name, place, agent_profile_id, campaign_id, recording_url"
     ).gte("timestamp", cutoff)
     if tenant_id != "system":
         q = q.eq("tenant_id", tenant_id)
@@ -1391,7 +1431,7 @@ async def get_analytics(tenant_id: str = "system", days: int = 30) -> dict:
     # Top locations
     loc_counts: dict = defaultdict(int)
     for r in rows:
-        loc = r.get("place") or r.get("business") or "Unknown"
+        loc = r.get("place") or r.get("business_name") or "Unknown"
         if loc and loc != "Unknown":
             loc_counts[loc] += 1
     top_locations = sorted(
@@ -1434,8 +1474,16 @@ async def get_admin_overview() -> dict:
     total_tenants = len([t for t in tenants if t["id"] != "system"])
     active_tenants = len([t for t in tenants if t.get("status") == "active" and t["id"] != "system"])
 
-    # All calls ever
-    all_calls = (await db.table("call_logs").select("id, outcome, timestamp, tenant_id").execute()).data or []
+    # All calls ever — paginate to bypass Supabase's 1000-row default limit
+    all_calls = []
+    offset = 0
+    while True:
+        chunk = (await db.table("call_logs").select("id, outcome, timestamp, tenant_id").order("timestamp", desc=True).range(offset, offset + 999).execute()).data or []
+        all_calls.extend(chunk)
+        if len(chunk) < 1000:
+            break
+        offset += 1000
+
     total_calls = len(all_calls)
     total_booked = sum(1 for r in all_calls if (r.get("outcome") or "").lower() == "booked")
 

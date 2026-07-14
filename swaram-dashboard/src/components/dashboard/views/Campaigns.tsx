@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { Plus, Play, Pause, Trash2, Search, Calendar, Users, PhoneOutgoing, X, Loader2, Save, Megaphone, Upload, Download, FileText } from "lucide-react";
+import { ClientFilter } from "../ClientFilter";
 
 const API = "/api";
 
@@ -11,6 +12,14 @@ export function Campaigns() {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [tenant, setTenant] = useState("");
+  const [isSuperadmin, setIsSuperadmin] = useState(false);
+  
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setIsSuperadmin(localStorage.getItem("swaram_role") === "superadmin");
+    }
+  }, []);
   
   // CSV upload states
   const [uploadMode, setUploadMode] = useState<"manual" | "csv">("manual");
@@ -29,9 +38,16 @@ export function Campaigns() {
 
   const fetchData = async () => {
     try {
+      const token = localStorage.getItem("swaram_token") || "";
+      let campUrl = `${API}/campaigns`;
+      let profUrl = `${API}/profiles`;
+      if (tenant) {
+        campUrl += `?tenant_id=${tenant}`;
+        profUrl += `?tenant_id=${tenant}`;
+      }
       const [campRes, profRes] = await Promise.all([
-        fetch(`${API}/campaigns`),
-        fetch(`${API}/profiles`)
+        fetch(campUrl, { headers: token ? { Authorization: `Bearer ${token}` } : {} }),
+        fetch(profUrl, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
       ]);
       const campData = await campRes.json();
       const profData = await profRes.json();
@@ -55,7 +71,7 @@ export function Campaigns() {
     fetchData();
     const interval = setInterval(fetchData, 30000);
     return () => clearInterval(interval);
-  }, []);
+  }, [tenant]);
 
   const [selectedCampaignLogs, setSelectedCampaignLogs] = useState<any[] | null>(null);
   const [isLogsModalOpen, setIsLogsModalOpen] = useState(false);
@@ -389,6 +405,8 @@ export function Campaigns() {
             />
           </div>
 
+          <ClientFilter value={tenant} onChange={setTenant} />
+
           {selectedIds.length > 0 && (
             <button
               onClick={handleDeleteBulk}
@@ -412,6 +430,7 @@ export function Campaigns() {
                     className="rounded border-white/20 bg-white/5 text-[#FFD166] focus:ring-0 focus:ring-offset-0 cursor-pointer w-4 h-4"
                   />
                 </th>
+                {isSuperadmin && <th className="px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Client</th>}
                 <th className="px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Name</th>
                 <th className="px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Status</th>
                 <th className="px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Progress</th>
@@ -462,6 +481,11 @@ export function Campaigns() {
                         className="rounded border-white/20 bg-white/5 text-[#FFD166] focus:ring-0 focus:ring-offset-0 cursor-pointer w-4 h-4"
                       />
                     </td>
+                    {isSuperadmin && (
+                      <td className="px-6 py-4 text-sm text-gray-300">
+                        {c.tenants?.name || "System"}
+                      </td>
+                    )}
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-full bg-[#FFD166]/10 flex items-center justify-center border border-[#FFD166]/20">

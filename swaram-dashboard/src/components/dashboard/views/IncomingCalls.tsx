@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { PhoneIncoming, Search, Clock, AlignLeft, X, Trash2, Download } from "lucide-react";
+import { ClientFilter } from "../ClientFilter";
 
 const API = "/api";
 
@@ -14,13 +15,24 @@ export function IncomingCalls() {
   const [filterOutcome, setFilterOutcome] = useState("all");
   const [filterDate, setFilterDate] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [tenant, setTenant] = useState("");
+  const [isSuperadmin, setIsSuperadmin] = useState(false);
   const rowsPerPage = 20;
 
-  useEffect(() => { setCurrentPage(1); }, [searchQuery, filterOutcome, filterDate]);
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setIsSuperadmin(localStorage.getItem("swaram_role") === "superadmin");
+    }
+  }, []);
+
+  useEffect(() => { setCurrentPage(1); }, [searchQuery, filterOutcome, filterDate, tenant]);
 
   const fetchCalls = async () => {
     try {
-      const res = await fetch(`${API}/incoming_calls`);
+      const token = localStorage.getItem("swaram_token") || "";
+      let url = `${API}/incoming_calls`;
+      if (tenant) url += `?tenant_id=${tenant}`;
+      const res = await fetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
       const data = await res.json();
       if (Array.isArray(data)) setCalls(data);
     } catch (err) {
@@ -34,7 +46,7 @@ export function IncomingCalls() {
     fetchCalls();
     const interval = setInterval(fetchCalls, 15000);
     return () => clearInterval(interval);
-  }, []);
+  }, [tenant]);
 
   const formatTimestamp = (ts: string) => {
     if (!ts) return "—";
@@ -151,6 +163,7 @@ export function IncomingCalls() {
               />
             </div>
 
+            <ClientFilter value={tenant} onChange={setTenant} />
             <select value={filterOutcome} onChange={e => setFilterOutcome(e.target.value)} className="bg-[#0A0A0A] border border-white/10 rounded-lg px-2 py-2 text-sm text-white focus:outline-none focus:border-[#FFD166]/50">
               <option value="all">All Outcomes</option>
               <option value="booked">Booked</option>
@@ -192,6 +205,7 @@ export function IncomingCalls() {
                     className="rounded border-white/20 bg-white/5 text-[#FFD166] focus:ring-0 focus:ring-offset-0 cursor-pointer w-4 h-4"
                   />
                 </th>
+                {isSuperadmin && <th className="px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Client</th>}
                 <th className="px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Phone</th>
                 <th className="px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Status</th>
                 <th className="px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Outcome</th>
@@ -240,6 +254,11 @@ export function IncomingCalls() {
                         className="rounded border-white/20 bg-white/5 text-[#FFD166] focus:ring-0 focus:ring-offset-0 cursor-pointer w-4 h-4"
                       />
                     </td>
+                    {isSuperadmin && (
+                      <td className="px-6 py-4 text-sm text-gray-300">
+                        {c.tenants?.name || "System"}
+                      </td>
+                    )}
                     <td className="px-6 py-4">
                       <div className="flex items-center">
                         <span className="text-sm font-medium text-white">{c.phone_number}</span>

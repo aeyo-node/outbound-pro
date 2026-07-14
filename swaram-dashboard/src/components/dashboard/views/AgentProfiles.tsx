@@ -37,7 +37,9 @@ export function AgentProfiles() {
 
   const fetchProfiles = async () => {
     try {
-      const res = await fetch(`${API}/profiles`);
+      const token = typeof window !== "undefined" ? localStorage.getItem("swaram_token") || "" : "";
+      const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+      const res = await fetch(`${API}/profiles`, { headers });
       const data = await res.json();
       if (Array.isArray(data)) {
         setProfiles(data);

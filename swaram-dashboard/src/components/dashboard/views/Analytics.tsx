@@ -9,6 +9,7 @@ import {
   Phone, Clock, TrendingUp, Target, Mic, CheckCircle2,
   XCircle, PhoneMissed, BarChart3, Activity, RefreshCw
 } from "lucide-react";
+import { ClientFilter } from "../ClientFilter";
 
 const API = "/api";
 const ACCENT = "#FFD166";
@@ -35,12 +36,15 @@ export function Analytics() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [days, setDays] = useState(30);
+  const [tenant, setTenant] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const token = localStorage.getItem("swaram_token") || "";
-      const res = await fetch(`${API}/analytics?days=${days}`, {
+      let url = `${API}/analytics?days=${days}`;
+      if (tenant) url += `&tenant_id=${tenant}`;
+      const res = await fetch(url, {
         headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
       const json = await res.json();
@@ -50,7 +54,7 @@ export function Analytics() {
     } finally {
       setLoading(false);
     }
-  }, [days]);
+  }, [days, tenant]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -86,6 +90,7 @@ export function Analytics() {
           <p className="text-sm text-gray-400">Deep insights into your calling performance</p>
         </div>
         <div className="flex items-center gap-3">
+          <ClientFilter value={tenant} onChange={setTenant} />
           <select
             value={days}
             onChange={e => setDays(Number(e.target.value))}

@@ -85,6 +85,17 @@ except ImportError:
 
 app = FastAPI(title="OutboundAI Dashboard", version="1.0.0")
 
+async def get_target_tenant(request: Request, query_tenant: Optional[str] = None) -> str:
+    from auth import get_current_user
+    user = await get_current_user(request)
+    if not user:
+        return "system"
+    role = user.get("role")
+    user_tenant = user.get("tenant_id")
+    if role == "superadmin":
+        return query_tenant or "system"
+    return user_tenant or "system"
+
 from fastapi.staticfiles import StaticFiles
 app.mount("/static", StaticFiles(directory="data"), name="static")
 
@@ -419,8 +430,9 @@ async def api_dispatch_call(req: CallRequest):
 # ── Calls ─────────────────────────────────────────────────────────────────────
 
 @app.get("/api/calls")
-async def api_get_all_calls(page: int = 1, limit: int = 5000) -> list:
-    return await get_all_calls(page, limit)
+async def api_get_all_calls(request: Request, page: int = 1, limit: int = 5000, tenant_id: Optional[str] = Query(None)) -> list:
+    target = await get_target_tenant(request, tenant_id)
+    return await get_all_calls(page, limit, tenant_id=target)
 
 @app.get("/api/calls/phone/{phone}")
 async def api_get_calls_by_phone(phone: str) -> list:
@@ -464,8 +476,9 @@ async def api_get_transactions(limit: int = 50):
     return await get_all_transactions(limit=limit)
 
 @app.get("/api/incoming_calls")
-async def api_get_incoming_calls(limit: int = 50):
-    return await get_incoming_calls(limit=limit)
+async def api_get_incoming_calls(request: Request, limit: int = 50, tenant_id: Optional[str] = Query(None)):
+    target = await get_target_tenant(request, tenant_id)
+    return await get_incoming_calls(limit=limit, tenant_id=target)
 
 @app.post("/api/incoming_calls/delete-bulk")
 async def api_delete_incoming_calls_bulk(req: dict):
@@ -562,21 +575,23 @@ async def livekit_webhook(request: Request):
 # ── Stats ─────────────────────────────────────────────────────────────────────
 
 @app.get("/api/stats")
-async def api_get_stats():
-    return await get_stats()
+async def api_get_stats(request: Request):
+    target = await get_target_tenant(request, None)
+    return await get_stats(tenant_id=target)
 
 
 # ── Appointments ──────────────────────────────────────────────────────────────
 
 @app.get("/api/appointments")
-async def api_get_appointments(date: Optional[str] = None):
+async def api_get_appointments(request: Request, date: Optional[str] = None, tenant_id: Optional[str] = Query(None)):
+    target = await get_target_tenant(request, tenant_id)
     try:
         from db import sync_calcom_bookings
         await sync_calcom_bookings()
     except Exception as e:
         print(f"Error syncing Cal.com bookings on API call: {e}")
         
-    raw_appts = await get_all_appointments(date_filter=date)
+    raw_appts = await get_all_appointments(date_filter=date, tenant_id=target)
     mapped = []
     from datetime import datetime
     for appt in raw_appts:
@@ -611,6 +626,8 @@ async def api_get_appointments(date: Optional[str] = None):
             "business_name": appt.get("business_name") or "",
             "industry": appt.get("industry") or "",
             "place": appt.get("place") or "",
+            "notes": appt.get("notes") or "",
+            "tenants": appt.get("tenants"),
             "created_at": appt.get("created_at") or datetime.now().isoformat()
         })
     return mapped
@@ -703,8 +720,9 @@ async def api_save_settings(req: SettingsRequest):
 # ── Profiles ──────────────────────────────────────────────────────────────────
 
 @app.get("/api/profiles")
-async def api_get_profiles():
-    return await get_all_agent_profiles()
+async def api_get_profiles(request: Request, tenant_id: Optional[str] = Query(None)):
+    target = await get_target_tenant(request, tenant_id)
+    return await get_all_agent_profiles(tenant_id=target)
 
 
 @app.post("/api/profiles")
@@ -899,8 +917,9 @@ async def api_delete_profile_link(profile_id: str, url: str):
 # ── CRM / Contacts ────────────────────────────────────────────────────────────
 
 @app.get("/api/contacts")
-async def api_get_contacts():
-    return await get_contacts()
+async def api_get_contacts_old(request: Request, tenant_id: Optional[str] = Query(None)):
+    target = await get_target_tenant(request, tenant_id)
+    return await get_contacts(tenant_id=target)
 
 
 @app.post("/api/contacts")
@@ -936,8 +955,9 @@ async def api_delete_contacts_bulk(req: dict):
 # ── Campaigns ─────────────────────────────────────────────────────────────────
 
 @app.get("/api/campaigns")
-async def api_get_campaigns():
-    return await get_all_campaigns()
+async def api_get_campaigns(request: Request, tenant_id: Optional[str] = Query(None)):
+    target = await get_target_tenant(request, tenant_id)
+    return await get_all_campaigns(tenant_id=target)
 
 
 @app.post("/api/campaigns")
@@ -1083,8 +1103,9 @@ async def api_clear_logs():
 # ── CRM ───────────────────────────────────────────────────────────────────────
 
 @app.get("/api/crm")
-async def api_get_contacts():
-    return {"data": await get_contacts()}
+async def api_get_contacts(request: Request, tenant_id: Optional[str] = Query(None)):
+    target = await get_target_tenant(request, tenant_id)
+    return {"data": await get_contacts(tenant_id=target)}
 
 
 @app.get("/api/crm/calls")
@@ -1095,9 +1116,10 @@ async def api_get_contact_calls(phone: str = Query(...)):
 # ── Agent Profiles ────────────────────────────────────────────────────────────
 
 @app.get("/api/agent-profiles")
-async def api_list_agent_profiles():
+async def api_list_agent_profiles(request: Request, tenant_id: Optional[str] = Query(None)):
     try:
-        return await get_all_agent_profiles()
+        target = await get_target_tenant(request, tenant_id)
+        return await get_all_agent_profiles(tenant_id=target)
     except Exception as exc:
         raise HTTPException(500, str(exc))
 
@@ -1359,9 +1381,7 @@ async def api_create_campaign(req: CampaignRequest):
     return {"status": "created", "campaign_id": campaign_id, "campaign": campaign}
 
 
-@app.get("/api/campaigns")
-async def api_list_campaigns():
-    return await get_all_campaigns()
+
 
 
 @app.delete("/api/campaigns/{campaign_id}")
@@ -1736,12 +1756,10 @@ async def api_me(request: Request):
 # ═══════════════════════════════════════════════════════════════════════════════
 
 @app.get("/api/analytics")
-async def api_get_analytics(request: Request, days: int = 30):
-    from auth import get_current_user
+async def api_get_analytics(request: Request, days: int = 30, tenant_id: Optional[str] = Query(None)):
     from db import get_analytics
-    user = await get_current_user(request)
-    tenant_id = user["tenant_id"] if user else "system"
-    return await get_analytics(tenant_id=tenant_id, days=days)
+    target = await get_target_tenant(request, tenant_id)
+    return await get_analytics(tenant_id=target, days=days)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

@@ -66,7 +66,7 @@ export function TopHeader() {
             </div>
             <div className="flex flex-col">
               <div className="flex items-center justify-between gap-4 mb-1">
-                <span className="text-[10px] text-gray-400 uppercase tracking-wider">Minutes / Calls</span>
+                <span className="text-[10px] text-gray-400 uppercase tracking-wider">Calls Used / Limit</span>
                 <span className="text-xs font-medium text-white">
                   {callsUsed.toLocaleString()} / {isUnlimited ? "∞" : callsLimit.toLocaleString()}
                 </span>

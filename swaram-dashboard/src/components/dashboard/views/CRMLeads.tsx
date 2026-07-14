@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { Users, Search, Mail, Phone, CalendarDays, Plus, X, Loader2, Save, PhoneOutgoing, Info, Clock, AlignLeft, Trash2 } from "lucide-react";
+import { ClientFilter } from "../ClientFilter";
 
 const API = "/api";
 
@@ -13,7 +14,15 @@ export function CRMLeads() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [tenant, setTenant] = useState("");
+  const [isSuperadmin, setIsSuperadmin] = useState(false);
   const rowsPerPage = 20;
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setIsSuperadmin(localStorage.getItem("swaram_role") === "superadmin");
+    }
+  }, []);
 
   useEffect(() => { setCurrentPage(1); }, [searchQuery]);
   
@@ -34,7 +43,12 @@ export function CRMLeads() {
 
   const fetchContacts = async () => {
     try {
-      const res = await fetch(`${API}/contacts`);
+      const token = localStorage.getItem("swaram_token") || "";
+      let url = `${API}/contacts`;
+      if (tenant) url += `?tenant_id=${tenant}`;
+      const res = await fetch(url, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      });
       const data = await res.json();
       if (Array.isArray(data)) setContacts(data);
     } catch (err) {
@@ -48,7 +62,7 @@ export function CRMLeads() {
     fetchContacts();
     const interval = setInterval(fetchContacts, 30000);
     return () => clearInterval(interval);
-  }, []);
+  }, [tenant]);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -181,7 +195,8 @@ export function CRMLeads() {
           <h2 className="text-2xl font-medium text-white mb-2">CRM / Leads</h2>
           <p className="text-gray-400 text-sm">Manage your contacts and leads extracted from voice interactions.</p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex gap-3 items-center">
+          <ClientFilter value={tenant} onChange={setTenant} />
           {contacts.length === 0 && !loading && (
             <button 
               onClick={loadDemoData}
@@ -245,6 +260,7 @@ export function CRMLeads() {
                     className="rounded border-white/20 bg-white/5 text-[#FFD166] focus:ring-0 focus:ring-offset-0 cursor-pointer w-4 h-4"
                   />
                 </th>
+                {isSuperadmin && <th className="px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Client</th>}
                 <th className="px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Name</th>
                 <th className="px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Phone</th>
                 <th className="px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Email</th>
@@ -289,6 +305,11 @@ export function CRMLeads() {
                         className="rounded border-white/20 bg-white/5 text-[#FFD166] focus:ring-0 focus:ring-offset-0 cursor-pointer w-4 h-4"
                       />
                     </td>
+                    {isSuperadmin && (
+                      <td className="px-6 py-4 text-sm text-gray-300">
+                        {c.tenants?.name || "System"}
+                      </td>
+                    )}
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-full bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 font-medium text-xs">

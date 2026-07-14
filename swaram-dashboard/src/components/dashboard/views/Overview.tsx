@@ -21,10 +21,12 @@ export function Overview({ setActiveTab }: OverviewProps) {
   useEffect(() => {
     const load = async () => {
       try {
+        const token = typeof window !== "undefined" ? localStorage.getItem("swaram_token") || "" : "";
+        const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
         const [statsRes, demoRes, icRes] = await Promise.all([
-          fetch(`${API}/stats`).then(r => r.json()).catch(() => null),
-          fetch(`${API}/appointments?limit=5`).then(r => r.json()).catch(() => []),
-          fetch(`${API}/incoming_calls?limit=5`).then(r => r.json()).catch(() => []),
+          fetch(`${API}/stats`, { headers }).then(r => r.json()).catch(() => null),
+          fetch(`${API}/appointments?limit=5`, { headers }).then(r => r.json()).catch(() => []),
+          fetch(`${API}/incoming_calls?limit=5`, { headers }).then(r => r.json()).catch(() => []),
         ]);
         if (statsRes) setStats(statsRes);
         if (Array.isArray(demoRes)) setDemos(demoRes);

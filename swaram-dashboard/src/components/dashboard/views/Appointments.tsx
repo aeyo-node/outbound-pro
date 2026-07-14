@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { CalendarDays, Search, Clock, Trash2, X, AlertCircle } from "lucide-react";
+import { ClientFilter } from "../ClientFilter";
 
 const API = "/api";
 
@@ -11,13 +12,24 @@ export function Appointments() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [tenant, setTenant] = useState("");
+  const [isSuperadmin, setIsSuperadmin] = useState(false);
   const rowsPerPage = 20;
 
-  useEffect(() => { setCurrentPage(1); }, [searchQuery]);
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setIsSuperadmin(localStorage.getItem("swaram_role") === "superadmin");
+    }
+  }, []);
+
+  useEffect(() => { setCurrentPage(1); }, [searchQuery, tenant]);
 
   const fetchAppointments = async () => {
     try {
-      const res = await fetch(`${API}/appointments`);
+      const token = localStorage.getItem("swaram_token") || "";
+      let url = `${API}/appointments`;
+      if (tenant) url += `?tenant_id=${tenant}`;
+      const res = await fetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
       const data = await res.json();
       if (Array.isArray(data)) setAppointments(data);
     } catch (err) {
@@ -31,7 +43,7 @@ export function Appointments() {
     fetchAppointments();
     const interval = setInterval(fetchAppointments, 15000);
     return () => clearInterval(interval);
-  }, []);
+  }, [tenant]);
 
   const handleCancel = async (id: string) => {
     if (!confirm("Are you sure you want to cancel this appointment?")) return;
@@ -133,6 +145,8 @@ export function Appointments() {
             />
           </div>
 
+          <ClientFilter value={tenant} onChange={setTenant} />
+
           {selectedIds.length > 0 && (
             <button
               onClick={handleDeleteBulk}
@@ -156,6 +170,7 @@ export function Appointments() {
                     className="rounded border-white/20 bg-white/5 text-[#FFD166] focus:ring-0 focus:ring-offset-0 cursor-pointer w-4 h-4"
                   />
                 </th>
+                {isSuperadmin && <th className="px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Client</th>}
                 <th className="px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Scheduled Time</th>
                 <th className="px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Client Info</th>
                 <th className="px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Business</th>
@@ -201,6 +216,11 @@ export function Appointments() {
                         className="rounded border-white/20 bg-white/5 text-[#FFD166] focus:ring-0 focus:ring-offset-0 cursor-pointer w-4 h-4"
                       />
                     </td>
+                    {isSuperadmin && (
+                      <td className="px-6 py-4 text-sm text-gray-300">
+                        {a.tenants?.name || "System"}
+                      </td>
+                    )}
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-full bg-[#FFD166]/10 flex items-center justify-center border border-[#FFD166]/20">
