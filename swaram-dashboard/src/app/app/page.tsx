@@ -17,6 +17,7 @@ import { EVStations } from "@/components/dashboard/views/EVStations";
 import { SystemPrompt } from "@/components/dashboard/views/SystemPrompt";
 import { Settings } from "@/components/dashboard/views/Settings";
 import { LiveOps } from "@/components/dashboard/views/LiveOps";
+import { Analytics } from "@/components/dashboard/views/Analytics";
 
 export default function AppDashboard() {
   const [authed, setAuthed] = useState(false);
@@ -46,6 +47,7 @@ export default function AppDashboard() {
   const renderView = () => {
     switch (activeTab) {
       case "overview": return <Overview setActiveTab={setActiveTab} />;
+      case "analytics": return <Analytics />;
       case "single_call": return <SingleCall />;
       case "campaigns": return <Campaigns />;
       case "crm": return <CRMLeads />;

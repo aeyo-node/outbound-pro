@@ -2,14 +2,14 @@ import React from "react";
 import { 
   LayoutDashboard, PhoneCall, Megaphone, Users, PhoneOutgoing, 
   PhoneIncoming, CalendarDays, UserSquare2, TerminalSquare, 
-  Settings, LogOut, Headset
+  Settings, LogOut, Headset, BarChart3, CreditCard, Shield
 } from "lucide-react";
 import { useBranding } from "@/lib/BrandingContext";
 
 export type TabId = 
   "overview" | "single_call" | "campaigns" | "crm" | "outbound" | 
   "incoming" | "ev_transactions" | "appointments" | "agent_profiles" | 
-  "live_ops" | "system_prompt" | "settings";
+  "live_ops" | "system_prompt" | "settings" | "analytics";
 
 interface SidebarProps {
   activeTab: TabId;
@@ -21,13 +21,14 @@ export function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
 
   const menuItems: { id: TabId; label: string; icon: React.ElementType; badge?: string }[] = [
     { id: "overview", label: "Dashboard", icon: LayoutDashboard },
+    { id: "analytics", label: "Analytics", icon: BarChart3 },
     { id: "single_call", label: "Single Call", icon: PhoneCall },
     { id: "campaigns", label: "Campaigns", icon: Megaphone },
     { id: "crm", label: "CRM / Leads", icon: Users },
     { id: "outbound", label: "Outbound Calls", icon: PhoneOutgoing },
     { id: "incoming", label: "Incoming Calls", icon: PhoneIncoming },
     { id: "appointments", label: "Demo Booked", icon: CalendarDays },
-    { id: "live_ops", label: "Live Monitoring", icon: Headset, badge: "NEW" },
+    { id: "live_ops", label: "Live Monitoring", icon: Headset, badge: "LIVE" },
     { id: "agent_profiles", label: "Agent Profiles", icon: UserSquare2 },
   ];
 
@@ -148,7 +149,23 @@ export function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
       </div>
 
       {/* Bottom card */}
-      <div className="p-4 shrink-0">
+      <div className="p-4 shrink-0 space-y-2">
+        {/* Admin link for superadmin */}
+        {typeof window !== "undefined" && localStorage.getItem("swaram_role") === "superadmin" && (
+          <a href="/admin"
+            className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-gray-400 hover:text-white hover:bg-white/5 transition-all"
+          >
+            <Shield className="w-4 h-4 text-[#a78bfa]" />
+            <span className="text-sm">Super Admin</span>
+          </a>
+        )}
+        {/* Billing */}
+        <a href="/billing"
+          className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-gray-400 hover:text-[#FFD166] hover:bg-[#FFD166]/5 transition-all"
+        >
+          <CreditCard className="w-4 h-4" />
+          <span className="text-sm">Billing & Plans</span>
+        </a>
         <div className="bg-gradient-to-br from-[#1C1C1E] to-[#0A0A0A] border border-white/10 rounded-2xl p-4 relative overflow-hidden">
           <div
             className="absolute top-0 right-0 w-24 h-24 rounded-full blur-xl"

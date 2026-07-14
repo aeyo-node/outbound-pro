@@ -1674,8 +1674,264 @@ async def test_calcom():
         import traceback
         return {"status": "error", "message": str(e), "trace": traceback.format_exc()[-500:]}
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# AUTH ROUTES
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+@app.post("/api/auth/login")
+async def api_login(req: LoginRequest):
+    from auth import authenticate_user, create_session
+    user = await authenticate_user(req.email, req.password)
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+    token = await create_session(user["id"], user["tenant_id"], user["role"])
+    return {
+        "token": token,
+        "user": {
+            "id": user["id"],
+            "email": user["email"],
+            "name": user.get("name") or "",
+            "role": user["role"],
+            "tenant_id": user["tenant_id"],
+        }
+    }
+
+@app.post("/api/auth/logout")
+async def api_logout(request: Request):
+    from auth import get_token_from_request, delete_session
+    token = await get_token_from_request(request)
+    if token:
+        await delete_session(token)
+    return {"status": "logged_out"}
+
+@app.get("/api/auth/me")
+async def api_me(request: Request):
+    from auth import get_current_user
+    user = await get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    from db import get_active_subscription, get_billing_plans
+    sub = await get_active_subscription(user["tenant_id"])
+    plans = await get_billing_plans()
+    return {
+        "user": {
+            "id": user["id"],
+            "email": user["email"],
+            "name": user.get("name") or "",
+            "role": user["role"],
+            "tenant_id": user["tenant_id"],
+        },
+        "tenant": user.get("tenant") or {},
+        "subscription": sub,
+        "plans": plans,
+    }
 
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# ANALYTICS
+# ═══════════════════════════════════════════════════════════════════════════════
 
+@app.get("/api/analytics")
+async def api_get_analytics(request: Request, days: int = 30):
+    from auth import get_current_user
+    from db import get_analytics
+    user = await get_current_user(request)
+    tenant_id = user["tenant_id"] if user else "system"
+    return await get_analytics(tenant_id=tenant_id, days=days)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# BILLING
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@app.get("/api/billing/plans")
+async def api_get_plans():
+    from db import get_billing_plans
+    return await get_billing_plans()
+
+class SubscribeRequest(BaseModel):
+    plan_id: str
+    payment_ref: Optional[str] = ""
+    amount_paid: Optional[int] = 0
+
+@app.post("/api/billing/subscribe")
+async def api_subscribe(req: SubscribeRequest, request: Request):
+    from auth import get_current_user
+    from db import create_subscription, get_billing_plans
+    user = await get_current_user(request)
+    tenant_id = user["tenant_id"] if user else "system"
+    plans = await get_billing_plans()
+    plan = next((p for p in plans if p["id"] == req.plan_id), None)
+    if not plan:
+        raise HTTPException(status_code=404, detail="Plan not found")
+    sub = await create_subscription(
+        tenant_id=tenant_id,
+        plan_id=req.plan_id,
+        payment_ref=req.payment_ref or f"SIM-{uuid.uuid4().hex[:8].upper()}",
+        amount_paid=req.amount_paid or plan["price_inr"]
+    )
+    return {"status": "subscribed", "subscription": sub}
+
+@app.get("/api/billing/subscription")
+async def api_get_subscription(request: Request):
+    from auth import get_current_user
+    from db import get_active_subscription, get_all_subscriptions
+    user = await get_current_user(request)
+    tenant_id = user["tenant_id"] if user else "system"
+    sub = await get_active_subscription(tenant_id)
+    return sub or {}
+
+@app.get("/api/billing/history")
+async def api_billing_history(request: Request):
+    from auth import get_current_user
+    from db import _adb
+    user = await get_current_user(request)
+    tenant_id = user["tenant_id"] if user else "system"
+    db = await _adb()
+    result = await db.table("subscriptions").select("*, billing_plans(name, price_inr)").eq("tenant_id", tenant_id).order("created_at", desc=True).execute()
+    return result.data or []
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# PHONE NUMBERS
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class PhoneNumberRequest(BaseModel):
+    label: str = "Primary"
+    provider: str  # default | sip | twilio
+    number: Optional[str] = ""
+    trunk_id: Optional[str] = ""
+    sip_domain: Optional[str] = ""
+    sip_username: Optional[str] = ""
+    sip_password: Optional[str] = ""
+    twilio_account_sid: Optional[str] = ""
+    twilio_auth_token: Optional[str] = ""
+
+@app.get("/api/phone-numbers")
+async def api_get_phone_numbers(request: Request):
+    from auth import get_current_user
+    from db import get_phone_numbers
+    user = await get_current_user(request)
+    tenant_id = user["tenant_id"] if user else "system"
+    numbers = await get_phone_numbers(tenant_id)
+    # Always include "Default (System)" as first option
+    default_number = os.getenv("VOBIZ_OUTBOUND_NUMBER") or ""
+    result = [{"id": "default", "label": "System Default", "provider": "default",
+               "number": default_number, "trunk_id": os.getenv("OUTBOUND_TRUNK_ID", ""),
+               "is_active": True}]
+    result.extend(numbers)
+    return result
+
+@app.post("/api/phone-numbers")
+async def api_add_phone_number(req: PhoneNumberRequest, request: Request):
+    from auth import get_current_user
+    from db import upsert_phone_number
+    user = await get_current_user(request)
+    tenant_id = user["tenant_id"] if user else "system"
+    creds = {}
+    if req.provider == "sip":
+        creds = {"sip_domain": req.sip_domain, "sip_username": req.sip_username, "sip_password": req.sip_password}
+    elif req.provider == "twilio":
+        creds = {"account_sid": req.twilio_account_sid, "auth_token": req.twilio_auth_token}
+    pn = await upsert_phone_number(tenant_id, req.label, req.provider, req.number or "", req.trunk_id or "", creds)
+    return {"status": "created", "phone_number": pn}
+
+@app.delete("/api/phone-numbers/{pn_id}")
+async def api_delete_phone_number(pn_id: str, request: Request):
+    from auth import get_current_user
+    from db import delete_phone_number
+    user = await get_current_user(request)
+    tenant_id = user["tenant_id"] if user else "system"
+    ok = await delete_phone_number(pn_id, tenant_id)
+    return {"status": "deleted" if ok else "not_found"}
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# SUPER ADMIN ROUTES (role=superadmin required)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+async def _require_superadmin(request: Request):
+    from auth import get_current_user
+    user = await get_current_user(request)
+    if not user or user.get("role") != "superadmin":
+        raise HTTPException(status_code=403, detail="Super admin access required")
+    return user
+
+@app.get("/api/admin/overview")
+async def api_admin_overview(request: Request):
+    await _require_superadmin(request)
+    from db import get_admin_overview
+    return await get_admin_overview()
+
+@app.get("/api/admin/tenants")
+async def api_admin_list_tenants(request: Request):
+    await _require_superadmin(request)
+    from db import get_all_tenants
+    return await get_all_tenants()
+
+class CreateTenantRequest(BaseModel):
+    name: str
+    email: str
+    plan_id: str = "starter"
+    admin_name: str = ""
+    admin_password: str
+
+@app.post("/api/admin/tenants")
+async def api_admin_create_tenant(req: CreateTenantRequest, request: Request):
+    await _require_superadmin(request)
+    from db import create_tenant, create_user, create_subscription, get_billing_plans
+    # Validate plan
+    plans = await get_billing_plans()
+    if not any(p["id"] == req.plan_id for p in plans):
+        raise HTTPException(status_code=400, detail="Invalid plan_id")
+    tenant = await create_tenant(req.name, req.email, req.plan_id)
+    user = await create_user(req.email, req.admin_password, tenant["id"], role="admin", name=req.admin_name or req.name)
+    plan = next(p for p in plans if p["id"] == req.plan_id)
+    sub = await create_subscription(tenant["id"], req.plan_id, payment_ref="ADMIN_GRANT", amount_paid=0)
+    return {"status": "created", "tenant": tenant, "user": {"id": user["id"], "email": user["email"]}, "subscription": sub}
+
+class UpdateTenantRequest(BaseModel):
+    name: Optional[str] = None
+    plan_id: Optional[str] = None
+    status: Optional[str] = None
+
+@app.put("/api/admin/tenants/{tenant_id}")
+async def api_admin_update_tenant(tenant_id: str, req: UpdateTenantRequest, request: Request):
+    await _require_superadmin(request)
+    from db import update_tenant
+    updates = {k: v for k, v in req.dict().items() if v is not None}
+    if not updates:
+        return {"status": "no_changes"}
+    ok = await update_tenant(tenant_id, updates)
+    return {"status": "updated" if ok else "not_found"}
+
+@app.get("/api/admin/tenants/{tenant_id}/stats")
+async def api_admin_tenant_stats(tenant_id: str, request: Request, days: int = 30):
+    await _require_superadmin(request)
+    from db import get_analytics, get_tenant
+    tenant = await get_tenant(tenant_id)
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    analytics = await get_analytics(tenant_id=tenant_id, days=days)
+    return {"tenant": tenant, "analytics": analytics}
+
+@app.get("/api/admin/subscriptions")
+async def api_admin_subscriptions(request: Request):
+    await _require_superadmin(request)
+    from db import get_all_subscriptions
+    return await get_all_subscriptions()
+
+@app.post("/api/admin/tenants/{tenant_id}/grant-plan")
+async def api_admin_grant_plan(tenant_id: str, request: Request):
+    await _require_superadmin(request)
+    body = await request.json()
+    plan_id = body.get("plan_id", "starter")
+    from db import create_subscription
+    sub = await create_subscription(tenant_id, plan_id, payment_ref="ADMIN_GRANT", amount_paid=0)
+    return {"status": "granted", "subscription": sub}
 
 

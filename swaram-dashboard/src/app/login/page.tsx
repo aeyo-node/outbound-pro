@@ -12,25 +12,42 @@ export default function LoginPage() {
 
   useEffect(() => {
     document.body.className = "login-body";
+    // If already logged in, redirect
+    const token = localStorage.getItem("swaram_token");
+    const role = localStorage.getItem("swaram_role");
+    if (token) {
+      window.location.href = role === "superadmin" ? "/admin" : "/app";
+    }
     return () => { document.body.className = ""; };
   }, []);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setLoading(true);
-
-    setTimeout(() => {
-      const emailVal = email.trim().toLowerCase();
-      const passVal = password.trim().toLowerCase();
-      if (emailVal === "admin@swaram.io" && passVal === "swaram360@") {
-        localStorage.setItem("swaram_auth", "true");
-        window.location.href = "/app";
-      } else {
-        setError(`Invalid credentials. Use admin@swaram.io / swaram360@`);
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim(), password: password.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.detail || "Invalid email or password");
         setLoading(false);
+        return;
       }
-    }, 800);
+      // Store token and user info
+      localStorage.setItem("swaram_token", data.token);
+      localStorage.setItem("swaram_role", data.user.role);
+      localStorage.setItem("swaram_user", JSON.stringify(data.user));
+      localStorage.setItem("swaram_auth", "true"); // legacy compat
+      // Redirect based on role
+      window.location.href = data.user.role === "superadmin" ? "/admin" : "/app";
+    } catch (err) {
+      setError("Connection error. Please try again.");
+      setLoading(false);
+    }
   };
 
   return (
@@ -70,7 +87,7 @@ export default function LoginPage() {
               <div className="flex items-center gap-3 border border-white/10 rounded-xl px-4 py-3 focus-within:border-[#FFD166]/40 transition-colors">
                 <Mail className="w-4 h-4 text-gray-600 flex-shrink-0" />
                 <input type="email" value={email} onChange={(e) => setEmail(e.target.value)}
-                  placeholder="admin@swaram.io"
+                  placeholder="you@example.com"
                   className="bg-transparent outline-none text-white placeholder-gray-400 w-full text-sm autofill-fix"
                   autoComplete="off" name="swaram-email" required />
               </div>

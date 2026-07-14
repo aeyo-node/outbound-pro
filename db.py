@@ -1103,3 +1103,363 @@ async def delete_incoming_calls(call_ids: list) -> bool:
     except Exception as e:
         logger.error(f"Failed to delete incoming calls: {e}")
         return False
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# MULTI-TENANT: Tenants, Users, Subscriptions, Phone Numbers, Analytics
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# ── Tenants ───────────────────────────────────────────────────────────────────
+
+async def get_all_tenants() -> list:
+    db = await _adb()
+    result = await db.table("tenants").select("*, billing_plans(name, price_inr)").order("created_at", desc=True).execute()
+    return result.data or []
+
+
+async def get_tenant(tenant_id: str) -> Optional[dict]:
+    db = await _adb()
+    result = await db.table("tenants").select("*, billing_plans(*)").eq("id", tenant_id).maybe_single().execute()
+    return result.data if result else None
+
+
+async def create_tenant(name: str, email: str, plan_id: str = "starter") -> dict:
+    import json as _json
+    db = await _adb()
+    tenant_id = str(uuid.uuid4())
+    row = {
+        "id": tenant_id,
+        "name": name,
+        "email": email.lower().strip(),
+        "plan_id": plan_id,
+        "status": "active",
+        "calls_used": 0,
+        "created_at": datetime.now().isoformat(),
+    }
+    await db.table("tenants").insert(row).execute()
+    return row
+
+
+async def update_tenant(tenant_id: str, updates: dict) -> bool:
+    db = await _adb()
+    updates["updated_at"] = datetime.now().isoformat()
+    result = await db.table("tenants").update(updates).eq("id", tenant_id).execute()
+    return len(result.data or []) > 0
+
+
+async def get_tenant_call_count(tenant_id: str) -> int:
+    db = await _adb()
+    result = await db.table("call_logs").select("id").eq("tenant_id", tenant_id).execute()
+    return len(result.data or [])
+
+
+# ── Users ─────────────────────────────────────────────────────────────────────
+
+async def create_user(email: str, password: str, tenant_id: str, role: str = "admin", name: str = "") -> dict:
+    from auth import make_password_hash
+    db = await _adb()
+    user_id = str(uuid.uuid4())
+    row = {
+        "id": user_id,
+        "email": email.lower().strip(),
+        "password_hash": make_password_hash(password),
+        "tenant_id": tenant_id,
+        "role": role,
+        "name": name,
+        "created_at": datetime.now().isoformat(),
+    }
+    await db.table("users").insert(row).execute()
+    return row
+
+
+async def get_tenant_users(tenant_id: str) -> list:
+    db = await _adb()
+    result = await db.table("users").select("id, email, name, role, last_login, created_at").eq("tenant_id", tenant_id).execute()
+    return result.data or []
+
+
+async def update_user_password(user_id: str, new_password: str) -> bool:
+    from auth import make_password_hash
+    db = await _adb()
+    result = await db.table("users").update({"password_hash": make_password_hash(new_password)}).eq("id", user_id).execute()
+    return len(result.data or []) > 0
+
+
+# ── Billing Plans & Subscriptions ─────────────────────────────────────────────
+
+async def get_billing_plans() -> list:
+    db = await _adb()
+    result = await db.table("billing_plans").select("*").order("sort_order").execute()
+    return result.data or []
+
+
+async def get_active_subscription(tenant_id: str) -> Optional[dict]:
+    db = await _adb()
+    result = await db.table("subscriptions").select("*, billing_plans(*)").eq("tenant_id", tenant_id).eq("status", "active").maybe_single().execute()
+    return result.data if result else None
+
+
+async def create_subscription(tenant_id: str, plan_id: str, payment_ref: str = "", amount_paid: int = 0) -> dict:
+    db = await _adb()
+    # Cancel existing active subscriptions
+    await db.table("subscriptions").update({"status": "cancelled"}).eq("tenant_id", tenant_id).eq("status", "active").execute()
+    # Create new one (30-day term)
+    sub_id = str(uuid.uuid4())
+    expires_at = (datetime.now() + timedelta(days=30)).isoformat()
+    row = {
+        "id": sub_id,
+        "tenant_id": tenant_id,
+        "plan_id": plan_id,
+        "status": "active",
+        "started_at": datetime.now().isoformat(),
+        "expires_at": expires_at,
+        "payment_ref": payment_ref,
+        "amount_paid": amount_paid,
+        "created_at": datetime.now().isoformat(),
+    }
+    await db.table("subscriptions").insert(row).execute()
+    # Update tenant's plan_id
+    await db.table("tenants").update({"plan_id": plan_id, "updated_at": datetime.now().isoformat()}).eq("id", tenant_id).execute()
+    return row
+
+
+async def get_all_subscriptions() -> list:
+    """Super admin: get all subscriptions across tenants."""
+    db = await _adb()
+    result = await db.table("subscriptions").select("*, tenants(name, email), billing_plans(name, price_inr)").order("created_at", desc=True).execute()
+    return result.data or []
+
+
+# ── Phone Numbers ─────────────────────────────────────────────────────────────
+
+async def get_phone_numbers(tenant_id: str) -> list:
+    db = await _adb()
+    result = await db.table("phone_numbers").select("id, label, provider, number, trunk_id, is_active, created_at").eq("tenant_id", tenant_id).execute()
+    return result.data or []
+
+
+async def upsert_phone_number(tenant_id: str, label: str, provider: str, number: str,
+                               trunk_id: str = "", credentials: dict = None) -> dict:
+    import json as _json
+    db = await _adb()
+    pn_id = str(uuid.uuid4())
+    row = {
+        "id": pn_id,
+        "tenant_id": tenant_id,
+        "label": label,
+        "provider": provider,
+        "number": number,
+        "trunk_id": trunk_id,
+        "credentials": _json.dumps(credentials or {}),
+        "is_active": True,
+        "created_at": datetime.now().isoformat(),
+    }
+    await db.table("phone_numbers").insert(row).execute()
+    return row
+
+
+async def delete_phone_number(pn_id: str, tenant_id: str) -> bool:
+    db = await _adb()
+    result = await db.table("phone_numbers").delete().eq("id", pn_id).eq("tenant_id", tenant_id).execute()
+    return len(result.data or []) > 0
+
+
+# ── Full Analytics ─────────────────────────────────────────────────────────────
+
+async def get_analytics(tenant_id: str = "system", days: int = 30) -> dict:
+    """Comprehensive analytics for a tenant over the last N days."""
+    import json as _json
+    db = await _adb()
+    cutoff = (datetime.now() - timedelta(days=days)).isoformat()
+
+    # All calls in window
+    q = db.table("call_logs").select(
+        "id, outcome, duration_seconds, timestamp, phone_number, business, place, agent_profile_id, campaign_id, recording_url"
+    ).gte("timestamp", cutoff)
+    if tenant_id != "system":
+        q = q.eq("tenant_id", tenant_id)
+    rows = (await q.execute()).data or []
+
+    # All calls ever (for totals)
+    q_all = db.table("call_logs").select("id, outcome, duration_seconds")
+    if tenant_id != "system":
+        q_all = q_all.eq("tenant_id", tenant_id)
+    all_rows = (await q_all.execute()).data or []
+
+    # Basic KPIs
+    total = len(rows)
+    total_ever = len(all_rows)
+    durations = [r["duration_seconds"] for r in rows if r.get("duration_seconds")]
+    total_minutes = round(sum(durations) / 60, 1) if durations else 0
+    avg_duration = round(sum(durations) / len(durations), 1) if durations else 0
+
+    outcomes: dict = {}
+    for r in rows:
+        o = (r.get("outcome") or "unknown").lower()
+        outcomes[o] = outcomes.get(o, 0) + 1
+
+    booked = outcomes.get("booked", 0)
+    no_answer = outcomes.get("no_answer", 0) + outcomes.get("no answer", 0)
+    failed = outcomes.get("failed", 0)
+    connected = total - no_answer - failed
+
+    booking_rate = round((booked / total * 100) if total else 0, 1)
+    connect_rate = round((connected / total * 100) if total else 0, 1)
+
+    # Daily timeline
+    daily: dict = defaultdict(int)
+    for r in rows:
+        ts = (r.get("timestamp") or "")[:10]
+        if ts:
+            daily[ts] += 1
+    today = datetime.now().date()
+    timeline = [
+        {"date": (today - timedelta(days=i)).isoformat(), "count": daily.get((today - timedelta(days=i)).isoformat(), 0)}
+        for i in range(days - 1, -1, -1)
+    ]
+
+    # Hourly distribution (heatmap)
+    hourly: dict = defaultdict(int)
+    for r in rows:
+        ts = r.get("timestamp") or ""
+        if len(ts) >= 13:
+            try:
+                hour = int(ts[11:13])
+                hourly[hour] += 1
+            except Exception:
+                pass
+    hourly_data = [{"hour": h, "calls": hourly.get(h, 0)} for h in range(24)]
+
+    # Outcome breakdown with durations
+    outcome_stats = {}
+    dur_by_outcome: dict = defaultdict(list)
+    for r in rows:
+        o = (r.get("outcome") or "unknown").lower()
+        d = r.get("duration_seconds")
+        if d:
+            dur_by_outcome[o].append(d)
+    for o, durs in dur_by_outcome.items():
+        outcome_stats[o] = {
+            "count": outcomes.get(o, 0),
+            "avg_duration": round(sum(durs) / len(durs), 1)
+        }
+    for o in outcomes:
+        if o not in outcome_stats:
+            outcome_stats[o] = {"count": outcomes[o], "avg_duration": 0}
+
+    # Agent performance
+    agent_stats: dict = defaultdict(lambda: {"calls": 0, "booked": 0, "duration": 0})
+    for r in rows:
+        aid = r.get("agent_profile_id") or "default"
+        agent_stats[aid]["calls"] += 1
+        if (r.get("outcome") or "").lower() == "booked":
+            agent_stats[aid]["booked"] += 1
+        agent_stats[aid]["duration"] += r.get("duration_seconds") or 0
+    agent_performance = []
+    for aid, s in agent_stats.items():
+        agent_performance.append({
+            "agent_id": aid,
+            "calls": s["calls"],
+            "booked": s["booked"],
+            "booking_rate": round((s["booked"] / s["calls"] * 100) if s["calls"] else 0, 1),
+            "avg_duration": round(s["duration"] / s["calls"], 1) if s["calls"] else 0,
+        })
+    agent_performance.sort(key=lambda x: x["calls"], reverse=True)
+
+    # Campaign performance
+    campaign_stats: dict = defaultdict(lambda: {"calls": 0, "booked": 0, "connected": 0})
+    for r in rows:
+        cid = r.get("campaign_id") or "manual"
+        campaign_stats[cid]["calls"] += 1
+        o = (r.get("outcome") or "").lower()
+        if o == "booked":
+            campaign_stats[cid]["booked"] += 1
+        if o not in ("no_answer", "no answer", "failed"):
+            campaign_stats[cid]["connected"] += 1
+    campaign_performance = [
+        {
+            "campaign_id": cid,
+            "calls": s["calls"],
+            "connected": s["connected"],
+            "booked": s["booked"],
+            "booking_rate": round((s["booked"] / s["calls"] * 100) if s["calls"] else 0, 1),
+        }
+        for cid, s in campaign_stats.items()
+    ]
+    campaign_performance.sort(key=lambda x: x["calls"], reverse=True)
+
+    # Top locations
+    loc_counts: dict = defaultdict(int)
+    for r in rows:
+        loc = r.get("place") or r.get("business") or "Unknown"
+        if loc and loc != "Unknown":
+            loc_counts[loc] += 1
+    top_locations = sorted(
+        [{"name": k, "calls": v} for k, v in loc_counts.items()],
+        key=lambda x: x["calls"], reverse=True
+    )[:10]
+
+    # Recordings count
+    recordings = sum(1 for r in rows if r.get("recording_url"))
+
+    return {
+        "period_days": days,
+        "total_calls": total,
+        "total_calls_ever": total_ever,
+        "connected_calls": connected,
+        "no_answer": no_answer,
+        "failed_calls": failed,
+        "booked": booked,
+        "total_minutes": total_minutes,
+        "avg_duration_seconds": avg_duration,
+        "booking_rate_percent": booking_rate,
+        "connect_rate_percent": connect_rate,
+        "recordings_count": recordings,
+        "outcomes": outcomes,
+        "outcome_stats": outcome_stats,
+        "timeline": timeline,
+        "hourly_distribution": hourly_data,
+        "agent_performance": agent_performance,
+        "campaign_performance": campaign_performance,
+        "top_locations": top_locations,
+    }
+
+
+# ── Super Admin: Platform-wide overview ────────────────────────────────────────
+
+async def get_admin_overview() -> dict:
+    """Aggregate metrics across all tenants for the super admin dashboard."""
+    db = await _adb()
+    tenants = (await db.table("tenants").select("id, name, email, plan_id, status, calls_used, created_at").execute()).data or []
+    total_tenants = len([t for t in tenants if t["id"] != "system"])
+    active_tenants = len([t for t in tenants if t.get("status") == "active" and t["id"] != "system"])
+
+    # All calls ever
+    all_calls = (await db.table("call_logs").select("id, outcome, timestamp, tenant_id").execute()).data or []
+    total_calls = len(all_calls)
+    total_booked = sum(1 for r in all_calls if (r.get("outcome") or "").lower() == "booked")
+
+    # MRR from active subscriptions
+    subs = (await db.table("subscriptions").select("tenant_id, plan_id, status, billing_plans(price_inr)").eq("status", "active").execute()).data or []
+    mrr = sum((s.get("billing_plans") or {}).get("price_inr", 0) for s in subs if s.get("tenant_id") != "system")
+
+    # Recent signups (last 7 days)
+    week_ago = (datetime.now() - timedelta(days=7)).isoformat()
+    recent_tenants = [t for t in tenants if (t.get("created_at") or "") >= week_ago and t["id"] != "system"]
+
+    # Calls today
+    today = datetime.now().date().isoformat()
+    calls_today = sum(1 for r in all_calls if (r.get("timestamp") or "")[:10] == today)
+
+    return {
+        "total_tenants": total_tenants,
+        "active_tenants": active_tenants,
+        "total_calls_platform": total_calls,
+        "total_booked_platform": total_booked,
+        "mrr_inr": mrr,
+        "calls_today": calls_today,
+        "recent_signups": len(recent_tenants),
+        "tenants": [t for t in tenants if t["id"] != "system"],
+        "subscriptions": subs,
+    }
+

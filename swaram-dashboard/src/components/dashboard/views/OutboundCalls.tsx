@@ -170,7 +170,11 @@ export function OutboundCalls() {
             <select value={filterOutcome} onChange={e => setFilterOutcome(e.target.value)} className="bg-[#0A0A0A] border border-white/10 rounded-lg px-2 py-2 text-sm text-white focus:outline-none focus:border-[#FFD166]/50">
               <option value="all">All Outcomes</option>
               <option value="booked">Booked</option>
+              <option value="no_answer">No Answer</option>
+              <option value="not_interested">Not Interested</option>
               <option value="failed">Failed</option>
+              <option value="busy">Busy</option>
+              <option value="voicemail">Voicemail</option>
             </select>
             <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="bg-[#0A0A0A] border border-white/10 rounded-lg px-2 py-2 text-sm text-white focus:outline-none focus:border-[#FFD166]/50">
               <option value="all">All Ratings</option>
