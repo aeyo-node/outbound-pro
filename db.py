@@ -215,7 +215,7 @@ async def get_errors(limit: int = 100) -> list:
 
 async def get_incoming_calls(limit: int = 50, tenant_id: str = "system") -> list:
     db = await _adb()
-    q = db.table("incoming_calls").select("*, tenants(name)")
+    q = db.table("incoming_calls").select("*")
     if tenant_id != "all":
         q = q.eq("tenant_id", tenant_id)
     result = await q.order("timestamp", desc=True).limit(limit).execute()
@@ -299,7 +299,7 @@ async def get_next_available(date: str, time: str) -> str:
 async def get_all_appointments(date_filter: Optional[str] = None, tenant_id: str = "system") -> list:
     await cleanup_unknown_rows()
     db = await _adb()
-    query = db.table("appointments").select("*, tenants(name)").order("created_at", desc=True)
+    query = db.table("appointments").select("*").order("created_at", desc=True)
     if date_filter:
         query = query.eq("date", date_filter)
     if tenant_id != "all":
@@ -442,7 +442,7 @@ async def get_all_calls(page: int = 1, limit: int = 5000, tenant_id: str = "syst
     while total_fetched < limit:
         chunk = min(1000, limit - total_fetched)
         current_offset = base_offset + total_fetched
-        q = db.table("call_logs").select("*, tenants(name)")
+        q = db.table("call_logs").select("*")
         if tenant_id != "all":
             q = q.eq("tenant_id", tenant_id)
         result = await q.order("timestamp", desc=True).range(current_offset, current_offset + chunk - 1).execute()
@@ -484,7 +484,7 @@ async def update_call_notes(call_id: str, notes: str) -> bool:
 
 async def get_contacts(tenant_id: str = "system") -> list:
     db = await _adb()
-    q = db.table("contacts").select("*, tenants(name)")
+    q = db.table("contacts").select("*")
     if tenant_id != "all":
         q = q.eq("tenant_id", tenant_id)
     try:
@@ -609,7 +609,7 @@ async def create_campaign(
 
 async def get_all_campaigns(tenant_id: str = "system") -> list:
     db = await _adb()
-    q = db.table("campaigns").select("*, tenants(name)")
+    q = db.table("campaigns").select("*")
     if tenant_id != "all":
         q = q.eq("tenant_id", tenant_id)
     result = await q.order("created_at", desc=True).execute()
@@ -706,7 +706,7 @@ async def save_agent_profile(profile_id: str, name: str, voice: str, model: str,
 async def get_all_agent_profiles(tenant_id: str = "system") -> list:
     import json
     db = await _adb()
-    q = db.table("agent_profiles").select("*, tenants(name)")
+    q = db.table("agent_profiles").select("*")
     if tenant_id != "all":
         q = q.eq("tenant_id", tenant_id)
     result = await q.order("created_at", desc=True).execute()
@@ -1061,7 +1061,7 @@ async def cleanup_unknown_rows() -> None:
 async def get_all_transactions(limit: int = 50, tenant_id: str = "system") -> list:
     await cleanup_unknown_rows()
     db = await _adb()
-    q = db.table("transactions").select("*, tenants(name)")
+    q = db.table("transactions").select("*")
     if tenant_id != "all":
         q = q.eq("tenant_id", tenant_id)
     result = await q.order("created_at", desc=True).limit(limit).execute()
