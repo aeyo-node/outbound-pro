@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Optional, Union
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, Query, Request, UploadFile, File, Form
+from fastapi import FastAPI, HTTPException, Query, Request, UploadFile, File, Form, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel
 
@@ -120,6 +120,260 @@ async def _startup():
 async def _shutdown():
     if _scheduler and _scheduler.running:
         _scheduler.shutdown(wait=False)
+
+
+# ── Swaram Browser Assistant: WebSocket bridge ───────────────────────────────
+#
+# Hosts the extension-facing WebSocket endpoint alongside the LiveKit/Voice and
+# dashboard HTTP routes on the same port. Chrome extensions connect here,
+# authenticate with SWARAM_EXTENSION_TOKEN, and expose their browser tools.
+#
+# Supports MULTIPLE simultaneous extensions, each tracked by a target id
+# (tenantId if the extension sends one, else its extensionId, else a generated
+# session id). Other server code (voice agent, etc.) calls:
+#
+#     await extension_bridge.execute("click", {"selector": "#save"}, target="tenant_42")
+#
+# Mirrors browser-assistant/docs/WEBSOCKET_PROTOCOL.md.
+SWARAM_EXTENSION_TOKEN = os.getenv("SWARAM_EXTENSION_TOKEN", "change-me")
+
+
+class _ExtensionConnection:
+    """One live extension WebSocket and its per-connection state."""
+
+    def __init__(self, ws: WebSocket) -> None:
+        self.ws = ws
+        self.target: Optional[str] = None  # tenantId | extensionId | session
+        self.tenant_id: Optional[str] = None
+        self.extension_id: Optional[str] = None
+        self.session_id: Optional[str] = None
+        self.pending: dict[str, asyncio.Future] = {}
+        self.last_monitor: Optional[dict] = None
+        self.last_status: Optional[dict] = None
+        self.connected_at = asyncio.get_running_loop().time()
+
+    async def send(self, msg: dict) -> bool:
+        try:
+            await self.ws.send_text(json.dumps(msg))
+            return True
+        except Exception as e:  # pragma: no cover - defensive
+            logger.error(f"[ext-bridge] send failed ({self.target}): {e}")
+            return False
+
+
+class SwaramExtensionBridge:
+    """Registry of connected Swaram Browser Assistant extensions.
+
+    Routes execute/response by correlation id within each connection, and lets
+    callers target a specific extension by tenantId / extensionId.
+    """
+
+    def __init__(self, token: str) -> None:
+        self.token = token
+        self._connections: dict[str, _ExtensionConnection] = {}
+
+    # -- connection lifecycle -------------------------------------------------
+    @property
+    def connected(self) -> bool:
+        return bool(self._connections)
+
+    def list_targets(self) -> list[str]:
+        return list(self._connections.keys())
+
+    def _resolve(self, target: Optional[str]) -> tuple[Optional[_ExtensionConnection], Optional[str]]:
+        """Resolve a target id to a connection. Returns (conn, error)."""
+        if target and target in self._connections:
+            return self._connections[target], None
+        if not target:
+            if len(self._connections) == 1:
+                return next(iter(self._connections.values())), None
+            if not self._connections:
+                return None, "no extension connected"
+            return None, f"multiple extensions connected; specify one of: {self.list_targets()}"
+        return None, f"extension target '{target}' not connected; available: {self.list_targets()}"
+
+    async def attach(self, ws: WebSocket) -> bool:
+        """Accept a connection and run its receive loop until disconnect."""
+        await ws.accept()
+        conn = _ExtensionConnection(ws)
+        logger.info("[ext-bridge] extension connected (pending auth)")
+        try:
+            while True:
+                raw = await ws.receive_text()
+                try:
+                    msg = json.loads(raw)
+                except json.JSONDecodeError:
+                    logger.warning(f"[ext-bridge] non-JSON frame ignored ({conn.target})")
+                    continue
+                await self._on_message(conn, msg)
+        except WebSocketDisconnect:
+            logger.info(f"[ext-bridge] extension disconnected ({conn.target})")
+        except Exception as e:  # pragma: no cover - defensive
+            logger.error(f"[ext-bridge] receive loop error ({conn.target}): {e}")
+        finally:
+            await self._cleanup(conn)
+        return True
+
+    async def _cleanup(self, conn: _ExtensionConnection) -> None:
+        for fut in conn.pending.values():
+            if not fut.done():
+                fut.set_exception(RuntimeError("extension disconnected"))
+        conn.pending.clear()
+        if conn.target and self._connections.get(conn.target) is conn:
+            self._connections.pop(conn.target, None)
+
+    async def _on_message(self, conn: _ExtensionConnection, msg: dict) -> None:
+        t = msg.get("type")
+        if t == "authenticate":
+            await self._handle_auth(conn, msg)
+        elif t == "response":
+            fut = conn.pending.pop(msg.get("id"), None)
+            if fut and not fut.done():
+                fut.set_result(msg.get("result"))
+        elif t == "monitor":
+            conn.last_monitor = msg
+            logger.debug(f"[ext-bridge] monitor ({conn.target}): {msg.get('completionPct')}%")
+        elif t == "status":
+            conn.last_status = msg
+        elif t == "logs":
+            logger.debug(f"[ext-bridge] log ({conn.target}):{msg.get('level')} {msg.get('message')}")
+        elif t == "pong":
+            pass
+        elif t == "error":
+            logger.warning(f"[ext-bridge] error ({conn.target}): {msg}")
+        else:
+            logger.debug(f"[ext-bridge] unhandled message type ({conn.target}): {t}")
+
+    async def _handle_auth(self, conn: _ExtensionConnection, msg: dict) -> None:
+        if msg.get("token") != self.token:
+            logger.warning("[ext-bridge] authentication rejected (bad token)")
+            await conn.send({"type": "unauthorized", "reason": "bad token"})
+            try:
+                await conn.ws.close()
+            except Exception:
+                pass
+            return
+        conn.tenant_id = msg.get("tenantId") or msg.get("tenant_id")
+        conn.extension_id = msg.get("extensionId") or msg.get("extension_id")
+        conn.session_id = f"s-{int(asyncio.get_running_loop().time() * 1000)}"
+        # Target key: prefer tenantId, then extensionId, then session id.
+        new_target = conn.tenant_id or conn.extension_id or conn.session_id
+        # Replace any existing connection for the same target (one session per target).
+        old = self._connections.get(new_target)
+        if old is not None and old is not conn:
+            logger.info(f"[ext-bridge] replacing existing connection for {new_target}")
+            try:
+                await old.ws.close()
+            except Exception:
+                pass
+        conn.target = new_target
+        self._connections[new_target] = conn
+        await conn.send({"type": "authenticated", "sessionId": conn.session_id})
+        logger.info(
+            f"[ext-bridge] authenticated target={new_target} "
+            f"tenant={conn.tenant_id} extension={conn.extension_id}"
+        )
+
+    # -- outbound -------------------------------------------------------------
+    async def execute(self, tool: str, args: Optional[dict] = None, timeout: float = 30.0,
+                      target: Optional[str] = None) -> dict:
+        """Execute a browser tool on a target extension and await its result."""
+        conn, err = self._resolve(target)
+        if conn is None:
+            return {"success": False, "tool": tool, "reason": err, "time": 0}
+        loop = asyncio.get_running_loop()
+        msg_id = f"c-{int(loop.time() * 1000)}-{tool}-{len(conn.pending)}"
+        fut: asyncio.Future = loop.create_future()
+        conn.pending[msg_id] = fut
+        await conn.send({"type": "execute", "id": msg_id, "tool": tool, "args": args or {}})
+        try:
+            return await asyncio.wait_for(fut, timeout)
+        except asyncio.TimeoutError:
+            conn.pending.pop(msg_id, None)
+            await conn.send({"type": "cancel", "id": msg_id, "reason": "timeout"})
+            return {"success": False, "tool": tool, "reason": "timeout", "time": int(timeout * 1000)}
+
+    async def cancel(self, exec_id: str, target: Optional[str] = None, reason: str = "") -> bool:
+        conn, _ = self._resolve(target)
+        if conn is None:
+            return False
+        return await conn.send({"type": "cancel", "id": exec_id, "reason": reason})
+
+    async def ping(self, target: Optional[str] = None) -> bool:
+        conn, _ = self._resolve(target)
+        if conn is None:
+            return False
+        return await conn.send({"type": "ping", "ts": int(asyncio.get_running_loop().time() * 1000)})
+
+    def snapshot(self, target: Optional[str] = None) -> dict:
+        if target:
+            conn = self._connections.get(target)
+            if not conn:
+                return {"connected": False, "target": target, "reason": "not connected"}
+            return self._conn_snapshot(conn)
+        return {
+            "connected": self.connected,
+            "count": len(self._connections),
+            "targets": self.list_targets(),
+            "connections": [self._conn_snapshot(c) for c in self._connections.values()],
+        }
+
+    def _conn_snapshot(self, conn: _ExtensionConnection) -> dict:
+        return {
+            "target": conn.target,
+            "tenantId": conn.tenant_id,
+            "extensionId": conn.extension_id,
+            "sessionId": conn.session_id,
+            "lastStatus": conn.last_status,
+            "lastMonitor": conn.last_monitor,
+            "pending": len(conn.pending),
+        }
+
+
+extension_bridge = SwaramExtensionBridge(SWARAM_EXTENSION_TOKEN)
+
+
+@app.websocket("/swaram/ws")
+async def swaram_extension_ws(websocket: WebSocket):
+    """WebSocket endpoint the Chrome extension(s) connect to."""
+    await extension_bridge.attach(websocket)
+
+
+@app.get("/api/extension/status")
+async def api_extension_status(target: Optional[str] = Query(None)):
+    """Report connected extensions. Pass ?target=<id> for a single connection."""
+    return extension_bridge.snapshot(target)
+
+
+@app.post("/api/extension/execute")
+async def api_extension_execute(req: dict):
+    """HTTP wrapper to run a tool on a connected extension.
+
+    Body: {"tool": "currentUrl", "args": {...}, "timeout": 30, "target": "<tenantId|extensionId>"}
+    `target` is optional when only one extension is connected.
+    """
+    tool = req.get("tool")
+    if not tool:
+        raise HTTPException(status_code=400, detail="tool is required")
+    if not extension_bridge.connected:
+        raise HTTPException(status_code=503, detail="no browser extension connected")
+    args = req.get("args") or {}
+    timeout = float(req.get("timeout", 30))
+    target = req.get("target")
+    result = await extension_bridge.execute(tool, args, timeout, target=target)
+    if not result.get("success") and "not connected" in str(result.get("reason", "")):
+        raise HTTPException(status_code=503, detail=result.get("reason"))
+    return result
+
+
+@app.post("/api/extension/ping")
+async def api_extension_ping(req: dict):
+    """Ping a connected extension (optional `target`)."""
+    target = req.get("target")
+    if not extension_bridge.connected:
+        raise HTTPException(status_code=503, detail="no browser extension connected")
+    ok = await extension_bridge.ping(target)
+    return {"ok": ok}
 
 
 async def eff(key: str) -> str:
