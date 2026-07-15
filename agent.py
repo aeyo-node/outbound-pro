@@ -475,13 +475,50 @@ async def entrypoint(ctx: agents.JobContext) -> None:
     # (Greeting logic was removed, but we MUST trigger the agent to speak first on outbound calls, otherwise VAD waits 20s)
     if phone_number:
         try:
-            if hasattr(session, "generate_reply"):
-                asyncio.create_task(
-                    session.generate_reply(
-                        "The call just connected. You are the caller. Speak first immediately using the greeting defined in your system prompt."
-                    )
+            msg = "The call just connected. You are the caller. Speak first immediately using the greeting defined in your system prompt."
+            
+            # Attempt 1: Gemini 3.1 send_realtime_input hack
+            injected = False
+            if hasattr(session, "_llm") and hasattr(session._llm, "_session"):
+                try:
+                    s = session._llm._session
+                    if hasattr(s, "send_realtime_input"):
+                        asyncio.create_task(s.send_realtime_input([{"text": msg}]))
+                        await _log("info", "Injected greeting via send_realtime_input")
+                        injected = True
+                except Exception as e:
+                    pass
+            
+            # Attempt 2: send_text hack (some versions of the plugin)
+            if not injected and hasattr(session, "_llm") and hasattr(session._llm._session, "send_text"):
+                try:
+                    asyncio.create_task(session._llm._session.send_text(msg))
+                    await _log("info", "Injected greeting via send_text")
+                    injected = True
+                except Exception:
+                    pass
+
+            # Attempt 3: Standard generate_reply
+            if not injected and hasattr(session, "generate_reply"):
+                try:
+                    asyncio.create_task(session.generate_reply(msg))
+                    await _log("info", "Injected initial response trigger via generate_reply()")
+                    injected = True
+                except Exception:
+                    pass
+
+            # Attempt 4: Publish lk-chat data packet to room
+            if not injected:
+                import json
+                chat_payload = json.dumps({"message": msg})
+                packet = rtc.DataPacket(
+                    data=chat_payload.encode("utf-8"),
+                    kind=rtc.DataPacketKind.RELIABLE,
+                    topic="lk-chat"
                 )
-                await _log("info", "Injected initial response trigger via generate_reply()")
+                asyncio.create_task(ctx.room.local_participant.publish_data(packet))
+                await _log("info", "Injected initial response trigger via lk-chat data packet")
+
         except Exception as e:
             await _log("warning", f"Could not inject initial greeting trigger: {e}")
 
