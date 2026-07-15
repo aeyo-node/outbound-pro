@@ -300,7 +300,8 @@ class AppointmentTools(llm.ToolContext):
             "check_wallet_balance", "check_charger_status",
             "troubleshoot_charger", "get_charging_session_details",
             "check_calcom_availability", "book_calcom",
-            "collect_whatsapp_number", "query_knowledge_base"
+            "collect_whatsapp_number", "query_knowledge_base",
+            "execute_browser_action"
         ]
         if not enabled:
             return all_methods
@@ -585,6 +586,38 @@ class AppointmentTools(llm.ToolContext):
             return "Error checking balance."
 
     # Deprecated start_charging and stop_charging removed.
+
+    @llm.function_tool
+    async def execute_browser_action(self, action: str, parameters: str = "{}") -> str:
+        """
+        Execute an action in the user's browser via the Swaram Browser Assistant extension.
+        action: The name of the action to perform. Valid read-only actions:
+          - swaram.openDashboard
+          - swaram.openCampaigns
+          - swaram.openAnalytics
+          - swaram.monitor
+          - currentUrl
+          - getTitle
+          - takeScreenshot
+          - getCookies
+          - readAllText
+          - extractErrors
+          - pageReady
+        parameters: A JSON string containing any arguments for the action. Default is "{}".
+        """
+        try:
+            from server import extension_bridge
+            import json
+            
+            # Use tenant_id or "default" as target if applicable. The bridge uses target="default" if not specified.
+            # We'll just call the bridge directly.
+            
+            params_dict = json.loads(parameters)
+            result = await extension_bridge.execute(action, params_dict)
+            return json.dumps(result, indent=2)
+        except Exception as e:
+            logger.error(f"Error in execute_browser_action: {e}")
+            return f"Failed to execute browser action '{action}': {e}"
 
 
 
