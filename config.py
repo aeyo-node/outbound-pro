@@ -7,7 +7,7 @@ voices, or other AI configuration values.
 
 # ── Gemini Live Realtime model ─────────────────────────────────────────────────
 # Used by agent.py AgentSession / RealtimeModel
-REALTIME_MODEL = "gemini-2.5-flash-native-audio-preview"
+REALTIME_MODEL = "gemini-3.1-flash-live-preview"
 
 # ── Gemini text-only model (non-realtime tasks) ────────────────────────────────
 # Used by /api/chat endpoint and memory compression in tools.py
