@@ -1307,20 +1307,24 @@ async def _run_campaign(campaign_id: str) -> None:
                 
             # Wait if we hit the concurrent call limit
             import time
+            wait_logged = False
             while True:
                 try:
                     rooms_resp = await lk.room.list_rooms(lk_api_module.ListRoomsRequest())
                     now = time.time()
                     active_outbound = [
                         r for r in rooms_resp.rooms 
-                        if r.name.startswith("camp-") and (r.num_participants > 0 or now - r.creation_time < 60)
+                        if r.name.startswith("camp-") and r.num_participants > 0
                     ]
                     if len(active_outbound) < max_concurrent:
                         break
                     else:
-                        logger.info("Campaign %s: Waiting for concurrent limit (%d/%d)...", campaign_id, len(active_outbound), max_concurrent)
+                        if not wait_logged:
+                            logger.info("Campaign %s: Waiting for concurrent limit (%d/%d)...", campaign_id, len(active_outbound), max_concurrent)
+                            wait_logged = True
                 except Exception as e:
                     logger.warning("Failed to list active rooms for concurrency check: %s", e)
+                    break  # Don't block forever on API errors
                 await asyncio.sleep(2)
 
             room_name = f"camp-{campaign_id[:8]}-{phone.replace('+','')}-{random.randint(100,999)}"
