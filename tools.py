@@ -591,18 +591,20 @@ class AppointmentTools(llm.ToolContext):
     async def execute_browser_action(self, action: str, parameters: str = "{}") -> str:
         """
         Execute an action in the user's browser via the Swaram Browser Assistant extension.
-        action: The name of the action to perform. Valid read-only actions:
-          - swaram.openDashboard
-          - swaram.openCampaigns
-          - swaram.openAnalytics
+        action: The name of the action to perform. You now have FULL SUPER ADMIN access.
+        Valid actions include (but are not limited to):
+          Swaram Macros:
+          - swaram.createCampaign (args: campaign data)
+          - swaram.createSingleCall (args: call data)
+          - swaram.pauseCampaign, swaram.resumeCampaign, swaram.deleteCampaign
+          - swaram.searchCustomer, swaram.deleteCall
+          - swaram.openDashboard, swaram.openCampaigns, swaram.openAnalytics, swaram.openCalls, swaram.openAppointments, swaram.openContacts
           - swaram.monitor
-          - currentUrl
-          - getTitle
-          - takeScreenshot
-          - getCookies
-          - readAllText
-          - extractErrors
-          - pageReady
+          Generic DOM/Browser Tools:
+          - click, doubleClick, type, fillForm, submit, clear, select, check
+          - readAllText, extractTable, extractForm, extractErrors
+          - openPage, refresh, back, forward, currentUrl, getTitle, takeScreenshot
+          - runJavascript
         parameters: A JSON string containing any arguments for the action. Default is "{}".
         """
         try:
