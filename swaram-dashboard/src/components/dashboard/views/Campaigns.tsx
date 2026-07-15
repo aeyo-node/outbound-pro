@@ -315,7 +315,11 @@ export function Campaigns() {
 
   const handleRunNow = async (id: string) => {
     try {
-      const res = await fetch(`${API}/campaigns/${id}/run`, { method: "POST" });
+      const token = localStorage.getItem("swaram_token") || "";
+      const res = await fetch(`${API}/campaigns/${id}/run`, { 
+        method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : {} 
+      });
       if (res.ok) {
         fetchData();
       } else {

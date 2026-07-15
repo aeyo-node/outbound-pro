@@ -118,7 +118,11 @@ export function CRMLeads() {
   const handleDeleteIndividual = async (id: string) => {
     if (!confirm("Are you sure you want to permanently delete this CRM lead?")) return;
     try {
-      const res = await fetch(`${API}/contacts/${id}`, { method: "DELETE" });
+      const token = localStorage.getItem("swaram_token") || "";
+      const res = await fetch(`${API}/contacts/${id}`, { 
+        method: "DELETE",
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      });
       if (res.ok) {
         setSelectedIds(prev => prev.filter(x => x !== id));
         fetchContacts();
@@ -367,9 +371,13 @@ export function CRMLeads() {
                         </button>
                         <button 
                           onClick={async () => {
+                            const token = localStorage.getItem("swaram_token") || "";
                             const res = await fetch(`${API}/call`, {
                               method: "POST",
-                              headers: { "Content-Type": "application/json" },
+                              headers: { 
+                                "Content-Type": "application/json",
+                                ...(token ? { Authorization: `Bearer ${token}` } : {})
+                              },
                               body: JSON.stringify({ phone: c.phone, lead_name: c.name })
                             });
                             if (res.ok) alert("Call initiated!");

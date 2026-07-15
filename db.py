@@ -415,6 +415,16 @@ async def log_call(
     except Exception as e:
         logger.warning(f"Failed to auto-add/update contact in CRM: {e}")
 
+    # Increment calls_used for the tenant
+    try:
+        if tenant_id and tenant_id != "system":
+            t_data = await db.table("tenants").select("calls_used").eq("id", tenant_id).maybe_single().execute()
+            if t_data and t_data.data:
+                current_used = t_data.data.get("calls_used", 0)
+                await db.table("tenants").update({"calls_used": current_used + 1}).eq("id", tenant_id).execute()
+    except Exception as e:
+        logger.warning(f"Failed to increment calls_used for tenant {tenant_id}: {e}")
+
 
 async def get_campaign_call_logs(campaign_id: str) -> list:
     db = await _adb()
