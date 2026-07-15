@@ -509,7 +509,6 @@ async def entrypoint(ctx: agents.JobContext) -> None:
 
             # Attempt 4: Publish lk-chat data packet to room
             if not injected:
-                import json
                 chat_payload = json.dumps({"message": msg})
                 packet = rtc.DataPacket(
                     data=chat_payload.encode("utf-8"),
