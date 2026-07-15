@@ -333,7 +333,7 @@ class SwaramExtensionBridge:
 extension_bridge = SwaramExtensionBridge(SWARAM_EXTENSION_TOKEN)
 
 
-@app.websocket("/swaram/ws")
+@app.websocket("/api/swaram/ws")
 async def swaram_extension_ws(websocket: WebSocket):
     """WebSocket endpoint the Chrome extension(s) connect to."""
     await extension_bridge.attach(websocket)
