@@ -964,9 +964,10 @@ async def api_get_stats(request: Request):
 
 # ── Send Demo Webhook Proxy ───────────────────────────────────────────────────
 
-N8N_WEBSITE_WEBHOOK = "https://app.workflow-tech.info/webhook/website"
+N8N_WEBSITE_WEBHOOK = "https://app.workflow-tech.info/webhook-test/website"
 
 @app.post("/api/send-demo")
+@app.post("/api/send-demo/")
 async def proxy_send_demo(request: Request):
     """Proxy the demo website creation request to n8n to avoid browser CORS."""
     try:
