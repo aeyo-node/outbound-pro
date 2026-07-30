@@ -256,6 +256,13 @@ class SwaramExtensionBridge:
         conn.tenant_id = msg.get("tenantId") or msg.get("tenant_id")
         conn.extension_id = msg.get("extensionId") or msg.get("extension_id")
         conn.session_id = f"s-{int(asyncio.get_running_loop().time() * 1000)}"
+        # Store the live tool catalog reported by the extension (overrides the
+        # DEFAULT_CATALOG the admin UI falls back to).
+        try:
+            from extension_policy import set_live_catalog
+            set_live_catalog(msg.get("capabilities"))
+        except Exception as e:  # pragma: no cover
+            logger.debug(f"[ext-bridge] catalog update failed: {e}")
         # Target key: prefer tenantId, then extensionId, then session id.
         new_target = conn.tenant_id or conn.extension_id or conn.session_id
         # Replace any existing connection for the same target (one session per target).
@@ -273,6 +280,26 @@ class SwaramExtensionBridge:
             f"[ext-bridge] authenticated target={new_target} "
             f"tenant={conn.tenant_id} extension={conn.extension_id}"
         )
+        # Push this tenant's tool policy so the extension enforces the allowlist.
+        await self.send_policy(new_target)
+
+    async def send_policy(self, target: Optional[str] = None) -> bool:
+        """Push the tenant's tool policy to a connected extension."""
+        conn, _ = self._resolve(target)
+        if conn is None:
+            return False
+        try:
+            from extension_policy import policy_for_execute
+            policy = policy_for_execute(conn.tenant_id)
+        except Exception as e:  # pragma: no cover
+            logger.debug(f"[ext-bridge] policy lookup failed: {e}")
+            return False
+        await conn.send({"type": "policy", "policy": policy})
+        logger.info(
+            f"[ext-bridge] pushed policy to {conn.target} "
+            f"(allow_all={policy.get('allow_all')} allowed={len(policy.get('allowed_tools', []))})"
+        )
+        return True
 
     # -- outbound -------------------------------------------------------------
     async def execute(self, tool: str, args: Optional[dict] = None, timeout: float = 30.0,
@@ -374,6 +401,84 @@ async def api_extension_ping(req: dict):
         raise HTTPException(status_code=503, detail="no browser extension connected")
     ok = await extension_bridge.ping(target)
     return {"ok": ok}
+
+
+# ── Tool-policy management (superadmin) ─────────────────────────────────────
+# Per-tenant allowlists that control which browser tools an extension may run.
+
+@app.get("/api/extension/catalog")
+async def api_extension_catalog(request: Request):
+    """Return the known tool catalog (live from a connected extension, else default)."""
+    await _require_superadmin(request)
+    from extension_policy import get_catalog
+    return {"tools": get_catalog()}
+
+
+@app.get("/api/extension/policies")
+async def api_extension_policies_list(request: Request):
+    await _require_superadmin(request)
+    from extension_policy import list_policies
+    return {"policies": list_policies()}
+
+
+@app.get("/api/extension/policies/{tenant_id}")
+async def api_extension_policy_get(tenant_id: str, request: Request):
+    await _require_superadmin(request)
+    from extension_policy import get_policy
+    return get_policy(tenant_id)
+
+
+@app.put("/api/extension/policies/{tenant_id}")
+async def api_extension_policy_put(tenant_id: str, request: Request):
+    """Create or update a tenant's tool policy."""
+    await _require_superadmin(request)
+    from extension_policy import set_policy
+    body = await request.json()
+    policy = set_policy(tenant_id, body)
+    # If that tenant's extension is connected, push the new policy live.
+    await extension_bridge.send_policy(tenant_id)
+    return policy
+
+
+@app.delete("/api/extension/policies/{tenant_id}")
+async def api_extension_policy_delete(tenant_id: str, request: Request):
+    await _require_superadmin(request)
+    from extension_policy import delete_policy
+    deleted = delete_policy(tenant_id)
+    # Re-push allow-all so the extension isn't left locked down.
+    await extension_bridge.send_policy(tenant_id)
+    return {"deleted": deleted}
+
+
+@app.get("/api/extension/policies/{tenant_id}/export")
+async def api_extension_policy_export(tenant_id: str, request: Request):
+    """Download a tenant's policy as a JSON file (for offline client distribution)."""
+    await _require_superadmin(request)
+    from extension_policy import get_policy
+    policy = get_policy(tenant_id)
+    headers = {"Content-Disposition": f'attachment; filename="swaram-policy-{tenant_id}.json"'}
+    return JSONResponse(content=policy, headers=headers)
+
+
+@app.post("/api/extension/policies/{tenant_id}/push")
+async def api_extension_policy_push(tenant_id: str, request: Request):
+    """Push the tenant's current policy to its connected extension immediately."""
+    await _require_superadmin(request)
+    if not extension_bridge.connected:
+        raise HTTPException(status_code=503, detail="no browser extension connected")
+    ok = await extension_bridge.send_policy(tenant_id)
+    return {"pushed": ok}
+
+
+@app.get("/extension-admin", response_class=HTMLResponse)
+async def extension_admin_page():
+    """Serve the tool-policy admin UI (superadmin login inside the page)."""
+    html_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "extension_admin.html")
+    try:
+        with open(html_path, "r", encoding="utf-8") as f:
+            return HTMLResponse(f.read())
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="extension_admin.html not found")
 
 
 async def eff(key: str) -> str:
@@ -855,6 +960,31 @@ async def livekit_webhook(request: Request):
 async def api_get_stats(request: Request):
     target = await get_target_tenant(request, None)
     return await get_stats(tenant_id=target)
+
+
+# ── Send Demo Webhook Proxy ───────────────────────────────────────────────────
+
+N8N_WEBSITE_WEBHOOK = "https://app.workflow-tech.info/webhook/website"
+
+@app.post("/api/send-demo")
+async def proxy_send_demo(request: Request):
+    """Proxy the demo website creation request to n8n to avoid browser CORS."""
+    try:
+        body = await request.json()
+        ssl_ctx = ssl.create_default_context(cafile=certifi.where())
+        connector = aiohttp.TCPConnector(ssl=ssl_ctx)
+        async with aiohttp.ClientSession(connector=connector) as session:
+            async with session.post(
+                N8N_WEBSITE_WEBHOOK,
+                json=body,
+                headers={"Content-Type": "application/json"},
+                timeout=aiohttp.ClientTimeout(total=120),
+            ) as resp:
+                data = await resp.json(content_type=None)
+                return JSONResponse(content=data, status_code=resp.status)
+    except Exception as e:
+        logger.error(f"[send-demo proxy] Error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # ── Appointments ──────────────────────────────────────────────────────────────

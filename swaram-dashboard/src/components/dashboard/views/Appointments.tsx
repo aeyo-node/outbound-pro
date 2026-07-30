@@ -84,14 +84,10 @@ export function Appointments() {
       setSelectedIds([]);
 
       if (createdUrls.length > 0) {
-        if (confirm(`Successfully created ${createdUrls.length} websites!\n\nDo you want to open them all in new tabs?`)) {
-          createdUrls.forEach(url => window.open(url, "_blank"));
-        }
-      } else {
-        alert("Bulk demo website creation completed!");
+        createdUrls.forEach(url => window.open(url, "_blank"));
       }
     } catch (err: any) {
-      alert(`Bulk creation failed: ${err.message || err}`);
+      console.error("Bulk demo creation error:", err);
     } finally {
       setBulkSending(false);
     }
@@ -144,15 +140,10 @@ export function Appointments() {
       const websiteUrl = data.website_url || data.url || data["Website URL"];
       
       if (websiteUrl) {
-        if (confirm(`Website created successfully!\n\nURL: ${websiteUrl}\n\nDo you want to open it now?`)) {
-          window.open(websiteUrl, "_blank");
-        }
-      } else {
-        alert("Website creation triggered successfully!");
+        window.open(websiteUrl, "_blank");
       }
     } catch (err: any) {
-      console.error(err);
-      alert(`Failed to create website: ${err.message || err}`);
+      console.error("Send demo error:", err);
     } finally {
       setCreatingWebsiteIds(prev => prev.filter(id => id !== apptId));
     }
