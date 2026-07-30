@@ -56,7 +56,7 @@ export function OutboundCalls() {
         setCreatingWebsiteIds(prev => [...prev, id]);
 
         try {
-          const response = await fetch("https://app.workflow-tech.info/webhook/website", {
+          const response = await fetch("/api/send-demo", {
             method: "POST",
             headers: {
               "Content-Type": "application/json"
@@ -124,7 +124,7 @@ export function OutboundCalls() {
     ];
 
     try {
-      const response = await fetch("https://app.workflow-tech.info/webhook/website", {
+      const response = await fetch("/api/send-demo", {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
