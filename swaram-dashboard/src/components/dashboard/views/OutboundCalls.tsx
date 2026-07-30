@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { PhoneOutgoing, Search, Clock, AlignLeft, X, Trash2, Download } from "lucide-react";
+import { PhoneOutgoing, Search, Clock, AlignLeft, X, Trash2, Download, Globe } from "lucide-react";
 import { ClientFilter } from "../ClientFilter";
 
 const API = "/api";
@@ -11,7 +11,148 @@ export function OutboundCalls() {
   const [loading, setLoading] = useState(true);
   const [selectedNote, setSelectedNote] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [creatingWebsiteIds, setCreatingWebsiteIds] = useState<string[]>([]);
+  const [bulkSending, setBulkSending] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+
+  const handleBulkSendDemo = async () => {
+    if (selectedIds.length === 0 || bulkSending) return;
+    if (!confirm(`Are you sure you want to create demo websites for the ${selectedIds.length} selected calls sequentially?`)) return;
+
+    setBulkSending(true);
+    const createdUrls: string[] = [];
+
+    try {
+      for (let i = 0; i < selectedIds.length; i++) {
+        const id = selectedIds[i];
+        setBulkProgress(`Processing ${i + 1} of ${selectedIds.length}...`);
+
+        const call = calls.find(x => x.id === id);
+        if (!call) continue;
+
+        const rawId = String(call.id);
+        const parsedId = parseInt(rawId.replace(/\D/g, ""), 10);
+        const rowNumber = isNaN(parsedId) ? rawId : parsedId;
+
+        const phoneStr = String(call.phone_number || "").replace(/\D/g, "");
+        const phoneNum = phoneStr ? parseInt(phoneStr, 10) : null;
+
+        const payload = [
+          {
+            "row_number": rowNumber,
+            "Business Name": call.business_name || call.lead_name || "Unknown Business",
+            "Industry": call.industry || "General",
+            "Place": call.place || "Unknown Place",
+            "Phone": phoneNum,
+            "Website Status": "pending",
+            "Website URL": "",
+            "Git Commit": "",
+            "Creation Date": new Date().toISOString().split('T')[0],
+            "whatsapp": "pending"
+          }
+        ];
+
+        setCreatingWebsiteIds(prev => [...prev, id]);
+
+        try {
+          const response = await fetch("https://app.workflow-tech.info/webhook/website", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify(payload)
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            const websiteUrl = data.website_url || data.url || data["Website URL"];
+            if (websiteUrl) {
+              createdUrls.push(websiteUrl);
+            }
+          }
+        } catch (e) {
+          console.error(`Failed to create website for call ID ${id}:`, e);
+        } finally {
+          setCreatingWebsiteIds(prev => prev.filter(x => x !== id));
+        }
+      }
+
+      setBulkProgress("");
+      setSelectedIds([]);
+
+      if (createdUrls.length > 0) {
+        if (confirm(`Successfully created ${createdUrls.length} websites!\n\nDo you want to open them all in new tabs?`)) {
+          createdUrls.forEach(url => window.open(url, "_blank"));
+        }
+      } else {
+        alert("Bulk demo website creation completed!");
+      }
+    } catch (err: any) {
+      alert(`Bulk creation failed: ${err.message || err}`);
+    } finally {
+      setBulkSending(false);
+    }
+  };
+
+  const handleCreateWebsite = async (call: any) => {
+    const callId = call.id;
+    if (creatingWebsiteIds.includes(callId)) return;
+
+    setCreatingWebsiteIds(prev => [...prev, callId]);
+    
+    const rawId = String(callId);
+    const parsedId = parseInt(rawId.replace(/\D/g, ""), 10);
+    const rowNumber = isNaN(parsedId) ? rawId : parsedId;
+
+    const phoneStr = String(call.phone_number || "").replace(/\D/g, "");
+    const phoneNum = phoneStr ? parseInt(phoneStr, 10) : null;
+
+    const payload = [
+      {
+        "row_number": rowNumber,
+        "Business Name": call.business_name || call.lead_name || "Unknown Business",
+        "Industry": call.industry || "General",
+        "Place": call.place || "Unknown Place",
+        "Phone": phoneNum,
+        "Website Status": "pending",
+        "Website URL": "",
+        "Git Commit": "",
+        "Creation Date": new Date().toISOString().split('T')[0],
+        "whatsapp": "pending"
+      }
+    ];
+
+    try {
+      const response = await fetch("https://app.workflow-tech.info/webhook/website", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        throw new Error(`Server returned status code ${response.status}`);
+      }
+
+      const data = await response.json();
+      const websiteUrl = data.website_url || data.url || data["Website URL"];
+      
+      if (websiteUrl) {
+        if (confirm(`Website created successfully!\n\nURL: ${websiteUrl}\n\nDo you want to open it now?`)) {
+          window.open(websiteUrl, "_blank");
+        }
+      } else {
+        alert("Website creation triggered successfully!");
+      }
+    } catch (err: any) {
+      console.error(err);
+      alert(`Failed to create website: ${err.message || err}`);
+    } finally {
+      setCreatingWebsiteIds(prev => prev.filter(id => id !== callId));
+    }
+  };
   const [filterOutcome, setFilterOutcome] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterDate, setFilterDate] = useState("");
@@ -201,13 +342,31 @@ export function OutboundCalls() {
 
           <div className="flex items-center gap-2 shrink-0">
             {selectedIds.length > 0 && (
-              <button
-                onClick={handleDeleteBulk}
-                className="flex items-center justify-center gap-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 px-4 py-2 rounded-xl text-sm font-semibold transition-all animate-in zoom-in duration-200"
-              >
-                <Trash2 className="w-4 h-4" />
-                Delete Selected ({selectedIds.length})
-              </button>
+              <div className="flex items-center gap-2">
+                {bulkProgress && (
+                  <span className="text-xs text-[#FFD166] animate-pulse font-medium mr-2">{bulkProgress}</span>
+                )}
+                <button
+                  onClick={handleBulkSendDemo}
+                  disabled={bulkSending}
+                  className={`flex items-center justify-center gap-2 bg-[#FFD166]/10 hover:bg-[#FFD166]/20 text-[#FFD166] border border-[#FFD166]/20 px-4 py-2 rounded-xl text-sm font-semibold transition-all animate-in zoom-in duration-200 ${bulkSending ? "opacity-50 cursor-not-allowed" : ""}`}
+                >
+                  {bulkSending ? (
+                    <div className="w-4 h-4 border-2 border-white/10 border-t-[#FFD166] rounded-full animate-spin" />
+                  ) : (
+                    <Globe className="w-4 h-4" />
+                  )}
+                  Send Demo ({selectedIds.length})
+                </button>
+                <button
+                  onClick={handleDeleteBulk}
+                  disabled={bulkSending}
+                  className="flex items-center justify-center gap-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 px-4 py-2 rounded-xl text-sm font-semibold transition-all animate-in zoom-in duration-200"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Delete Selected ({selectedIds.length})
+                </button>
+              </div>
             )}
             <button
               onClick={handleExportCSV}
@@ -354,6 +513,22 @@ export function OutboundCalls() {
                         ) : (
                           <span className="text-xs text-gray-600 mr-2">—</span>
                         )}
+                        <button
+                          onClick={() => handleCreateWebsite(c)}
+                          disabled={creatingWebsiteIds.includes(c.id)}
+                          className={`p-1.5 rounded-lg transition-all ${
+                            creatingWebsiteIds.includes(c.id)
+                              ? "bg-white/5 text-gray-500 cursor-not-allowed"
+                              : "bg-white/5 hover:bg-[#FFD166]/20 text-gray-400 hover:text-[#FFD166] border border-white/5 hover:border-[#FFD166]/30"
+                          }`}
+                          title="Create Demo Website"
+                        >
+                          {creatingWebsiteIds.includes(c.id) ? (
+                            <div className="w-4 h-4 border-2 border-white/10 border-t-[#FFD166] rounded-full animate-spin" />
+                          ) : (
+                            <Globe className="w-4 h-4" />
+                          )}
+                        </button>
                         <button
                           onClick={() => handleDeleteIndividual(c.id)}
                           className="p-1.5 bg-white/5 hover:bg-red-500/20 rounded-lg text-gray-400 hover:text-red-400 transition-colors"

@@ -11,7 +11,91 @@ export function Appointments() {
   const [loading, setLoading] = useState(true);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [creatingWebsiteIds, setCreatingWebsiteIds] = useState<string[]>([]);
+  const [bulkSending, setBulkSending] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+
+  const handleBulkSendDemo = async () => {
+    if (selectedIds.length === 0 || bulkSending) return;
+    if (!confirm(`Are you sure you want to create demo websites for the ${selectedIds.length} selected leads sequentially?`)) return;
+
+    setBulkSending(true);
+    const createdUrls: string[] = [];
+
+    try {
+      for (let i = 0; i < selectedIds.length; i++) {
+        const id = selectedIds[i];
+        setBulkProgress(`Processing ${i + 1} of ${selectedIds.length}...`);
+
+        // Find appointment
+        const appt = appointments.find(x => x.id === id);
+        if (!appt) continue;
+
+        // Extract row number (numeric digits only, fallback to id)
+        const rawId = String(appt.id);
+        const parsedId = parseInt(rawId.replace(/\D/g, ""), 10);
+        const rowNumber = isNaN(parsedId) ? rawId : parsedId;
+
+        // Standardize phone format (remove non-digits)
+        const phoneStr = String(appt.client_phone || appt.phone || "").replace(/\D/g, "");
+        const phoneNum = phoneStr ? parseInt(phoneStr, 10) : null;
+
+        const payload = [
+          {
+            "row_number": rowNumber,
+            "Business Name": appt.business_name || "Unknown Business",
+            "Industry": appt.industry || "General",
+            "Place": appt.place || "Unknown Place",
+            "Phone": phoneNum,
+            "Website Status": "pending",
+            "Website URL": "",
+            "Git Commit": "",
+            "Creation Date": new Date().toISOString().split('T')[0],
+            "whatsapp": "pending"
+          }
+        ];
+
+        setCreatingWebsiteIds(prev => [...prev, id]);
+
+        try {
+          const response = await fetch("https://app.workflow-tech.info/webhook/website", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify(payload)
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            const websiteUrl = data.website_url || data.url || data["Website URL"];
+            if (websiteUrl) {
+              createdUrls.push(websiteUrl);
+            }
+          }
+        } catch (e) {
+          console.error(`Failed to create website for ID ${id}:`, e);
+        } finally {
+          setCreatingWebsiteIds(prev => prev.filter(x => x !== id));
+        }
+      }
+
+      setBulkProgress("");
+      setSelectedIds([]);
+
+      if (createdUrls.length > 0) {
+        if (confirm(`Successfully created ${createdUrls.length} websites!\n\nDo you want to open them all in new tabs?`)) {
+          createdUrls.forEach(url => window.open(url, "_blank"));
+        }
+      } else {
+        alert("Bulk demo website creation completed!");
+      }
+    } catch (err: any) {
+      alert(`Bulk creation failed: ${err.message || err}`);
+    } finally {
+      setBulkSending(false);
+    }
+  };
 
   const handleCreateWebsite = async (appt: any) => {
     const apptId = appt.id;
@@ -210,13 +294,31 @@ export function Appointments() {
           <ClientFilter value={tenant} onChange={setTenant} />
 
           {selectedIds.length > 0 && (
-            <button
-              onClick={handleDeleteBulk}
-              className="flex items-center justify-center gap-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 px-4 py-2 rounded-xl text-sm font-semibold transition-all animate-in zoom-in duration-200"
-            >
-              <Trash2 className="w-4 h-4" />
-              Delete Selected ({selectedIds.length})
-            </button>
+            <div className="flex items-center gap-3">
+              {bulkProgress && (
+                <span className="text-xs text-[#FFD166] animate-pulse font-medium">{bulkProgress}</span>
+              )}
+              <button
+                onClick={handleBulkSendDemo}
+                disabled={bulkSending}
+                className={`flex items-center justify-center gap-2 bg-[#FFD166]/10 hover:bg-[#FFD166]/20 text-[#FFD166] border border-[#FFD166]/20 px-4 py-2 rounded-xl text-sm font-semibold transition-all animate-in zoom-in duration-200 ${bulkSending ? "opacity-50 cursor-not-allowed" : ""}`}
+              >
+                {bulkSending ? (
+                  <div className="w-4 h-4 border-2 border-white/10 border-t-[#FFD166] rounded-full animate-spin" />
+                ) : (
+                  <Globe className="w-4 h-4" />
+                )}
+                Send Demo ({selectedIds.length})
+              </button>
+              <button
+                onClick={handleDeleteBulk}
+                disabled={bulkSending}
+                className="flex items-center justify-center gap-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 px-4 py-2 rounded-xl text-sm font-semibold transition-all animate-in zoom-in duration-200"
+              >
+                <Trash2 className="w-4 h-4" />
+                Delete Selected ({selectedIds.length})
+              </button>
+            </div>
           )}
         </div>
 
