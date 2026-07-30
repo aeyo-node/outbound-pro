@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { CalendarDays, Search, Clock, Trash2, X, AlertCircle } from "lucide-react";
+import { CalendarDays, Search, Clock, Trash2, X, AlertCircle, Globe } from "lucide-react";
 import { ClientFilter } from "../ClientFilter";
 
 const API = "/api";
@@ -10,7 +10,69 @@ export function Appointments() {
   const [appointments, setAppointments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [creatingWebsiteIds, setCreatingWebsiteIds] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+
+  const handleCreateWebsite = async (appt: any) => {
+    const apptId = appt.id;
+    if (creatingWebsiteIds.includes(apptId)) return;
+
+    setCreatingWebsiteIds(prev => [...prev, apptId]);
+    
+    // Extract row number (numeric digits only, fallback to id)
+    const rawId = String(apptId);
+    const parsedId = parseInt(rawId.replace(/\D/g, ""), 10);
+    const rowNumber = isNaN(parsedId) ? rawId : parsedId;
+
+    // Standardize phone format (remove non-digits)
+    const phoneStr = String(appt.client_phone || appt.phone || "").replace(/\D/g, "");
+    const phoneNum = phoneStr ? parseInt(phoneStr, 10) : null;
+
+    const payload = [
+      {
+        "row_number": rowNumber,
+        "Business Name": appt.business_name || "Unknown Business",
+        "Industry": appt.industry || "General",
+        "Place": appt.place || "Unknown Place",
+        "Phone": phoneNum,
+        "Website Status": "pending",
+        "Website URL": "",
+        "Git Commit": "",
+        "Creation Date": new Date().toISOString().split('T')[0],
+        "whatsapp": "pending"
+      }
+    ];
+
+    try {
+      const response = await fetch("https://app.workflow-tech.info/webhook/website", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        throw new Error(`Server returned status code ${response.status}`);
+      }
+
+      const data = await response.json();
+      const websiteUrl = data.website_url || data.url || data["Website URL"];
+      
+      if (websiteUrl) {
+        if (confirm(`Website created successfully!\n\nURL: ${websiteUrl}\n\nDo you want to open it now?`)) {
+          window.open(websiteUrl, "_blank");
+        }
+      } else {
+        alert("Website creation triggered successfully!");
+      }
+    } catch (err: any) {
+      console.error(err);
+      alert(`Failed to create website: ${err.message || err}`);
+    } finally {
+      setCreatingWebsiteIds(prev => prev.filter(id => id !== apptId));
+    }
+  };
   const [currentPage, setCurrentPage] = useState(1);
   const [tenant, setTenant] = useState("");
   const [isSuperadmin, setIsSuperadmin] = useState(false);
@@ -265,6 +327,24 @@ export function Appointments() {
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex justify-end items-center gap-2">
+                        {(!a.status || a.status === "booked" || a.status === "scheduled" || a.status === "demo booked") && (
+                          <button 
+                            onClick={() => handleCreateWebsite(a)} 
+                            disabled={creatingWebsiteIds.includes(a.id)}
+                            className={`p-1.5 rounded-lg transition-all ${
+                              creatingWebsiteIds.includes(a.id)
+                                ? "bg-white/5 text-gray-500 cursor-not-allowed"
+                                : "bg-white/5 hover:bg-[#FFD166]/20 text-gray-400 hover:text-[#FFD166] border border-white/5 hover:border-[#FFD166]/30"
+                            }`} 
+                            title="Create Demo Website"
+                          >
+                            {creatingWebsiteIds.includes(a.id) ? (
+                              <div className="w-4 h-4 border-2 border-white/10 border-t-[#FFD166] rounded-full animate-spin" />
+                            ) : (
+                              <Globe className="w-4 h-4" />
+                            )}
+                          </button>
+                        )}
                         {a.status === "scheduled" && (
                           <button 
                             onClick={() => handleCancel(a.id)} 
