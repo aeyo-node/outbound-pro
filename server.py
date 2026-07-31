@@ -972,6 +972,10 @@ async def proxy_send_demo(request: Request):
     """Proxy the demo website creation request to n8n to avoid browser CORS."""
     try:
         body = await request.json()
+        call_id = None
+        if isinstance(body, list) and len(body) > 0:
+            call_id = body[0].get("call_id")
+
         ssl_ctx = ssl.create_default_context(cafile=certifi.where())
         connector = aiohttp.TCPConnector(ssl=ssl_ctx)
         async with aiohttp.ClientSession(connector=connector) as session:
@@ -982,6 +986,13 @@ async def proxy_send_demo(request: Request):
                 timeout=aiohttp.ClientTimeout(total=120),
             ) as resp:
                 data = await resp.json(content_type=None)
+                website_url = data.get("website_url") or data.get("url") or data.get("Website URL") or data.get("websiteUrl")
+                if website_url and call_id:
+                    try:
+                        from db import db
+                        await db.table("call_logs").update({"website_url": website_url}).eq("id", call_id).execute()
+                    except Exception as dberr:
+                        logger.error(f"[send-demo proxy] Failed to update website_url in db: {dberr}")
                 return JSONResponse(content=data, status_code=resp.status)
     except Exception as e:
         logger.error(f"[send-demo proxy] Error: {e}")

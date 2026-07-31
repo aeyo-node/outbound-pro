@@ -115,7 +115,8 @@ export function OutboundCalls() {
         "Website URL": "",
         "Git Commit": "",
         "Creation Date": new Date().toISOString().split('T')[0],
-        "whatsapp": "pending"
+        "whatsapp": "pending",
+        "call_id": callId
       }
     ];
 
@@ -136,7 +137,8 @@ export function OutboundCalls() {
       const websiteUrl = data.website_url || data.url || data["Website URL"];
       
       if (websiteUrl) {
-        window.open(websiteUrl, "_blank");
+        setCalls(prev => prev.map(c => c.id === callId ? { ...c, website_url: websiteUrl } : c));
+        // window.open(websiteUrl, "_blank"); // Removing popup as requested for better UX
       }
     } catch (err: any) {
       console.error("Send demo error:", err);
@@ -385,6 +387,7 @@ export function OutboundCalls() {
                 <th className="px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Phone</th>
                 <th className="px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Business</th>
                 <th className="px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Industry</th>
+                <th className="px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Website</th>
                 <th className="px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Place</th>
                 <th className="px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Status</th>
                 <th className="px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Outcome</th>
@@ -450,6 +453,15 @@ export function OutboundCalls() {
                     </td>
                     <td className="px-6 py-4">
                       <span className="text-xs text-gray-400">{c.industry || "—"}</span>
+                    </td>
+                    <td className="px-6 py-4">
+                      {c.website_url ? (
+                        <a href={c.website_url} target="_blank" rel="noreferrer" className="text-xs text-[#FFD166] hover:underline flex items-center gap-1">
+                          <Globe className="w-3 h-3" /> View
+                        </a>
+                      ) : (
+                        <span className="text-xs text-gray-600">—</span>
+                      )}
                     </td>
                     <td className="px-6 py-4">
                       <span className="text-xs text-gray-400">{c.place || "—"}</span>
